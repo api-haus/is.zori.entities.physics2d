@@ -1,0 +1,177 @@
+# Parity matrix
+
+This is the single source of truth for per-feature support state against the full built-in GameObject 2D physics surface. Each row is a built-in feature, the Box2D / package mechanism it maps to, its support state, the test that exercises it, and the worst measured error against its tolerance band where a parity test exists. Read the at-parity-with-known-gap and still-not-covered sections before assuming a feature behaves identically to GameObject; the known-gap entries are shipped features that diverge from the GameObject oracle in a measured, bounded way, and the still-not-covered entries are genuinely absent against the current code.
+
+Worst-error numbers are measured against the GameObject oracle, which is a generous bounded envelope and not an exact reference (see "The parity oracle is bounded, not exact" below). They are alpha-pinned to editor `6000.6.0a6`, where the GameObject `Physics2D.Simulate` path runs Box2D-v2 (iteration solver) and the package runs Box2D-v3 (sub-stepping solver). Support states: `at-parity` (shipped, passes a GameObject-vs-ECS parity test that asserts binary facts exactly and continuous facts within the band), `at-parity-with-known-gap` (shipped and parity-faithful on its primary case, with a measured, documented divergence on a named edge), `flagged-decision` (shipped, but an API contract choice the user should ratify), `still-not-covered` (no code shipped).
+
+The whole feature surface is covered by an adversarial GameObject-parity e2e gate suite that ends at **150 / 150 PlayMode tests** on two consecutive green runs with bit-identical deterministic witnesses. Each row's "exercising test" names the gate or validation that pins it.
+
+The package's angular-unit convention (rotation in radians, angular velocity and joint angles in degrees) is an intentional, ratified convention, NOT a parity gap. Its single canonical statement is the [angular unit convention](angular-units.md) page.
+
+## At parity
+
+These reproduce the built-in behaviour within the band and commit none of the disqualifying bugs (moved when it should, no NaN, correct static-vs-dynamic classification, in-plane, settles in region). Each binary fact (does a pair collide, does a body tunnel, which entities are in a query hit-set) is asserted exactly; each continuous fact (settled pose, velocity, hit point) is bounded.
+
+### Bodies, parameters, materials
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `Rigidbody2D` Dynamic / Kinematic / Static | `PhysicsBody.BodyType` | at-parity | `FallingBodyValidation`, `BodyParamParityValidation` | — / static floor settles |
+| `gravityScale`, linear / angular damping | `PhysicsBody2DDefinition.*` → `PhysicsBodyDefinition.*` | at-parity | `FallingBodyValidation`, `CircleParityValidation` | 0.206 m over 120 steps (free-fall convention offset, 0 rad) |
+| `mass` / `useAutoMass` | `PhysicsBody2DDefinition` mass + shape density → `MassConfiguration` | at-parity | `BodyParamParityValidation` | within band |
+| `constraints` (freeze X / Y / rotation) | `PhysicsBody.BodyConstraints` | at-parity | `BodyParamParityValidation` | within band |
+| `linearVelocity` / `angularVelocity` initial seed | `PhysicsBody2DInitialVelocity` (`InitialVelocity2DAuthoring`) | at-parity | `BodyParamParityValidation` | within band |
+| `PhysicsMaterial2D` friction / bounciness | `PhysicsShapeDefinition.surfaceMaterial` | at-parity | `BodyParamParityValidation` (bounce 0.502 m, friction 0.064 m) | 0.502 m (restitution, the hardest contact case) |
+| `Collider2D.density` | `PhysicsShapeDefinition.density` | at-parity | `BodyParamParityValidation` | within band |
+| collider-only static body | static-body fallback in each collider baker | at-parity | `BodyParamParityValidation` (StaticFallback) | 0.124 m (landing transient) |
+
+### Colliders
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `CircleCollider2D` | `CircleGeometry` | at-parity | `CircleParityValidation` | 0.206 m (free-fall offset) |
+| `BoxCollider2D` | `PolygonGeometry.CreateBox` | at-parity | `ColliderShapeParityValidation` | 0.0920 m pos, 2.38e-3 rad |
+| `CapsuleCollider2D` | `CapsuleGeometry.Create` | at-parity | `ColliderShapeParityValidation` | 0.0869 m pos, 0 rad |
+| `PolygonCollider2D` (convex, path 0) | `PolygonGeometry.Create` | at-parity (convex single path) | `ColliderShapeParityValidation` | 0.236 m (landing transient), 8.64e-4 rad |
+| `EdgeCollider2D` (one-sided static surface) | `ChainGeometry` + per-shape `PhysicsChainDefinition` surface / filter | at-parity (edge-as-static-surface) | `ColliderShapeParityValidation`, `Phase9CompositeCustomGate` (`EdgeMaterial`) | 0.0988 m pos, 0 rad; bouncy-edge rebound y=2.999 |
+| `CompositeCollider2D` Polygons | merged paths → multi-shape body (`PhysicsShape2D` + `PhysicsShape2DElement` buffer); each path `PolygonGeometry.CreatePolygons` decomposed | at-parity | `Phase9CompositeCustomGate` (`CompositePolygons`) | one static body, ≥2 convex fragments, disc settles on merged L |
+| `CompositeCollider2D` Outlines | merged paths → loop `ChainGeometry` per path | at-parity | `Phase9CompositeCustomGate` (`CompositeOutlines`) | one static body, ≥4 chain segments, disc rests on loop |
+| `CustomCollider2D` (`PhysicsShapeGroup2D`) | each `PhysicsShapeType2D` → package `PhysicsShape2DKind`, multi-shape body | at-parity | `Phase9CompositeCustomGate` (`CustomGroup`) | one shape per group shape, kinds match exactly (poly 1 / circ 1 / cap 1) |
+| concave / multi-path collision surface | a `CompositeCollider2D` Polygons merge, decomposed at creation (`polygonDecompose`) | at-parity (via composite) | `Phase9CompositeCustomGate` (concave L) | decomposed fragments collide as the concave surface |
+| `usedByComposite` child exclusion | `Collider2DBaking.IsUsedByComposite` early-return per collider baker | at-parity | `Phase9CompositeCustomGate` (static-body count == 1) | exactly one static body baked, children contribute zero standalone shapes |
+| entity transform SCALE (uniform / non-uniform / negative) baked into every collider's geometry + offset, and preserved in `LocalToWorld` | `lossyScale` baked into geometry per type at creation (max-axis radius for circle / capsule, winding reversal on a mirror, scaled offset); `PhysicsBody2DRenderScale` re-applied as `T·R·S` in the write-back + render-rate smoothing | at-parity | `Phase12ColliderScaleGate` (9 scaled fixtures) | 18× floor collides full-width; non-uniform circle == GameObject max-axis (radius 3 for scale (3, 1.4)); negative-scale hull stays CCW (signed area +8.000); `LocalToWorld` keeps authored scale. Residual: a scaled CUSTOM-collider capsule is un-measured |
+
+### Joints
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `HingeJoint2D` | `PhysicsHingeJointDefinition` | at-parity | `JointParityValidation` | 0.115 m, 0.115 rad |
+| `SliderJoint2D` | `PhysicsSliderJointDefinition` | at-parity | `JointParityValidation` | 6.9e-5 m |
+| `WheelJoint2D` | `PhysicsWheelJointDefinition` | at-parity | `JointParityValidation` | 4.0e-3 m, ~9e-8 rad |
+| `DistanceJoint2D` | `PhysicsDistanceJointDefinition` (rigid) | at-parity | `JointParityValidation` | 0.296 m (rod pendulum) |
+| `SpringJoint2D` | `PhysicsDistanceJointDefinition` (spring) | at-parity | `JointParityValidation` | 0.0594 m |
+| `FixedJoint2D` | `PhysicsFixedJointDefinition` | at-parity | `JointParityValidation` | 6.91e-5 m (rigid weld) |
+| `RelativeJoint2D` | `PhysicsRelativeJointDefinition` (spring drive) | at-parity | `JointParityValidation` | 0.313 m, 7.0e-2 rad (drive transient) |
+| `FrictionJoint2D` | `PhysicsRelativeJointDefinition` (velocity caps) | at-parity | `JointParityValidation` | 0.0308 m |
+| `TargetJoint2D` | `PhysicsRelativeJointDefinition` (world anchor) | at-parity | `JointParityValidation` | 0.0799 m |
+| joint break (`Joint2D.breakForce` / `breakTorque` / `breakAction`) | native `forceThreshold` / `torqueThreshold` + `jointThresholdEvents` → `PhysicsJointBreakEvent2D`; `PhysicsJoint2DBreakSystem` applies | at-parity | `Phase8InterpCcdJointBreakGate` (force-units, torque, action branches) | force-break units ratio package/GameObject = **1.000** (no scale needed); torque finite breaks / ∞ holds; CallbackOnly keeps, Disable destroys |
+
+### Filtering, queries, events
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| collision layers + project layer-collision matrix | baked `categoryBits` / `contactBits` on `PhysicsShape2D` → `PhysicsShape.ContactFilter` | at-parity | `FilteringQueryParityGate`, `FilterBakeParityGate` | five matrix configs match the GameObject collide/ignore decision; settled-gap envelope dev ≈ 0.004 m |
+| queries — raycast / overlap / shape-cast (+ layer mask) | static `PhysicsQueries2D` over `PhysicsWorld.CastRay` / `OverlapGeometry` / `CastGeometry` / `TestOverlapPoint`; hit→entity via packed `userData` | at-parity | `FilteringQueryParityGate` (4 query tests) | every package hit-set equals the GameObject collider set; resolves a batch-created body's entity |
+| contact events (begin / end) | `world.contactBeginEvents` / `contactEndEvents` → `DynamicBuffer<PhysicsContactEvent2D>` (Begin/End phase) | at-parity | `Phase6ContactTriggerEventGate` | begin/end episodes balanced; Stay-interval start edge differs by exactly 1 frame (within ±2 envelope) |
+| trigger events (begin / end), `Collider2D.isTrigger` → sensor | `world.triggerBeginEvents` / `triggerEndEvents` → `DynamicBuffer<PhysicsTriggerEvent2D>`; `isTrigger` baked to `PhysicsShapeDefinition.isTrigger` | at-parity | `Phase6ContactTriggerEventGate` | one begin + one end on a sensor pass-through, no contact event |
+| trigger-vs-trigger (sensor-vs-sensor) | symmetric trigger events, one per sensor's perspective | at-parity | `Phase6ContactTriggerEventGate` (`TriggerVsTrigger`) | both backends detect the sensor pair (a design assumption of under-reporting was overturned by validation — see Flagged decisions / note below) |
+
+### Runtime write-in, smoothing, CCD
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `AddForce(_, Force)` (+ within-step accumulation) | `DynamicBuffer<PhysicsBody2DCommand>` → `ApplyForceToCenter`, drained pre-`Simulate` | at-parity | `Phase7RuntimeWriteInGate` | continuous force vs oracle within 8%; two `AddForce(f)` == one `AddForce(2f)` bit-identical |
+| `AddForce(_, Impulse)` | `ApplyLinearImpulseToCenter` | at-parity | `Phase7RuntimeWriteInGate` | Δv = J/m bit-identical to analytic and to oracle |
+| `AddForceAtPosition` (Force / Impulse) | `ApplyForce` / `ApplyLinearImpulse` at world point | at-parity | `Phase7RuntimeWriteInGate` | linear bit-identical; induced spin sign matches, magnitude within band |
+| `AddTorque` (Force / Impulse) | `ApplyTorque` / `ApplyAngularImpulse` | at-parity | `Phase7RuntimeWriteInGate` | ω within band (243.9 vs 241.8 deg/s) |
+| `linearVelocity` / `angularVelocity` runtime write | `SetLinearVelocity` / `SetAngularVelocity` command (direct set + wake) | at-parity | `Phase7RuntimeWriteInGate` (frozen-axis), `RuntimeWriteInSmoke` | frozen-axis write cancelled bit-zero on the frozen DOF |
+| kinematic `MovePosition` | `SetTransformTarget` (swept, collision-aware, not a teleport) | at-parity | `Phase7RuntimeWriteInGate` | lands at target exactly; passes a static wall as the GameObject kinematic does |
+| `Rigidbody2D.interpolation` (Interpolate / Extrapolate) | render-rate `PhysicsBody2DSmoothingSystem` over `PhysicsBody2DSmoothing`; `LocalToWorld` only, no managed tween | at-parity | `Phase8InterpCcdJointBreakGate` | smoothed pose == analytic lerp / extrapolate to < 1e-4 m / < 1e-3 rad at every fraction; survives `LocalToWorldSystem` |
+| `Rigidbody2D.collisionDetectionMode` Continuous (Dynamic / Kinematic) | `PhysicsBodyDefinition.fastCollisionsAllowed` | at-parity | `Phase8InterpCcdJointBreakGate` (`CCD_DynamicWall`) | per-mode tunnel verdict matches the GameObject oracle exactly against a dynamic/kinematic wall |
+
+### Effectors
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `AreaEffector2D` | `PhysicsEffector2D { kind=Area }`; pre-`Simulate` directional force + velocity-multiplier drag over a sensor region overlap | at-parity | `Phase10aForceFieldEffectorGate` (3 Area tests) | directional v within 5.3% (band 15%); drag terminal v within 0.04%; local-angle clean +Y |
+| `PointEffector2D` | `PhysicsEffector2D { kind=Point }`; radial force, Constant / InverseLinear / InverseSquared falloff | at-parity | `Phase10aForceFieldEffectorGate` (2 Point tests) | falloff ratios 1.000 / 4.06 / 16.26 (documented 1 / 4 / 16); attract / repel sign matches |
+| `SurfaceEffector2D` | `PhysicsEffector2D { kind=Surface }`; SOLID belt, `GetContacts` + tangential velocity-error impulse | at-parity | `Phase10bContactEffectorGate` (5 Surface tests) | terminal +5 / -3 exact, no overshoot; multi-body each driven; off-mask body undriven (exact zero) |
+| `PlatformEffector2D` single-body one-way | `PhysicsEffector2D { kind=Platform }`; SOLID collider, pre-`Simulate` whole-body `enabled` gate from the surface arc | at-parity (single body) | `Phase10bContactEffectorGate` (`DropFromAbove`, `LaunchFromBelow`, `RotatedArc`, `SolidNotTrigger`) | rest-from-above / pass-from-below match the oracle; rotated-arc blocks along local up |
+| `Effector2D.colliderMask` (Area / Point / Surface) | baked into the region overlap / drive query's `hitLayerMask` | at-parity | `Phase10aForceFieldEffectorGate`, `Phase10bContactEffectorGate` (Surface) | off-mask body unaffected (exact zero), both media |
+
+### Custom / low-level authoring, lifecycle
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| custom `PhysicsBody2DAuthoring` / `PhysicsShape2DAuthoring` | direct runtime bake → same archetype | at-parity | `CustomAuthoringParityValidation` | **0.0** (bit-identical to the built-in baker, v3-vs-v3) |
+| low-level direct + bulk `CreateBodyBatch` | `PhysicsWorld.CreateBodyBatch` | at-parity | `DirectAndBatchPathValidation` | drop 19.66 m, bit-stable |
+| per-entity body teardown on despawn | `PhysicsBody2DCleanup : ICleanupComponentData` + `PhysicsBody2DCleanupSystem` → `PhysicsBody.DestroyBatch` (cascades shapes + joints) | at-parity | `Phase4DestructionGate` (7 tests) | 50 churn cycles bounded (peak 20, final 0); jointed despawn frees joint from owner and connected side |
+
+### Simulation configuration
+
+The world-level simulation parameters are configured per scene by `PhysicsStep2DAuthoring` → the `PhysicsWorld2DConfig` singleton, read by `PhysicsWorld2DSystem` at world creation (`bake-contract.md` "Simulation configuration"). Explicit config: nothing is read from the project `Physics2D` settings, and a scene with no `PhysicsStep2DAuthoring` keeps the Box2D `defaultDefinition` — the pre-config behaviour, byte-identical. The simulation type stays locked to `Script` (the package owns stepping; it is not a config field), and the fixed timestep is inherited from `FixedStepSimulationSystemGroup` (out of scope, documented as group-owned).
+
+| Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |
+|---|---|---|---|---|
+| `Physics2D.gravity` (explicit, not auto-inherited) → world gravity | `PhysicsStep2DAuthoring.Gravity` → `PhysicsWorld2DConfig.gravity` → `PhysicsWorldDefinition.gravity` | at-parity | `Phase11StepConfigGate`, `StepConfigSmoke` | config-gravity faller matches a matching-gravity GameObject oracle; default path matches a `-9.81` oracle to 0.092 m over 11.07 m |
+| sub-stepping / solver / contact-solver / sleep / CCD world params | `PhysicsStep2DAuthoring.*` → `PhysicsWorld2DConfig.*` → `PhysicsWorldDefinition.*` (the verified configurable subset) | at-parity (override-on-present, default-on-absent) | `Phase11StepConfigGate`, `StepConfigSmoke` | no-config fall ≈ ½·9.81·t² (default intact) |
+| no-config scene = pre-config behaviour | `defaultDefinition` fallback in `CreateWorld` (override guarded by `if (cfg.HasValue)`) | at-parity | `Phase11StepConfigGate` (`DefaultFallback_*`) + full suite 150/150 | zero config singletons baked when no `PhysicsStep2DAuthoring`; default gravity `(0, -9.81)`; 0 regressions |
+
+## At parity with a known gap
+
+These features are shipped and parity-faithful on their primary, example-scene case, with a measured divergence from the GameObject oracle on a named edge. Each gap is recorded with its measured evidence and root cause, asserted in the gate as the EXPECTED outcome so a future fix that closes it fails the gate loudly. The gaps are NOT softened: they are real divergences a consumer must know about.
+
+### Continuous collision against a STATIC wall — package is strictly safer
+
+A package (Box2D-v3) Discrete body NEVER tunnels a static wall at any swept speed (6–120 m/s), because Box2D-v3 enables Dynamic-vs-Static CCD at the world level (`PhysicsWorldDefinition.continuousAllowed`, default true). The GameObject reference (Box2D-v2) Discrete body tunnels a static wall from ≈48 m/s upward (measured final x = 21.0 at 48 m/s, 45.0 at 96, 57.0 at 120). The divergence is one-directional and benign: the package is strictly safer against a static wall, and a falling-sand world wants fast debris not to tunnel static terrain. The package exposes no knob to opt into v2-style cheap-but-tunnelling static collisions; exposing `continuousAllowed` on the world definition would be the dial if ever needed. In the dynamic/kinematic medium (where the per-body flag, not the world default, governs) the two backends agree exactly on the per-mode tunnel verdict. Test: `Phase8InterpCcdJointBreakGate` (`CCD_SpeedSweep_StaticWall`).
+
+### Single-step kinematic rotation undershoots
+
+A package `MoveRotation(θ)` lands short of `θ` in one step for a large `θ` (≈π/4 for a π/2 target — about half), because Box2D-v3's `SetTransformTarget` angular sweep approaches the target over the step differently from Box2D-v2's `Rigidbody2D.MoveRotation`, which lands a rotation exactly in one step. The POSITION sweep does not have this gap (it lands exactly). Sustained re-issue of the absolute target each step — the normal per-`FixedUpdate` kinematic-control model — converges both backends to the same rotation (measured ecs = 1.57080 rad == ref = 1.57080 rad after 40 re-issues). The package adds no rotation arithmetic and calls the native `SetTransformTarget` exactly as it does for position, so the undershoot is the engine's v2-vs-v3 difference, not a package defect. A consumer wanting an exact one-step rotation set wants a teleport, which the package deliberately does not expose. Test: `Phase7RuntimeWriteInGate` (`MoveRotation_RadiansVsDegrees`).
+
+### Buoyancy submersion is an AABB approximation, not the true submerged area
+
+The buoyancy submerged fraction is the body's AABB vertical extent, not the true submerged collider AREA the Box2D-v2 GameObject path integrates:
+
+$$f = \frac{\operatorname{clamp}(\text{surfaceLevel} - \text{aabbBottom},\ 0,\ h)}{h}$$
+
+The buoyant force is `fluidDensity · f · g · mass` upward, so the net vertical acceleration is `g · (fluidDensity · f − 1)`, which is zero at the float equilibrium:
+
+$$f_{\text{eq}} = \frac{1}{\text{fluidDensity}}$$
+
+So a fluid density of 2 rests a body at submerged fraction 0.5, and a density of 1.5 at 0.667. For a CIRCLE the two models coincide exactly at the half-submerged point (centre-at-surface = 0.5 area-fraction = 0.5 depth-fraction), so at fluid density 2 (target fraction 0.5) the rest depths agree to four decimals — measured equilibrium-depth gap **0.000 m** (package y = 0.0000, GameObject y = 0.0000). Away from the 0.5 fraction the two diverge: at fluid density 1.5 (target fraction 0.667) the package rests at y = −0.1733 (matching its own AABB prediction) while the GameObject rests at y = −0.1325, a measured equilibrium-depth gap of **0.041 m** — about 4 cm on a 0.5 m-radius body, well inside the 0.4 m envelope. The gap is zero for any box-collider body (where the AABB IS the shape) and grows with the off-0.5 density ratio for a curved shape. The refinement, if a fixture ever needs tight circle buoyancy at an extreme density ratio, is a per-shape submerged-area helper or a measured correction factor. Test: `Phase10aForceFieldEffectorGate` (`Buoyancy_DenseBody_RestsDeeper_AABBGapMeasured`).
+
+### PlatformEffector2D multi-body one-way is NOT faithful
+
+The package's one-way platform is a whole-platform-body `enabled` gate recomputed each step (`platformBody.enabled = !(anyPassing && !anyBlocking)`): the platform is solid when any blocking body (within the surface arc) is present and transparent when only passing bodies overlap. This is faithful for the single-interacting-body case the example scenes exercise (they spawn one body at a time). It is NOT faithful when a blocking body and a passing body overlap the platform simultaneously: a whole-body toggle cannot serve a below-passer and an above-rester at once, so when a blocker is present the platform stays solid and a simultaneous passing body is wrongly blocked. Measured (one body resting above WHILE another approaches from below): the package below body is blocked at y = −0.45 (did not pass), while the GameObject below body passes to y = 24.0; the above blocker rests correctly on both. The body served wrong is always the below (passing) one. The faithful per-contact resolution requires Box2D-v3's `IPreSolveCallback.OnPreSolve2D` veto, whose only delivery path is a mid-step, any-thread, world-write-locked, GC-pinned managed-`callbackTarget`-per-shape callback with no poll-after-step span — fundamentally incompatible with the package's native-poll DOTS posture (the engine HAS the faithful one-way primitive; the package's architecture cannot reach it without a managed-callback-bridge sub-system, a separate architecture decision). The 2 m detection margin the platform uses to win the speculative-contact race also widens the gap's blast radius to "any two bodies within ~2 m on opposite sides," not only bodies in actual contact. Test: `Phase10bContactEffectorGate` (`Platform_MultiBody_KnownGap_Characterized`).
+
+### PlatformEffector2D `colliderMask` reaches only the one-way classifier, not the solid collider
+
+The Platform `colliderMask` is consumed only as the one-way-classifier overlap query's `hitLayerMask`; it is NOT pushed into the platform shape's contact filter. So a masked-out body still physically collides with the SOLID platform collider, whereas GameObject's `PlatformEffector2D.colliderMask` additionally removes the masked-out body from colliding with the effector collider entirely. Measured (both dropped from above): on-mask rests on both backends (package y = 0.450, GameObject y = 0.465); off-mask body rests on the package (y = 0.450 — the solid collider still collides) but falls through on GameObject (y = −41.4 — the mask removed it from the effector collider). This is a more-localized bug than the multi-body gap, of the same root cause (the Platform/Surface effectors inverted the force-field SENSOR collider to a SOLID one but still consume `colliderMask` the sensor-era way, as a query mask only). The likely fix direction — not implemented — is to compose `colliderMask` with the Phase-5 shape category/mask, baking it into the platform shape's contact-filter `contacts` bits so the solid collider itself only collides with the admitted layers. That conflates the effector mask with the collision filter and changes the on-mask collision path too, so it is a design decision, not a validation-time edit. Surface is unaffected (a masked-out body simply rests on the belt undriven, which matches GameObject — the belt does not push it and there is no one-way semantics to differ on). Test: `Phase10bContactEffectorGate` (`Platform_ColliderMask_OnMaskRests_OffMaskGap_Characterized`).
+
+## Flagged decisions
+
+These are shipped API-contract choices the user should ratify; the validation gates pass under the current choice but flagged it for a decision.
+
+The `MoveRotation` radians-vs-degrees question is no longer flagged: it is the ratified angular-unit convention documented above (rotation in radians because the engine rotor is unit-agnostic, angular velocity and joint angular parameters in degrees because the engine is degrees there). The `Phase7RuntimeWriteInGate` (`MoveRotation_RadiansVsDegrees`) gate proves the package's radians input drives the same physical rotation `Rigidbody2D.MoveRotation`'s degrees input does under conversion.
+
+### Trigger-vs-trigger (a design assumption that validation overturned — now matches)
+
+The Phase-6 design assumed Box2D-v3 sensors "do not collide with other triggers" governed trigger-EVENT reporting, predicting the package would under-report a sensor-vs-sensor pair relative to GameObject. Validation in editor `6000.6.0a6` overturned this: both backends detect sensor-vs-sensor — the package emits the symmetric trigger events (one per sensor's perspective) and GameObject fires `OnTriggerEnter2D` on both trigger colliders. The XML "triggers do not collide with other triggers" sentence governs collision RESPONSE between sensors (no solid contact), not trigger-event reporting; with trigger events enabled on every shape the both-shape rule is satisfied for two sensors. This is now an at-parity row (above), recorded here because the original design assumption was a documented predicted divergence that does not exist. The stale prediction survives in the Phase-6 design's "Assumptions made" item 5 and a side note (left unedited per the no-cross-orchestration-mutation discipline; the corrected fact is the runtime `PhysicsTriggerEvent2D` doc-comment and this row).
+
+## Still not covered against the current code
+
+These built-in 2D features are confirmed absent in the current runtime (`Packages/is.zori.entities.physics2d/Runtime/` at HEAD). Each is listed only where the absence is verifiable, not inferred. Setting one on an authoring component is a silent no-op unless noted.
+
+- **`Rigidbody2D.includeLayers` / `excludeLayers`** — per-collider/body layer overrides on top of the matrix. Collision filtering reads `gameObject.layer` + the project matrix only (`Collider2DBaking.ReadFilter`); include/exclude layers are not folded into `contactBits`. The additive fix is `contactBits |= includeLayers; contactBits &= ~excludeLayers` at bake.
+- **`Rigidbody2D.sleepMode` and sleep tolerances** — `sleepMode` / `sleepThreshold` are not baked (`Rigidbody2DBaker` ignores them); Box2D's own sleep behaviour at the world/body default applies. Listed as ignored in the bake contract.
+- **Full `Collision2D` contact-point geometry in events** — the contact begin/end buffers carry the shape pair and resolved entities only, NOT the contact point / normal / relative velocity / impulse the GameObject `OnCollisionEnter2D` exposes via `Collision2D.contacts[]`. That geometry lives on Box2D-v3's separate threshold-gated `PhysicsEvents.ContactHitEvent` channel (gated by `PhysicsShapeDefinition.hitEvents` above `PhysicsWorld.contactHitEventThreshold`), which the package does not surface. The additive fix is a `PhysicsContactHitEvent2D` buffer fed from `world.contactHitEvents` with `hitEvents = true` on the shapes.
+- **Instance-method queries (`Rigidbody2D.Cast`, `Collider2D.Cast` / `Distance` / `OverlapCollider`)** — the package's query surface is the static `PhysicsQueries2D` world queries (raycast / overlap / cast); the per-body/per-collider instance query and the closest-distance query are not surfaced.
+- **Runtime joint motor / limit / spring retuning** — a joint's motor speed, limit bounds, or spring frequency changed per frame is not a public surface; joint parameters are baked once at creation (the `PhysicsJoint2DDefinition` is consumed once). Joint BREAK is shipped (at-parity above), but live re-tuning of an unbroken joint is not.
+- **`Physics2D` global settings (gravity, velocity/position iterations, default material, layer-collision-matrix at runtime)** — the package owns a private `PhysicsWorld` built from `PhysicsWorldDefinition.defaultDefinition` (only `simulationType`/`drawOptions` changed) and does not surface the global `Physics2D` solver knobs; the layer-collision matrix is read at BAKE time (frozen into `contactBits`), not consulted live, so a runtime `Physics2D.IgnoreLayerCollision` does not affect a baked body.
+- **Explicit centre-of-mass / inertia override (built-in path)** — taken from the shapes' mass distribution; `Rigidbody2D.centerOfMass` / `inertia` overrides are not baked and the low-level surface exposes no inertia override either (`low-level-surface.md`).
+- **`Effector2D.usedByEffector` as a standalone flag, `forceVariation` / `flowVariation` / `speedVariation` determinism** — the variation fields are wired through but applied only when non-zero (a `Unity.Mathematics.Random`-seeded path); parity is asserted with variation 0, and a non-zero variation is a documented non-deterministic feature, not a parity surface.
+- **Platform `sideArc` / `useSideFriction` / `useSideBounce`, Surface `useBounce`** — the Platform side-arc friction/bounce behaviours need the same per-contact pre-solve hook the multi-body one-way needs and are not modelled (the OneWay example scene authors them off); Surface `useBounce` is governed by the shape's baked bounciness, not separately applied.
+- **Capsule / Polygon / Edge effector regions** — the effector region overlap exposes `OverlapBox` / `OverlapCircle` (the two query-API shapes the example scenes use); a Capsule/Polygon/Edge effector collider falls back to the body's AABB as a box overlap. The additive fix is an `OverlapCapsule` / `OverlapPolygon` helper on `PhysicsQueries2D`.
+- **`Rigidbody2D.position` / `rotation` direct teleport** — the runtime write-in covers MovePosition's swept move, not a hard teleport (`Rigidbody2D.position = p` is distinct from `MovePosition`). A teleport has no command kind; a user re-authors the pose.
+- **A 2-vertex `EdgeCollider2D`** — the Edge baker maps to a Box2D `ChainGeometry`, which requires ≥ 3 vertices; a legal 2-point edge throws `ArgumentOutOfRangeException` at creation (it should map to a `SegmentGeometry`). An unhandled throw on legal input, not a silent no-op.
+
+## The parity oracle is bounded, not exact
+
+Every worst-error number above is measured against a **GameObject reference simulation**, which is a generous bounded envelope, not an exact oracle. In editor `6000.6.0a6` the GameObject `Physics2D.Simulate` runs the **Box2D-v2 iteration** solver while the package runs the **Box2D-v3 sub-stepping** solver — proven by a knob probe (the v3 sub-step knobs `useSubStepping` / `maxSubStepCount` are inert on the GameObject path, Δ=0; only the v2 `velocityIterations` / `positionIterations` move its trajectory, Δ=2.26e-2). The two are different integrators that converge to the same physics: free-fall agrees to a constant ~1.5e-3 m/step integration-convention offset with exactly-zero angle error, and the contact phase stays bounded but is genuinely noisier (restitution is where they differ most, which is why bounce is the loosest contact number above).
+
+Consequences for reading this matrix:
+
+- A parity pass means "the package behaves like built-in GameObject 2D physics within a measured band and commits none of the disqualifying bugs," not "matches a reference trajectory exactly." The disqualifiers (moved / no-NaN / correct static-vs-dynamic / in-plane / settles in region) carry the correctness load; the band absorbs the cross-solver difference. Binary facts — does a layer pair collide, does a body tunnel, is a body in a query hit-set, did a joint break, is an off-mask body driven — are asserted exactly.
+- The numbers are alpha-pinned. If a future editor migrates the GameObject `Physics2D` path onto the v3 solver, the two paths become the same solver, agreement collapses toward bit-level, and the bands must be re-derived (much tighter) from fresh probe data. To detect that migration, re-run a solver-knob probe on every editor bump: today the v3 sub-step knobs (`useSubStepping` / `maxSubStepCount`) are inert on the GameObject path (Δ = 0) and only the v2 `velocityIterations` / `positionIterations` move its trajectory; if the v3 knobs start moving the GameObject path, the two paths have converged onto the same solver and the bands no longer hold.
+- The exceptions are the v3-vs-v3 comparisons: the custom-authoring row (0.0, custom baker vs built-in baker, same solver both sides), the body-teardown native counts, and the composite/custom shape-count witnesses are solver-independent and genuinely exact, not bounded.

@@ -1,0 +1,28 @@
+{
+  "name": "Zori.Entities.Physics2D.Tests",
+  "rootNamespace": "Zori.Entities.Physics2D.Tests",
+  "references": [
+    "Zori.Entities.Physics2D.Runtime",
+    "Zori.Entities.Physics2D.Authoring",
+    "Zori.Entities.Physics2D.Baking",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Transforms",
+    "Unity.Mathematics",
+    "Unity.Collections",
+    "UnityEngine.TestRunner"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

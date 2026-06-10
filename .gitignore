@@ -1,5 +1,3 @@
-# OS / editor cruft
+# OS cruft
 .DS_Store
 Thumbs.db
-*.swp
-*~
