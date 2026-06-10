@@ -1,0 +1,24 @@
+{
+  "name": "Zori.Entities.Physics2D.Baking",
+  "rootNamespace": "Zori.Entities.Physics2D.Baking",
+  "references": [
+    "Zori.Entities.Physics2D.Runtime",
+    "Zori.Entities.Physics2D.Authoring",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Transforms",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

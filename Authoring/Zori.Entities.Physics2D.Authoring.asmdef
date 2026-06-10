@@ -1,0 +1,17 @@
+{
+  "name": "Zori.Entities.Physics2D.Authoring",
+  "rootNamespace": "Zori.Entities.Physics2D.Authoring",
+  "references": [
+    "Zori.Entities.Physics2D.Runtime",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,21 @@
+{
+  "name": "is.zori.entities.physics2d",
+  "displayName": "Zori Entities Physics 2D",
+  "version": "0.1.0",
+  "unity": "6000.0",
+  "description": "DOTS 2D physics: built-in Rigidbody2D/Collider2D authoring baked to ECS, stepped over the low-level Unity.U2D.Physics (Box2D) batch surface, with each body's pose written into Unity.Transforms.LocalToWorld. Renderer-agnostic.",
+  "license": "MIT",
+  "dependencies": {
+    "com.unity.entities": "6.5.0",
+    "com.unity.collections": "6.5.0",
+    "com.unity.burst": "1.8.29",
+    "com.unity.mathematics": "1.3.2"
+  },
+  "samples": [
+    {
+      "displayName": "Custom Authoring 2D",
+      "description": "Custom PhysicsBody2D/PhysicsShape2D authoring — the customisable beyond-built-in surface and the low-level direct/bulk creation path (CreateBodyBatch).",
+      "path": "Samples~/CustomAuthoring2D"
+    }
+  ]
+}
