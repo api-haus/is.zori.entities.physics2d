@@ -27,7 +27,14 @@ namespace Zori.Entities.Physics2D.Baking
             // A circle cannot become an ellipse, so the radius takes the LARGER absolute axis scale
             // (CircleCollider2D's rule); the offset scales signed per-axis.
             var scale = Collider2DBaking.ReadScale(authoring.transform);
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
             AddComponent(
                 entity,
@@ -39,6 +46,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,

@@ -49,15 +49,21 @@ namespace Zori.Entities.Physics2D.Baking
                 return; // an empty composite (no merged children) bakes no shape
 
             var entity = GetEntity(TransformUsageFlags.Dynamic);
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
 
             // The merged paths are in the composite GameObject's local space, so the transform scale is baked
             // into each path's points (signed, winding-reversed on a mirror), the corner radius isotropically,
             // and the offset signed — the same rules the primitive bakers apply.
             var scale = Collider2DBaking.ReadScale(authoring.transform);
-            var isPolygons =
-                authoring.geometryType == CompositeCollider2D.GeometryType.Polygons;
+            var isPolygons = authoring.geometryType == CompositeCollider2D.GeometryType.Polygons;
             var edgeRadius = Collider2DBaking.ScaleRoundingRadius(authoring.edgeRadius, scale);
             var offset = Collider2DBaking.ScaleOffset((float2)authoring.offset, scale);
 
@@ -77,6 +83,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = false, // a composite is a solid merged surface; the composite has no isTrigger
@@ -137,7 +145,9 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Length - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Allocator.Persistent);
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
+                Allocator.Persistent
+            );
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
             return blob;

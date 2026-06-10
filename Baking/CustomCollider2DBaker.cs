@@ -54,7 +54,14 @@ namespace Zori.Entities.Physics2D.Baking
             var scale = Collider2DBaking.ReadScale(authoring.transform);
             var flip = Collider2DBaking.FlipsWinding(scale);
             var radiusScale = max(abs(scale.x), abs(scale.y));
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
 
             var verts = new List<Vector2>();
@@ -70,6 +77,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,
@@ -149,7 +158,11 @@ namespace Zori.Entities.Physics2D.Baking
         /// identically. The transform scale is baked into each vertex (signed); a winding-flipping (mirror)
         /// scale reverses the order so a polygon hull stays CCW and an edge chain's solid side is preserved.
         /// </summary>
-        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(List<Vector2> points, float2 scale, bool flip)
+        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(
+            List<Vector2> points,
+            float2 scale,
+            bool flip
+        )
         {
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsShape2DVertices>();
@@ -159,7 +172,9 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Count - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Allocator.Persistent);
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
+                Allocator.Persistent
+            );
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
             return blob;

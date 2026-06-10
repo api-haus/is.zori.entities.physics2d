@@ -98,6 +98,37 @@ namespace Zori.Entities.Physics2D
         /// <c>PhysicsBody2DSmoothingSystem</c> at render rate. Default <see cref="PhysicsBody2DInterpolation.None"/>.
         /// </summary>
         public PhysicsBody2DInterpolation interpolation;
+
+        /// <summary>
+        /// When true, the dynamic body's center of mass and rotational inertia are taken from
+        /// <see cref="centerOfMass"/> / <see cref="rotationalInertia"/> instead of the density-derived values
+        /// Box2D computes from the shapes — the 2D analogue of the 3D custom sample's
+        /// <c>OverrideDefaultMassDistribution</c>. Applied post-creation via <c>PhysicsBody.massConfiguration</c>
+        /// (XML <c>P:…PhysicsBody.massConfiguration</c>, settable: "if you wish to assign your own
+        /// MassConfiguration"). The <c>PhysicsBodyDefinition</c> the engine creates from has no mass field, so
+        /// the override is a post-create write on the live body, not a creation-time definition value. Default
+        /// false → the body keeps its shape-derived mass distribution (the built-in path, which has no override).
+        /// Ignored for non-dynamic bodies.
+        /// </summary>
+        public bool overrideMassDistribution;
+
+        /// <summary>
+        /// The body's local-space center of mass, applied to <c>PhysicsBody.MassConfiguration.center</c> (XML
+        /// <c>P:…PhysicsBody.MassConfiguration.center</c>) when <see cref="overrideMassDistribution"/> is true. A
+        /// single <c>float2</c> — 2D has no inertia-tensor orientation to override (the planar moment of inertia
+        /// below is a scalar). Inert when <see cref="overrideMassDistribution"/> is false.
+        /// </summary>
+        public float2 centerOfMass;
+
+        /// <summary>
+        /// The body's rotational inertia (kg·m², about the center of mass), applied to
+        /// <c>PhysicsBody.MassConfiguration.rotationalInertia</c> (XML
+        /// <c>P:…PhysicsBody.MassConfiguration.rotationalInertia</c>) when <see cref="overrideMassDistribution"/>
+        /// is true AND this is &gt; 0. A 2D body has one rotational DOF, so its inertia is a single scalar (the 3D
+        /// 3-DOF inertia tensor reduces to this). A value &lt;= 0 leaves the shape-derived inertia even with the
+        /// override on (the author overrode only the center of mass). Inert when the override is false.
+        /// </summary>
+        public float rotationalInertia;
     }
 
     /// <summary>

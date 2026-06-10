@@ -122,7 +122,9 @@ namespace Zori.Entities.Physics2D.Baking
             Collider2D collider,
             out float friction,
             out float bounciness,
-            out float density
+            out float density,
+            out PhysicsSurfaceMixing2D frictionMixing,
+            out PhysicsSurfaceMixing2D bouncinessMixing
         )
         {
             var material = collider.sharedMaterial;
@@ -130,15 +132,44 @@ namespace Zori.Entities.Physics2D.Baking
             {
                 friction = material.friction;
                 bounciness = material.bounciness;
+                // The built-in combine modes map onto the low-level mixing modes; read them so a built-in
+                // collider and a custom shape with the same combine bake identical mixing (the convergence the
+                // dual surface relies on). UnityEngine.PhysicsMaterialCombine2D and the low-level
+                // SurfaceMaterial.MixingMode share the same five members (Average / Maximum / Mean / Minimum /
+                // Multiply, CoreModule.xml T:…PhysicsMaterialCombine2D), so the map is a 1:1 by-name match.
+                frictionMixing = MapCombine(material.frictionCombine);
+                bouncinessMixing = MapCombine(material.bounceCombine);
             }
             else
             {
                 // Built-in default when a collider has no material assigned.
                 friction = 0.4f;
                 bounciness = 0f;
+                // The default combine mode for a material-less collider; the package default mirrors the engine
+                // default SurfaceMaterial mixing, so an un-overridden shape bakes the contact it always did.
+                frictionMixing = PhysicsSurfaceMixing2D.Average;
+                bouncinessMixing = PhysicsSurfaceMixing2D.Average;
             }
             density = collider.density;
         }
+
+        /// <summary>
+        /// Map the built-in <c>UnityEngine.PhysicsMaterialCombine2D</c> friction/bounce combine policy onto the
+        /// package-local <see cref="PhysicsSurfaceMixing2D"/> (which mirrors the low-level
+        /// <c>PhysicsShape.SurfaceMaterial.MixingMode</c>). Both enums share the same five members in the same
+        /// declaration order (<c>Average / Maximum / Mean / Minimum / Multiply</c>, CoreModule.xml
+        /// <c>T:…PhysicsMaterialCombine2D</c>), so this is a 1:1 by-name match; <c>Average</c> covers any future
+        /// addition.
+        /// </summary>
+        static PhysicsSurfaceMixing2D MapCombine(PhysicsMaterialCombine2D combine) =>
+            combine switch
+            {
+                PhysicsMaterialCombine2D.Maximum => PhysicsSurfaceMixing2D.Maximum,
+                PhysicsMaterialCombine2D.Mean => PhysicsSurfaceMixing2D.Mean,
+                PhysicsMaterialCombine2D.Minimum => PhysicsSurfaceMixing2D.Minimum,
+                PhysicsMaterialCombine2D.Multiply => PhysicsSurfaceMixing2D.Multiply,
+                _ => PhysicsSurfaceMixing2D.Average,
+            };
 
         /// <summary>
         /// Resolve the Box2D contact-filter category + contacts bits a collider contributes to its baked
@@ -158,7 +189,11 @@ namespace Zori.Entities.Physics2D.Baking
         /// bakes <c>categoryBits = 1</c> / <c>contactBits = 0xFFFFFFFF</c> — collides with everything, matching
         /// the pre-filtering behaviour so existing fixtures are unperturbed.
         /// </summary>
-        public static void ReadFilter(Component authoring, out ulong categoryBits, out ulong contactBits)
+        public static void ReadFilter(
+            Component authoring,
+            out ulong categoryBits,
+            out ulong contactBits
+        )
         {
             var layer = authoring.gameObject.layer;
             categoryBits = 1ul << layer;
@@ -201,7 +236,14 @@ namespace Zori.Entities.Physics2D.Baking
             // corner-rounding radius, signed on the offset. A Box2D box carries no scale, so this is the only
             // way a scaled BoxCollider2D collides at its rendered size (the manual-QA wide-floor bug).
             var scale = Collider2DBaking.ReadScale(authoring.transform);
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
             AddComponent(
                 entity,
@@ -214,6 +256,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,
@@ -265,7 +309,14 @@ namespace Zori.Entities.Physics2D.Baking
                 c2 = new float2(half, 0f);
             }
 
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
             AddComponent(
                 entity,
@@ -279,6 +330,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,
@@ -326,7 +379,14 @@ namespace Zori.Entities.Physics2D.Baking
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
             AddComponent(
                 entity,
@@ -339,6 +399,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,
@@ -387,7 +449,14 @@ namespace Zori.Entities.Physics2D.Baking
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 
-            Collider2DBaking.ReadSurface(authoring, out var friction, out var bounciness, out var density);
+            Collider2DBaking.ReadSurface(
+                authoring,
+                out var friction,
+                out var bounciness,
+                out var density,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
             Collider2DBaking.ReadFilter(authoring, out var categoryBits, out var contactBits);
             AddComponent(
                 entity,
@@ -400,6 +469,8 @@ namespace Zori.Entities.Physics2D.Baking
                     friction = friction,
                     bounciness = bounciness,
                     density = density,
+                    frictionMixing = frictionMixing,
+                    bouncinessMixing = bouncinessMixing,
                     categoryBits = categoryBits,
                     contactBits = contactBits,
                     isTrigger = authoring.isTrigger,

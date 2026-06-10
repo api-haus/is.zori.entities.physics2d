@@ -97,6 +97,43 @@ namespace Zori.Entities.Physics2D.Authoring
         [Tooltip("Initial angular velocity (deg/s). Baked into PhysicsBody2DInitialVelocity.")]
         float m_InitialAngularVelocity;
 
+        [SerializeField]
+        [Tooltip(
+            "Render-rate pose smoothing between fixed physics steps (Rigidbody2D.interpolation). None: the "
+                + "rendered pose is the fixed-step pose. Interpolate: one step of render lag, smoothed between "
+                + "the previous and current physics states. Extrapolate: predicted ahead using velocity."
+        )]
+        PhysicsBody2DInterpolation m_Interpolation = PhysicsBody2DInterpolation.None;
+
+        [SerializeField]
+        [Tooltip(
+            "Continuous collision detection (Rigidbody2D.collisionDetectionMode). Continuous makes the body a "
+                + "fast (bullet) body that does not tunnel a thin collider in one step; Discrete is the default."
+        )]
+        PhysicsCollisionDetection2D m_CollisionDetection = PhysicsCollisionDetection2D.Discrete;
+
+        [SerializeField]
+        [Tooltip(
+            "Override the shape-derived center of mass and rotational inertia with explicit values (the 2D "
+                + "analogue of the DOTS sample's OverrideDefaultMassDistribution). Off: mass distribution is "
+                + "computed from the shapes' density."
+        )]
+        bool m_OverrideMassDistribution;
+
+        [SerializeField]
+        [Tooltip(
+            "Explicit local-space center of mass, applied when OverrideMassDistribution is true."
+        )]
+        float2 m_CenterOfMass = float2.zero;
+
+        [SerializeField]
+        [Tooltip(
+            "Explicit rotational inertia (kg·m², about the center of mass), applied when "
+                + "OverrideMassDistribution is true and this is > 0. A 2D body has one rotational DOF, so its "
+                + "inertia is a single scalar. 0 leaves the shape-derived inertia."
+        )]
+        float m_RotationalInertia;
+
         public PhysicsBody2DMotionType BodyType
         {
             get => m_BodyType;
@@ -163,6 +200,48 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_InitialAngularVelocity = value;
         }
 
+        /// <summary>Render-rate pose smoothing mode (<c>Rigidbody2D.interpolation</c>). Bakes to
+        /// <see cref="PhysicsBody2DDefinition.interpolation"/>; a non-<c>None</c> body gains a
+        /// <c>PhysicsBody2DSmoothing</c> component at creation.</summary>
+        public PhysicsBody2DInterpolation Interpolation
+        {
+            get => m_Interpolation;
+            set => m_Interpolation = value;
+        }
+
+        /// <summary>Continuous-collision mode (<c>Rigidbody2D.collisionDetectionMode</c>). Bakes to
+        /// <see cref="PhysicsBody2DDefinition.fastCollisions"/>.</summary>
+        public PhysicsCollisionDetection2D CollisionDetection
+        {
+            get => m_CollisionDetection;
+            set => m_CollisionDetection = value;
+        }
+
+        /// <summary>When true the explicit <see cref="CenterOfMass"/> / <see cref="RotationalInertia"/> override
+        /// the shape-derived mass distribution (a dynamic body only). Bakes to
+        /// <see cref="PhysicsBody2DDefinition.overrideMassDistribution"/>.</summary>
+        public bool OverrideMassDistribution
+        {
+            get => m_OverrideMassDistribution;
+            set => m_OverrideMassDistribution = value;
+        }
+
+        /// <summary>The explicit local-space center of mass, applied when
+        /// <see cref="OverrideMassDistribution"/> is true.</summary>
+        public float2 CenterOfMass
+        {
+            get => m_CenterOfMass;
+            set => m_CenterOfMass = value;
+        }
+
+        /// <summary>The explicit rotational inertia (kg·m²), applied when
+        /// <see cref="OverrideMassDistribution"/> is true and the value is &gt; 0.</summary>
+        public float RotationalInertia
+        {
+            get => m_RotationalInertia;
+            set => m_RotationalInertia = math.max(0f, value);
+        }
+
         /// <summary>True when a non-zero velocity seed is authored, so the baker only emits the optional
         /// <see cref="PhysicsBody2DInitialVelocity"/> when it is meaningful.</summary>
         public bool HasInitialVelocity =>
@@ -173,6 +252,7 @@ namespace Zori.Entities.Physics2D.Authoring
             m_LinearDamping = math.max(0f, m_LinearDamping);
             m_AngularDamping = math.max(0f, m_AngularDamping);
             m_Mass = math.max(0f, m_Mass);
+            m_RotationalInertia = math.max(0f, m_RotationalInertia);
         }
     }
 }

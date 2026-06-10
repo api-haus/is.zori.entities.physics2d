@@ -86,11 +86,14 @@ namespace Zori.Entities.Physics2D
             var shapeDef = PhysicsShapeDefinition.defaultDefinition;
 
             // Surface material: friction/bounciness from the baked PhysicsMaterial2D values (XML
-            // P:…PhysicsShape.SurfaceMaterial.friction/.bounciness). The SurfaceMaterial struct is built here
-            // (not stored on the blittable component); the other surface knobs keep their defaults.
+            // P:…PhysicsShape.SurfaceMaterial.friction/.bounciness) plus their combine (mixing) modes (XML
+            // P:…PhysicsShape.SurfaceMaterial.frictionMixing/.bouncinessMixing). The SurfaceMaterial struct is
+            // built here (not stored on the blittable component); the other surface knobs keep their defaults.
             var surface = shapeDef.surfaceMaterial;
             surface.friction = sh.friction;
             surface.bounciness = sh.bounciness;
+            surface.frictionMixing = MapMixing(sh.frictionMixing);
+            surface.bouncinessMixing = MapMixing(sh.bouncinessMixing);
             shapeDef.surfaceMaterial = surface;
 
             // Density drives the auto-mass-from-shapes path (Collider2D.density). A value <= 0 means the
@@ -132,15 +135,24 @@ namespace Zori.Entities.Physics2D
             switch (sh.kind)
             {
                 case PhysicsShape2DKind.Circle:
-                    body.CreateShape(new CircleGeometry { radius = sh.radius, center = offset }, shapeDef);
+                    body.CreateShape(
+                        new CircleGeometry { radius = sh.radius, center = offset },
+                        shapeDef
+                    );
                     break;
 
                 case PhysicsShape2DKind.Box:
+                    // The box's free z-rotation (radians) rides the creation PhysicsTransform alongside the
+                    // folded offset. A 0 angle is PhysicsRotate.FromRadians(0) = identity, the prior offset-only
+                    // transform, so an un-rotated box is unchanged.
                     body.CreateShape(
                         PolygonGeometry.CreateBox(
                             size: (Vector2)sh.size,
                             radius: sh.radius,
-                            transform: new PhysicsTransform(offset),
+                            transform: new PhysicsTransform(
+                                offset,
+                                PhysicsRotate.FromRadians(sh.boxAngleRadians)
+                            ),
                             inscribe: false
                         ),
                         shapeDef
@@ -159,79 +171,95 @@ namespace Zori.Entities.Physics2D
                     break;
 
                 case PhysicsShape2DKind.Polygon:
+                {
+                    ref var blob = ref sh.vertices.Value.points;
+                    var span = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
+                    for (var i = 0; i < blob.Length; i++)
+                        span[i] = (Vector2)blob[i];
+                    if (sh.polygonDecompose)
                     {
-                        ref var blob = ref sh.vertices.Value.points;
-                        var span = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
-                        for (var i = 0; i < blob.Length; i++)
-                            span[i] = (Vector2)blob[i];
-                        if (sh.polygonDecompose)
-                        {
-                            // A closed (possibly concave, possibly over-MaxPolygonVertices) outline — a composite
-                            // Polygons path or a concave/large custom polygon. PolygonGeometry.CreatePolygons
-                            // decomposes it into convex fragments (each within MaxPolygonVertices) and validates
-                            // them; the fragments are attached in one CreateShapeBatch call. The returned array
-                            // must be disposed. An empty result (degenerate outline) attaches nothing.
-                            var fragments = PolygonGeometry.CreatePolygons(
-                                vertices: span.AsReadOnlySpan(),
-                                transform: new PhysicsTransform(offset),
-                                allocator: Allocator.Temp
+                        // A closed (possibly concave, possibly over-MaxPolygonVertices) outline — a composite
+                        // Polygons path or a concave/large custom polygon. PolygonGeometry.CreatePolygons
+                        // decomposes it into convex fragments (each within MaxPolygonVertices) and validates
+                        // them; the fragments are attached in one CreateShapeBatch call. The returned array
+                        // must be disposed. An empty result (degenerate outline) attaches nothing.
+                        var fragments = PolygonGeometry.CreatePolygons(
+                            vertices: span.AsReadOnlySpan(),
+                            transform: new PhysicsTransform(offset),
+                            allocator: Allocator.Temp
+                        );
+                        if (fragments.Length > 0)
+                            body.CreateShapeBatch(
+                                fragments.AsReadOnlySpan(),
+                                shapeDef,
+                                Allocator.Temp
                             );
-                            if (fragments.Length > 0)
-                                body.CreateShapeBatch(
-                                    fragments.AsReadOnlySpan(),
-                                    shapeDef,
-                                    Allocator.Temp
-                                );
-                            if (fragments.IsCreated)
-                                fragments.Dispose();
-                        }
-                        else
-                        {
-                            body.CreateShape(
-                                PolygonGeometry.Create(
-                                    vertices: span.AsReadOnlySpan(),
-                                    radius: sh.radius,
-                                    transform: new PhysicsTransform(offset)
-                                ),
-                                shapeDef
-                            );
-                        }
-                        span.Dispose();
-                        break;
+                        if (fragments.IsCreated)
+                            fragments.Dispose();
                     }
+                    else
+                    {
+                        body.CreateShape(
+                            PolygonGeometry.Create(
+                                vertices: span.AsReadOnlySpan(),
+                                radius: sh.radius,
+                                transform: new PhysicsTransform(offset)
+                            ),
+                            shapeDef
+                        );
+                    }
+                    span.Dispose();
+                    break;
+                }
 
                 case PhysicsShape2DKind.Edge:
+                {
+                    ref var blob = ref sh.vertices.Value.points;
+                    var verts = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
+                    for (var i = 0; i < blob.Length; i++)
+                        verts[i] = (Vector2)(blob[i] + sh.offset);
+                    // A chain carries its OWN definition (no PhysicsShapeDefinition overload): its
+                    // surfaceMaterial, contactFilter, triggerEvents, and isLoop ride the chain def, not the
+                    // shape def. Propagate the baked surface/filter/trigger so a composite-Outlines (or edge)
+                    // surface has the right friction/bounciness/layer the same way a solid shape does. A chain
+                    // is non-solid, so it carries no density and no contactEvents flag (contacts on a chain are
+                    // implicit); the surface material + filter + trigger are the propagatable knobs.
+                    var chainDef = PhysicsChainDefinition.defaultDefinition;
+                    chainDef.isLoop = sh.edgeIsLoop;
+                    var chainSurface = chainDef.surfaceMaterial;
+                    chainSurface.friction = sh.friction;
+                    chainSurface.bounciness = sh.bounciness;
+                    chainSurface.frictionMixing = MapMixing(sh.frictionMixing);
+                    chainSurface.bouncinessMixing = MapMixing(sh.bouncinessMixing);
+                    chainDef.surfaceMaterial = chainSurface;
+                    if (sh.categoryBits != 0ul)
                     {
-                        ref var blob = ref sh.vertices.Value.points;
-                        var verts = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
-                        for (var i = 0; i < blob.Length; i++)
-                            verts[i] = (Vector2)(blob[i] + sh.offset);
-                        // A chain carries its OWN definition (no PhysicsShapeDefinition overload): its
-                        // surfaceMaterial, contactFilter, triggerEvents, and isLoop ride the chain def, not the
-                        // shape def. Propagate the baked surface/filter/trigger so a composite-Outlines (or edge)
-                        // surface has the right friction/bounciness/layer the same way a solid shape does. A chain
-                        // is non-solid, so it carries no density and no contactEvents flag (contacts on a chain are
-                        // implicit); the surface material + filter + trigger are the propagatable knobs.
-                        var chainDef = PhysicsChainDefinition.defaultDefinition;
-                        chainDef.isLoop = sh.edgeIsLoop;
-                        var chainSurface = chainDef.surfaceMaterial;
-                        chainSurface.friction = sh.friction;
-                        chainSurface.bounciness = sh.bounciness;
-                        chainDef.surfaceMaterial = chainSurface;
-                        if (sh.categoryBits != 0ul)
-                        {
-                            var chainFilter = PhysicsShape.ContactFilter.defaultFilter;
-                            chainFilter.categories = new PhysicsMask { bitMask = sh.categoryBits };
-                            chainFilter.contacts = new PhysicsMask { bitMask = sh.contactBits };
-                            chainDef.contactFilter = chainFilter;
-                        }
-                        chainDef.triggerEvents = true;
-                        body.CreateChain(new ChainGeometry(verts), chainDef);
-                        verts.Dispose();
-                        break;
+                        var chainFilter = PhysicsShape.ContactFilter.defaultFilter;
+                        chainFilter.categories = new PhysicsMask { bitMask = sh.categoryBits };
+                        chainFilter.contacts = new PhysicsMask { bitMask = sh.contactBits };
+                        chainDef.contactFilter = chainFilter;
                     }
+                    chainDef.triggerEvents = true;
+                    body.CreateChain(new ChainGeometry(verts), chainDef);
+                    verts.Dispose();
+                    break;
+                }
             }
         }
+
+        // Map the package-local PhysicsSurfaceMixing2D onto the engine SurfaceMaterial.MixingMode (XML
+        // T:…PhysicsShape.SurfaceMaterial.MixingMode). The two share the same five members in the same order, so
+        // this is a 1:1 by-name conversion; the package enum is carried package-local so neither the Runtime nor
+        // the Authoring assembly references Unity.U2D.Physics, and the engine enum is named only here.
+        static PhysicsShape.SurfaceMaterial.MixingMode MapMixing(PhysicsSurfaceMixing2D mixing) =>
+            mixing switch
+            {
+                PhysicsSurfaceMixing2D.Maximum => PhysicsShape.SurfaceMaterial.MixingMode.Maximum,
+                PhysicsSurfaceMixing2D.Mean => PhysicsShape.SurfaceMaterial.MixingMode.Mean,
+                PhysicsSurfaceMixing2D.Minimum => PhysicsShape.SurfaceMaterial.MixingMode.Minimum,
+                PhysicsSurfaceMixing2D.Multiply => PhysicsShape.SurfaceMaterial.MixingMode.Multiply,
+                _ => PhysicsShape.SurfaceMaterial.MixingMode.Average,
+            };
 
         // The built-in Rigidbody2D default mass, used to recognise "the author did not set a custom mass".
         const float DefaultRigidbody2DMass = 1f;
@@ -272,6 +300,7 @@ namespace Zori.Entities.Physics2D
                         massCfg.rotationalInertia = 1f;
                     body.massConfiguration = massCfg;
                 }
+                ApplyMassDistributionOverride(body, d);
                 return;
             }
 
@@ -279,7 +308,10 @@ namespace Zori.Entities.Physics2D
             // positive auto mass, do not perturb the solver — the default-mass body falls correctly as is.
             var isDefaultMass = Mathf.Abs(d.mass - DefaultRigidbody2DMass) < 1e-6f;
             if (isDefaultMass && body.mass > 0f)
+            {
+                ApplyMassDistributionOverride(body, d);
                 return;
+            }
 
             var cfg = body.massConfiguration;
             var oldMass = cfg.mass;
@@ -291,6 +323,26 @@ namespace Zori.Entities.Physics2D
             else if (cfg.rotationalInertia <= 0f)
                 cfg.rotationalInertia = newMass;
             cfg.mass = newMass;
+            body.massConfiguration = cfg;
+
+            ApplyMassDistributionOverride(body, d);
+        }
+
+        // Apply the custom mass-distribution override (PhysicsBody2DAuthoring.OverrideMassDistribution): set the
+        // body's center of mass and, when an explicit inertia was authored (> 0), its rotational inertia, on top
+        // of whatever mass the resolution above produced (the override is orthogonal to the mass magnitude — a
+        // body can override COM while keeping its auto mass). A no-op when the override is off, so a body that
+        // does not opt in never enters this massConfiguration write and keeps the solver convention the gates are
+        // calibrated to (touching massConfiguration shifts the v3 free-fall integration — see ApplyMass remarks).
+        static void ApplyMassDistributionOverride(PhysicsBody body, in PhysicsBody2DDefinition d)
+        {
+            if (!d.overrideMassDistribution)
+                return;
+
+            var cfg = body.massConfiguration;
+            cfg.center = (Vector2)d.centerOfMass;
+            if (d.rotationalInertia > 0f)
+                cfg.rotationalInertia = d.rotationalInertia;
             body.massConfiguration = cfg;
         }
 
@@ -306,7 +358,9 @@ namespace Zori.Entities.Physics2D
             // Resolved fresh here (not cached) so a world recreated after a physics-module reset re-reads the
             // current config. TryGetSingleton throws on more than one config, surfacing the single-world
             // "one PhysicsStep2D per world" rule loudly rather than silently picking one.
-            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(out var cfg)
+            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(
+                out var cfg
+            )
                 ? cfg
                 : null;
 
@@ -500,12 +554,15 @@ namespace Zori.Entities.Physics2D
                 // pre-Simulate, so there is no volatile-span concern (that is a post-Simulate concern). The loop
                 // is inline because SystemAPI.Query is source-generated against this system instance. The hit
                 // list is reused across all effectors this frame.
-                var effectorHits =
-                    new NativeList<PhysicsQueryHit2D>(16, Allocator.Temp);
+                var effectorHits = new NativeList<PhysicsQueryHit2D>(16, Allocator.Temp);
                 var bodyLookup = SystemAPI.GetComponentLookup<PhysicsBody2D>(isReadOnly: true);
                 foreach (
                     var (effBodyRO, effRO, effShapeRO, effEntity) in SystemAPI
-                        .Query<RefRO<PhysicsBody2D>, RefRO<PhysicsEffector2D>, RefRO<PhysicsShape2D>>()
+                        .Query<
+                            RefRO<PhysicsBody2D>,
+                            RefRO<PhysicsEffector2D>,
+                            RefRO<PhysicsShape2D>
+                        >()
                         .WithEntityAccess()
                 )
                 {
@@ -537,7 +594,9 @@ namespace Zori.Entities.Physics2D
                 CollectEvents(world, contactEvents, triggerEvents);
                 // Resolve each break's owner entity and its baked action. The definition lookup only READS ECS
                 // data (it does not mutate the Box2D world), so it is safe inside the volatile-span loop.
-                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(isReadOnly: true);
+                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(
+                    isReadOnly: true
+                );
                 CollectJointBreaks(world, jointBreakEvents, jointDefLookup);
 
                 // Record this step's time so PhysicsBody2DSmoothingSystem (render rate) can compute how far the
@@ -678,13 +737,26 @@ namespace Zori.Entities.Physics2D
                 case PhysicsShape2DKind.Circle:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapCircle(world, center, effShape.radius, eff.colliderMask, hits);
+                    PhysicsQueries2D.OverlapCircle(
+                        world,
+                        center,
+                        effShape.radius,
+                        eff.colliderMask,
+                        hits
+                    );
                     break;
                 }
                 case PhysicsShape2DKind.Box:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapBox(world, center, effShape.size, bodyAngle, eff.colliderMask, hits);
+                    PhysicsQueries2D.OverlapBox(
+                        world,
+                        center,
+                        effShape.size,
+                        bodyAngle,
+                        eff.colliderMask,
+                        hits
+                    );
                     break;
                 }
                 default:
@@ -744,7 +816,10 @@ namespace Zori.Entities.Physics2D
         // body, may add torque off-centre). Applied as a continuous force the upcoming Simulate integrates.
         static void ApplyAreaForce(PhysicsBody body, in PhysicsEffector2D eff, float effectorAngle)
         {
-            var angle = eff.useGlobalAngle != 0 ? eff.forceAngleRadians : eff.forceAngleRadians + effectorAngle;
+            var angle =
+                eff.useGlobalAngle != 0
+                    ? eff.forceAngleRadians
+                    : eff.forceAngleRadians + effectorAngle;
             sincos(angle, out var s, out var c);
             var f = new float2(c, s) * (eff.forceMagnitude + Variation(eff.forceVariation));
             if (eff.forceTargetIsRigidbody != 0)
@@ -806,7 +881,8 @@ namespace Zori.Entities.Physics2D
             {
                 var rot = effectorBody.rotation;
                 source =
-                    (float2)(Vector2)effectorBody.position + Rotate(effShape.offset, rot.cos, rot.sin);
+                    (float2)(Vector2)effectorBody.position
+                    + Rotate(effShape.offset, rot.cos, rot.sin);
             }
 
             var targetPos = (float2)(Vector2)body.worldCenterOfMass;
@@ -871,7 +947,9 @@ namespace Zori.Entities.Physics2D
             {
                 case PhysicsShape2DKind.Circle:
                 {
-                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center =
+                        platformPos
+                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapCircle(
                         world,
                         center,
@@ -883,7 +961,9 @@ namespace Zori.Entities.Physics2D
                 }
                 case PhysicsShape2DKind.Box:
                 {
-                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center =
+                        platformPos
+                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapBox(
                         world,
                         center,
@@ -899,7 +979,14 @@ namespace Zori.Entities.Physics2D
                     var aabb = platformBody.GetAABB();
                     var lo = (float2)(Vector2)aabb.lowerBound - PlatformOneWayMargin;
                     var hi = (float2)(Vector2)aabb.upperBound + PlatformOneWayMargin;
-                    PhysicsQueries2D.OverlapBox(world, (lo + hi) * 0.5f, hi - lo, 0f, eff.colliderMask, hits);
+                    PhysicsQueries2D.OverlapBox(
+                        world,
+                        (lo + hi) * 0.5f,
+                        hi - lo,
+                        0f,
+                        eff.colliderMask,
+                        hits
+                    );
                     break;
                 }
             }

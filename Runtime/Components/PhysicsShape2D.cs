@@ -59,6 +59,18 @@ namespace Zori.Entities.Physics2D
         /// <summary>Box: <c>BoxCollider2D.size</c> (full extents). Unused for the other kinds.</summary>
         public float2 size;
 
+        /// <summary>
+        /// Box only: the box's local z-rotation in <b>radians</b> (the package rotation-angle convention,
+        /// matching <see cref="PhysicsBody2DDefinition.initialRotationRadians"/>), folded into the box geometry
+        /// at creation via <c>PolygonGeometry.CreateBox(size, radius, PhysicsTransform(offset,
+        /// PhysicsRotate.FromRadians(boxAngleRadians)), inscribe)</c>. The built-in <c>BoxCollider2D</c> has no
+        /// own rotation (its rotation is its Transform's), so the built-in box baker leaves this 0; the custom
+        /// authoring surface exposes a free box angle the built-in component cannot. 0 (the default) is an
+        /// identity rotation, exactly the pre-existing offset-only <c>PhysicsTransform</c>. Unused for the other
+        /// kinds (a capsule's rotation is folded into its two centers at bake; a circle has no rotation).
+        /// </summary>
+        public float boxAngleRadians;
+
         /// <summary>Capsule: the two local end-cap centers. Unused for the other kinds.</summary>
         public float2 capsuleCenter1;
         public float2 capsuleCenter2;
@@ -111,6 +123,25 @@ namespace Zori.Entities.Physics2D
         public float density;
 
         /// <summary>
+        /// How this shape's friction is mixed with a contacting shape's friction (XML
+        /// <c>P:…PhysicsShape.SurfaceMaterial.frictionMixing</c>), baked from the built-in
+        /// <c>PhysicsMaterial2D.frictionCombine</c> or the custom authoring's combine field. The creation system
+        /// writes it into <c>PhysicsShapeDefinition.surfaceMaterial.frictionMixing</c>. The default mirrors the
+        /// engine's default <c>SurfaceMaterial</c> mixing, so a shape that does not override it bakes the same
+        /// contact the package produced before this field existed.
+        /// </summary>
+        public PhysicsSurfaceMixing2D frictionMixing;
+
+        /// <summary>
+        /// How this shape's bounciness is mixed with a contacting shape's bounciness (XML
+        /// <c>P:…PhysicsShape.SurfaceMaterial.bouncinessMixing</c>), baked from the built-in
+        /// <c>PhysicsMaterial2D.bounceCombine</c> or the custom authoring's combine field. Written into
+        /// <c>PhysicsShapeDefinition.surfaceMaterial.bouncinessMixing</c> at creation; the default mirrors the
+        /// engine default so an un-overridden shape is unchanged.
+        /// </summary>
+        public PhysicsSurfaceMixing2D bouncinessMixing;
+
+        /// <summary>
         /// The Box2D contact-filter <em>categories</em> mask — which categories this shape is in — as a raw
         /// 64-bit value (XML <c>P:…PhysicsShape.ContactFilter.categories</c>, a <c>PhysicsMask</c>). Baked from
         /// the authoring GameObject's layer as <c>1 &lt;&lt; gameObject.layer</c>; the creation system wraps it
@@ -138,8 +169,8 @@ namespace Zori.Entities.Physics2D
         /// <c>Collider2D.isTrigger</c> — whether this shape is a sensor (XML
         /// <c>P:…PhysicsShapeDefinition.isTrigger</c>). A trigger shape generates overlap (trigger) events but
         /// never a collision response, and does not detect other triggers. Baked from the built-in collider's
-        /// <c>isTrigger</c> (or the custom authoring's <c>IsTrigger</c>); the creation system sets
-        /// <c>PhysicsShapeDefinition.isTrigger</c> from it. A trigger pair surfaces as a
+        /// <c>isTrigger</c> (or the custom authoring's <c>CollisionResponse == Sensor</c>); the creation system
+        /// sets <c>PhysicsShapeDefinition.isTrigger</c> from it. A trigger pair surfaces as a
         /// <see cref="PhysicsTriggerEvent2D"/>; a non-trigger pair as a <see cref="PhysicsContactEvent2D"/>.
         /// </summary>
         public bool isTrigger;

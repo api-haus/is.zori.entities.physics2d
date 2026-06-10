@@ -46,6 +46,21 @@ namespace Zori.Entities.Physics2D.Baking
                     constraints = MapConstraints(authoring),
                     mass = authoring.Mass,
                     useAutoMass = authoring.UseAutoMass,
+                    // Render-rate smoothing (Rigidbody2D.interpolation), mapped 1:1 to the runtime enum exactly
+                    // as Rigidbody2DBaker does; the creation system adds the PhysicsBody2DSmoothing component for
+                    // a non-None mode. None (the default) carries no smoothing, matching the prior custom-baker
+                    // behaviour (which never set the field, defaulting it to None).
+                    interpolation = authoring.Interpolation,
+                    // Continuous collision detection (Rigidbody2D.collisionDetectionMode). Continuous → the Box2D
+                    // fast-collision (bullet) body flag. Discrete (the default) bakes false, the prior value.
+                    fastCollisions =
+                        authoring.CollisionDetection == PhysicsCollisionDetection2D.Continuous,
+                    // Custom mass distribution: the explicit center-of-mass + scalar rotational-inertia override
+                    // applied post-creation via PhysicsBody.massConfiguration (ApplyMass). Off by default → the
+                    // body keeps its shape-derived mass distribution, the built-in path's behaviour.
+                    overrideMassDistribution = authoring.OverrideMassDistribution,
+                    centerOfMass = authoring.CenterOfMass,
+                    rotationalInertia = authoring.RotationalInertia,
                 }
             );
 
