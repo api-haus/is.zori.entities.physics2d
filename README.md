@@ -10,7 +10,7 @@ Add the package by git URL (Package Manager → Add package from git URL), or in
 
 ```json
 "dependencies": {
-  "is.zori.entities.physics2d": "https://github.com/<owner>/<repo>.git"
+  "is.zori.entities.physics2d": "https://github.com/api-haus/is.zori.entities.physics2d.git"
 }
 ```
 
