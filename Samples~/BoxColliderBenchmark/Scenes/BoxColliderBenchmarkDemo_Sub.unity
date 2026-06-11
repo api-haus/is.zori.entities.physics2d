@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &416890173
+--- !u!1 &938472214
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,50 +127,40 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 416890175}
-  - component: {fileID: 416890174}
+  - component: {fileID: 938472216}
+  - component: {fileID: 938472215}
   m_Layer: 0
-  m_Name: PhysicsStep2D
+  m_Name: BoxColliderBenchmark
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &416890174
+--- !u!114 &938472215
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 416890173}
+  m_GameObject: {fileID: 938472214}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b05a08f98a0b1dc298eb2bb9b1c5694a, type: 3}
+  m_Script: {fileID: 11500000, guid: 0c818096afb540d2a411207bb0af4788, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Zori.Entities.Physics2D.Authoring::Zori.Entities.Physics2D.Authoring.PhysicsStep2DAuthoring
-  m_Gravity:
-    x: 0
-    y: -9.81
-  m_SimulationSubSteps: 4
-  m_SimulationWorkers: 64
-  m_ContinuousAllowed: 1
-  m_SleepingAllowed: 1
-  m_BounceThreshold: 1
-  m_ContactHitEventThreshold: 1
-  m_ContactFrequency: 30
-  m_ContactDamping: 10
-  m_ContactSpeed: 3
-  m_ContactRecycleDistance: 0.05
-  m_MaximumLinearSpeed: 400
-  m_CacheIdenticalBodies: 1
-  m_IdenticalBodyThreshold: 8
---- !u!4 &416890175
+  m_EditorClassIdentifier: Zori.Entities.Physics2D.BoxColliderBenchmark.Authoring::Zori.Entities.Physics2D.Samples.BoxColliderBenchmarkAuthoring
+  m_SpawnedTotalLimit: 4096
+  m_SpawnedPerSecondTarget: 1000
+  m_SpawnedPerFrameMax: 256
+  m_BoxSize: {x: 0.4, y: 0.4}
+  m_SpawnMin: {x: -18, y: 5}
+  m_SpawnMax: {x: 18, y: 12}
+--- !u!4 &938472216
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 416890173}
+  m_GameObject: {fileID: 938472214}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -179,7 +169,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1189240789
+--- !u!1 &1773815902
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -187,9 +177,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1189240792}
-  - component: {fileID: 1189240791}
-  - component: {fileID: 1189240790}
+  - component: {fileID: 1773815905}
+  - component: {fileID: 1773815904}
+  - component: {fileID: 1773815903}
   m_Layer: 0
   m_Name: Floor
   m_TagString: Untagged
@@ -197,13 +187,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1189240790
+--- !u!114 &1773815903
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1189240789}
+  m_GameObject: {fileID: 1773815902}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aab897196845a7d66993271f784de684, type: 3}
@@ -241,13 +231,13 @@ MonoBehaviour:
   m_CategoryBits: -1
   m_ContactBits: -1
   m_CollisionResponse: 0
---- !u!114 &1189240791
+--- !u!114 &1773815904
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1189240789}
+  m_GameObject: {fileID: 1773815902}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a33c89e613abe298b8ca0f919ae10593, type: 3}
@@ -273,13 +263,13 @@ MonoBehaviour:
     x: 0
     y: 0
   m_RotationalInertia: 0
---- !u!4 &1189240792
+--- !u!4 &1773815905
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1189240789}
+  m_GameObject: {fileID: 1773815902}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -3, z: 0}
@@ -288,7 +278,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1923568897
+--- !u!1 &2029013144
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -296,40 +286,50 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1923568899}
-  - component: {fileID: 1923568898}
+  - component: {fileID: 2029013146}
+  - component: {fileID: 2029013145}
   m_Layer: 0
-  m_Name: BoxColliderBenchmark
+  m_Name: PhysicsStep2D
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1923568898
+--- !u!114 &2029013145
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1923568897}
+  m_GameObject: {fileID: 2029013144}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c818096afb540d2a411207bb0af4788, type: 3}
+  m_Script: {fileID: 11500000, guid: b05a08f98a0b1dc298eb2bb9b1c5694a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Zori.Entities.Physics2D.BoxColliderBenchmark.Authoring::Zori.Entities.Physics2D.Samples.BoxColliderBenchmarkAuthoring
-  m_SpawnedTotalLimit: 4096
-  m_SpawnedPerSecondTarget: 1000
-  m_SpawnedPerFrameMax: 256
-  m_BoxSize: {x: 0.4, y: 0.4}
-  m_SpawnMin: {x: -18, y: 5}
-  m_SpawnMax: {x: 18, y: 12}
---- !u!4 &1923568899
+  m_EditorClassIdentifier: Zori.Entities.Physics2D.Authoring::Zori.Entities.Physics2D.Authoring.PhysicsStep2DAuthoring
+  m_Gravity:
+    x: 0
+    y: -9.81
+  m_SimulationSubSteps: 4
+  m_SimulationWorkers: 64
+  m_ContinuousAllowed: 1
+  m_SleepingAllowed: 1
+  m_BounceThreshold: 1
+  m_ContactHitEventThreshold: 1
+  m_ContactFrequency: 30
+  m_ContactDamping: 10
+  m_ContactSpeed: 3
+  m_ContactRecycleDistance: 0.05
+  m_MaximumLinearSpeed: 400
+  m_CacheIdenticalBodies: 1
+  m_IdenticalBodyThreshold: 8
+--- !u!4 &2029013146
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1923568897}
+  m_GameObject: {fileID: 2029013144}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -342,6 +342,6 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1923568899}
-  - {fileID: 416890175}
-  - {fileID: 1189240792}
+  - {fileID: 938472216}
+  - {fileID: 2029013146}
+  - {fileID: 1773815905}
