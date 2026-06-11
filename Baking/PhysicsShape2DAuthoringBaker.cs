@@ -128,6 +128,9 @@ namespace Zori.Entities.Physics2D.Baking
                 case PhysicsShape2DKind.Polygon:
                     shape.radius = Collider2DBaking.ScaleRoundingRadius(authoring.Radius, scale);
                     shape.vertices = BuildVertexBlob(authoring.Vertices, scale, flip);
+                    // A >8-vertex or concave authored outline (typically from the auto-fit utility) is decomposed
+                    // into convex fragments at creation; a simple convex hull stays single-hull (the default false).
+                    shape.polygonDecompose = authoring.PolygonDecompose;
                     break;
 
                 case PhysicsShape2DKind.Edge:

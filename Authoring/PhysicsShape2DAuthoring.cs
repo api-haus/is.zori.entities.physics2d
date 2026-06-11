@@ -97,6 +97,14 @@ namespace Zori.Entities.Physics2D.Authoring
 
         [SerializeField]
         [Tooltip(
+            "Polygon: when true, Vertices describe a concave or over-8-vertex outline the runtime decomposes into "
+                + "convex polygon fragments at creation, instead of a single convex hull. Off (the default) keeps "
+                + "the single-hull path. Set by the auto-fit utility for a >8-vertex or concave fit."
+        )]
+        bool m_PolygonDecompose;
+
+        [SerializeField]
+        [Tooltip(
             "Optional surface material TEMPLATE (a UnityEngine.PhysicsMaterial2D asset). The 2D-native analogue "
                 + "of the 3D sample's PhysicsMaterialTemplate: a non-overridden friction / bounciness / combine "
                 + "field inherits the referenced material's value instead of the inline default. When no template "
@@ -267,6 +275,20 @@ namespace Zori.Entities.Physics2D.Authoring
         {
             get => m_Vertices;
             set => m_Vertices = value ?? System.Array.Empty<Vector2>();
+        }
+
+        /// <summary>
+        /// Polygon only: when true, <see cref="Vertices"/> describe a concave or over-<c>MaxPolygonVertices</c>
+        /// outline that the runtime decomposes into convex polygon fragments at creation (baked to
+        /// <see cref="PhysicsShape2D.polygonDecompose"/>), instead of being treated as a single convex hull. The
+        /// auto-fit utility (<see cref="PhysicsShape2DAutoFit"/>) sets this for a &gt;8-vertex or concave Polygon
+        /// fit; a hand-authored simple convex polygon leaves it false (the single-hull path). Inert for the other
+        /// kinds.
+        /// </summary>
+        public bool PolygonDecompose
+        {
+            get => m_PolygonDecompose;
+            set => m_PolygonDecompose = value;
         }
 
         /// <summary>
