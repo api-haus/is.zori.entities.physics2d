@@ -162,7 +162,10 @@ namespace Zori.Entities.Physics2D
         /// chooses radians — see the angular-unit convention in <c>Documentation~/parity-matrix.md</c>). Note
         /// <c>Rigidbody2D.MoveRotation</c> takes degrees, so a verbatim port must convert with
         /// <c>math.radians</c>.</summary>
-        public static void MoveRotation(DynamicBuffer<PhysicsBody2DCommand> buffer, float targetRadians)
+        public static void MoveRotation(
+            DynamicBuffer<PhysicsBody2DCommand> buffer,
+            float targetRadians
+        )
         {
             buffer.Add(
                 new PhysicsBody2DCommand
@@ -189,6 +192,87 @@ namespace Zori.Entities.Physics2D
                     linear = targetPosition,
                     angular = targetRadians,
                 }
+            );
+        }
+
+        // The per-axis flag bits carried in PhysicsBody2DCommand.worldPoint.x for a SetTransform command (see the
+        // struct doc-comment): bit 0 sets position, bit 1 sets rotation. A combined SetTransform sets both; the
+        // SetPosition/SetRotation helpers set one.
+        const float SetPositionFlag = 1f;
+        const float SetRotationFlag = 2f;
+
+        /// <summary>INSTANTANEOUSLY set the body's world position AND rotation — a hard teleport, the 2D analogue of
+        /// writing <c>LocalTransform.Position</c>/<c>.Rotation</c> directly. Unlike <see cref="MovePositionAndRotation"/>
+        /// (a velocity-based swept move that the world <c>maximumLinearSpeed</c> clamp gates and that resolves
+        /// collisions along the path), this is a direct write to the body's <c>transform</c> (native
+        /// <c>b2Body_SetTransform</c>) with no <c>deltaTime</c> and no velocity, so it reaches an arbitrarily far
+        /// destination in one step regardless of distance. It does NOT clear the body's velocity — pair it with a
+        /// <see cref="SetLinearVelocity"/> / <see cref="SetAngularVelocity"/> for a respawn-style teleport that drops
+        /// momentum, and follow it with <see cref="SkipInterpolation"/> so an interpolated body does not draw a streak
+        /// from the old pose to the new. The <paramref name="rotationRadians"/> is in <b>radians</b> (the package's
+        /// rotation convention; <c>Documentation~/parity-matrix.md</c>).</summary>
+        public static void SetTransform(
+            DynamicBuffer<PhysicsBody2DCommand> buffer,
+            float2 position,
+            float rotationRadians
+        )
+        {
+            buffer.Add(
+                new PhysicsBody2DCommand
+                {
+                    kind = PhysicsBody2DCommandKind.SetTransform,
+                    linear = position,
+                    angular = rotationRadians,
+                    worldPoint = new float2(SetPositionFlag + SetRotationFlag, 0f),
+                }
+            );
+        }
+
+        /// <summary>INSTANTANEOUSLY set the body's world position only, keeping its current rotation — the
+        /// position-only form of <see cref="SetTransform"/> (a hard teleport, not the swept <see cref="MovePosition"/>).</summary>
+        public static void SetPosition(DynamicBuffer<PhysicsBody2DCommand> buffer, float2 position)
+        {
+            buffer.Add(
+                new PhysicsBody2DCommand
+                {
+                    kind = PhysicsBody2DCommandKind.SetTransform,
+                    linear = position,
+                    worldPoint = new float2(SetPositionFlag, 0f),
+                }
+            );
+        }
+
+        /// <summary>INSTANTANEOUSLY set the body's rotation only, keeping its current position — the rotation-only
+        /// form of <see cref="SetTransform"/> (a hard set, not the swept <see cref="MoveRotation"/>, so it lands the
+        /// exact angle in one step with none of <c>MoveRotation</c>'s single-step undershoot). The
+        /// <paramref name="rotationRadians"/> is in <b>radians</b>.</summary>
+        public static void SetRotation(
+            DynamicBuffer<PhysicsBody2DCommand> buffer,
+            float rotationRadians
+        )
+        {
+            buffer.Add(
+                new PhysicsBody2DCommand
+                {
+                    kind = PhysicsBody2DCommandKind.SetTransform,
+                    angular = rotationRadians,
+                    worldPoint = new float2(SetRotationFlag, 0f),
+                }
+            );
+        }
+
+        /// <summary>Suppress the next render-rate interpolation for this body so the next frame draws the body's
+        /// current (just-set) pose with NO interpolation streak from its previous pose — the 2D analogue of the 3D
+        /// <c>CharacterInterpolation.SkipNextInterpolation()</c>. Pair it with <see cref="SetTransform"/> for a
+        /// teleport: <c>SetTransform</c> moves the body instantly, <c>SkipInterpolation</c> stops the render-rate
+        /// smoothing from drawing a one-step slide from the old location to the new one. The reset reads the body's
+        /// live pose at drain time, so it must be appended AFTER the <see cref="SetTransform"/> in the same frame
+        /// (both drain in order before the step). A no-op on a body with no <see cref="PhysicsBody2DSmoothing"/>
+        /// (interpolation <see cref="PhysicsBody2DInterpolation.None"/>) — such a body has no streak to suppress.</summary>
+        public static void SkipInterpolation(DynamicBuffer<PhysicsBody2DCommand> buffer)
+        {
+            buffer.Add(
+                new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.SkipInterpolation }
             );
         }
     }

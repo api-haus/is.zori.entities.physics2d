@@ -909,17 +909,32 @@ namespace Zori.Entities.Physics2D
                 // Mass-scaling and frozen-axis cancellation are the solver's job: the raw force/impulse is passed
                 // through and Box2D divides by the body's resolved mass/inertia and zeroes a frozen DOF, so a
                 // write-in matches the equivalent Rigidbody2D call without the package re-deriving either.
+                // A SkipInterpolation command resets the entity's PhysicsBody2DSmoothing (read by the render-rate
+                // smoothing system) — a per-entity component the body handle alone cannot reach. The lookup is
+                // grabbed once here and indexed per command, so a body with no smoothing component (interpolation
+                // None) is a cheap HasComponent miss and the command is a no-op for it.
+                var smoothingLookup = SystemAPI.GetComponentLookup<PhysicsBody2DSmoothing>(
+                    isReadOnly: false
+                );
                 foreach (
-                    var (bodyRO, commands) in SystemAPI.Query<
-                        RefRO<PhysicsBody2D>,
-                        DynamicBuffer<PhysicsBody2DCommand>
-                    >()
+                    var (bodyRO, commands, entity) in SystemAPI
+                        .Query<RefRO<PhysicsBody2D>, DynamicBuffer<PhysicsBody2DCommand>>()
+                        .WithEntityAccess()
                 )
                 {
                     var body = bodyRO.ValueRO.body;
                     if (body.isValid)
                         for (var i = 0; i < commands.Length; i++)
-                            ApplyCommand(body, commands[i], dt);
+                        {
+                            var cmd = commands[i];
+                            // SkipInterpolation carries no body call — it resets the entity's smoothing to the
+                            // body's CURRENT pose (so it must observe any SetTransform already drained this frame,
+                            // which is why it is handled here, after ApplyCommand, off the live body).
+                            if (cmd.kind == PhysicsBody2DCommandKind.SkipInterpolation)
+                                ResetSmoothing(body, entity, ref smoothingLookup);
+                            else
+                                ApplyCommand(body, cmd, dt);
+                        }
                     commands.Clear();
                 }
 
@@ -1183,7 +1198,53 @@ namespace Zori.Entities.Physics2D
                         dt
                     );
                     break;
+                case PhysicsBody2DCommandKind.SetTransform:
+                    // The INSTANTANEOUS pose set — a hard teleport, NOT the swept SetTransformTarget. A direct write
+                    // to body.transform (native b2Body_SetTransform): no deltaTime, no velocity, so the world's
+                    // maximumLinearSpeed clamp (which gates only the velocity-based swept move) never applies and the
+                    // body reaches an arbitrarily far destination in one step. The per-axis flag in worldPoint.x
+                    // keeps the unchanged axis at the body's CURRENT value, so a position-only set does not snap the
+                    // rotation and vice versa, mirroring the Move* kinds.
+                    var setPos = ((int)cmd.worldPoint.x & 1) != 0;
+                    var setRot = ((int)cmd.worldPoint.x & 2) != 0;
+                    var newPos = setPos ? (Vector2)cmd.linear : body.position;
+                    var newRot = setRot ? PhysicsRotate.FromRadians(cmd.angular) : body.rotation;
+                    body.transform = new PhysicsTransform(newPos, newRot);
+                    break;
+                case PhysicsBody2DCommandKind.SkipInterpolation:
+                    // Handled in the drain loop (it needs the entity's smoothing component, not the body handle);
+                    // never reaches ApplyCommand. Listed so the switch is exhaustive over the command kinds.
+                    break;
             }
+        }
+
+        // Reset a teleported body's render-rate smoothing to its current (just-set) pose so the next render frame
+        // draws the new pose with no interpolation streak from the old one — the 2D analogue of the 3D
+        // CharacterInterpolation.SkipNextInterpolation(). Seeds prev == cur == the live pose and clears hasPrev, the
+        // same shape PhysicsWorld2DSystem's creation path seeds a fresh body's smoothing with (where prev == cur ==
+        // the authored pose and hasPrev = 0 makes the first render pass an identity write of the current pose). A
+        // body that carries no smoothing component (interpolation None) has no streak to suppress, so this is a
+        // HasComponent no-op for it. Managed Unity.U2D.Physics reads on the main thread, like the rest of this system.
+        static void ResetSmoothing(
+            PhysicsBody body,
+            Entity entity,
+            ref ComponentLookup<PhysicsBody2DSmoothing> smoothingLookup
+        )
+        {
+            if (!smoothingLookup.HasComponent(entity))
+                return;
+
+            var pos = (float2)(Vector2)body.position;
+            var rot = body.rotation;
+            var cosSin = float2(rot.cos, rot.sin);
+
+            var s = smoothingLookup[entity];
+            s.prevPos = pos;
+            s.curPos = pos;
+            s.prevCosSin = cosSin;
+            s.curCosSin = cosSin;
+            s.hasPrev = 0;
+            smoothingLookup[entity] = s;
         }
 
         // Apply one force-field effector to every dynamic body overlapping its region this step. Box2D-v3 has no

@@ -55,6 +55,22 @@ namespace Zori.Entities.Physics2D
 
         /// <summary><c>MovePositionAndRotation(p, r)</c> → <c>PhysicsBody.SetTransformTarget</c> at (target position, target rotation).</summary>
         MovePositionAndRotation,
+
+        /// <summary><c>SetTransform(p, r)</c> → a direct write to <c>PhysicsBody.transform</c> (native
+        /// <c>b2Body_SetTransform</c>) — the INSTANTANEOUS, NOT-swept pose set: a hard teleport, not the
+        /// velocity-based <see cref="MovePositionAndRotation"/> sweep. The set carries no <c>deltaTime</c> and no
+        /// velocity, so the world <c>maximumLinearSpeed</c> clamp never gates it (the clamp gates only the swept
+        /// <c>SetTransformTarget</c>). Position keeps the current rotation when only a position is supplied, and
+        /// vice versa, via the per-axis flags carried in <see cref="PhysicsBody2DCommand"/>.</summary>
+        SetTransform,
+
+        /// <summary><c>SkipInterpolation()</c> → resets the body's <see cref="PhysicsBody2DSmoothing"/> so the next
+        /// render frame writes the current (just-set) pose with no interpolation streak — the 2D analogue of
+        /// <c>CharacterInterpolation.SkipNextInterpolation()</c>. A no-op on a body that carries no smoothing
+        /// component (interpolation <see cref="PhysicsBody2DInterpolation.None"/>). Carries no payload — the pose it
+        /// resets to is the body's live pose at drain time, so a <see cref="SetTransform"/> appended before it in
+        /// the same frame is already in place.</summary>
+        SkipInterpolation,
     }
 
     /// <summary>
@@ -76,7 +92,10 @@ namespace Zori.Entities.Physics2D
     /// depends on <see cref="kind"/> (see <see cref="PhysicsBody2DCommandKind"/>): <see cref="linear"/> is the
     /// force / impulse / target position / linear velocity; <see cref="angular"/> is the torque / angular impulse
     /// / target rotation (radians) / angular velocity (deg/sec); <see cref="worldPoint"/> is the world application
-    /// point for the <c>*AtPosition</c> kinds and unused otherwise.
+    /// point for the <c>*AtPosition</c> kinds. For
+    /// <see cref="PhysicsBody2DCommandKind.SetTransform"/> the unused <see cref="worldPoint"/>.x doubles as a
+    /// per-axis flag (bit 0 → set position, bit 1 → set rotation) so a position-only set keeps the body's current
+    /// rotation and vice versa, mirroring the swept <c>Move*</c> kinds. The field is otherwise unused.
     /// </remarks>
     public struct PhysicsBody2DCommand : IBufferElementData
     {

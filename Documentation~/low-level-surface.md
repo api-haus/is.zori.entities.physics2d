@@ -19,6 +19,9 @@ How the optimisation works, and what it can and cannot save:
 
 The related bulk surface for despawn:
 
+- `PhysicsWorld.CreateBodyBatch(PhysicsBodyDefinition def, int count, Allocator alloc)` → `NativeArray<PhysicsBody>` — creates `count` identical bodies in one call, returning their handles in index order. The entity↔handle association is rebuilt from that index order.
+- `PhysicsBody.GetBatchTransform(ReadOnlySpan<PhysicsBody>, Allocator)` — the bulk pose read; this is already the write-back mechanism, and the low-level surface exposes it as a public way to read many poses in one call.
+- `PhysicsBody.SetBatchTransform(ReadOnlySpan<PhysicsBody.BatchTransform>)` — bulk teleport (the many-body instantaneous pose set). The single-body counterpart is the `SetTransform` / `SetPosition` / `SetRotation` command kind on the high-level write-in surface (`PhysicsBody2DCommands`), which writes the per-body `PhysicsBody.transform` (the same native `b2Body_SetTransform`) for one body; `SetBatchTransform` is the right primitive when many bodies teleport in one frame.
 - `PhysicsBody.DestroyBatch(ReadOnlySpan<PhysicsBody>)` — the **static** per-body batch destroy that cascades to each body's shapes AND attached joints; this is what `PhysicsBody2DCleanupSystem` calls to free a destroyed entity's body (`runtime-systems.md`). It is distinct from `PhysicsWorld.DestroyBodyBatch`, which does NOT document the shape/joint cascade — reaching for the world-scoped call instead would orphan a destroyed body's shapes/joints. `PhysicsWorld.DestroyJointBatch` (also static) is the world-teardown joint drain.
 
 Per-entity despawn needs no manual destroy call: destroying a physics entity (`EntityManager.DestroyEntity`) frees its Box2D body, shapes, and joints automatically through the cleanup-component teardown (`runtime-systems.md`).
