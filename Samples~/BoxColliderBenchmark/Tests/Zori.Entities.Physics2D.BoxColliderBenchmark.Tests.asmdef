@@ -1,0 +1,28 @@
+{
+  "name": "Zori.Entities.Physics2D.BoxColliderBenchmark.Tests",
+  "rootNamespace": "Zori.Entities.Physics2D.Samples.Tests",
+  "references": [
+    "Zori.Entities.Physics2D.BoxColliderBenchmark",
+    "Zori.Entities.Physics2D.Runtime",
+    "Unity.Entities",
+    "Unity.Entities.Graphics",
+    "Unity.Transforms",
+    "Unity.Mathematics",
+    "Unity.Collections",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

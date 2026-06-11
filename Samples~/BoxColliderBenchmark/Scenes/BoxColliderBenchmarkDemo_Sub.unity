@@ -145,10 +145,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 938472214}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0c818096afb540d2a411207bb0af4788, type: 3}
+  m_Script: {fileID: 11500000, guid: b66fc9e2332e76df98504ee9ec3bc005, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Zori.Entities.Physics2D.BoxColliderBenchmark.Authoring::Zori.Entities.Physics2D.Samples.BoxColliderBenchmarkAuthoring
-  m_SpawnedTotalLimit: 4096
+  m_SpawnedTotalLimit: 32000
   m_SpawnedPerSecondTarget: 1000
   m_SpawnedPerFrameMax: 256
   m_BoxSize: {x: 0.4, y: 0.4}

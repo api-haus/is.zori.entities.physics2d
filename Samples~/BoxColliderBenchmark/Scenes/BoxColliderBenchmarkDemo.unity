@@ -228,7 +228,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1773815902}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 631769389c26455f803d6d940a0fd0f1, type: 3}
+  m_Script: {fileID: 11500000, guid: 51b8d8c1b25783505b1d328bab4f52e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Zori.Entities.Physics2D.BoxColliderBenchmark::Zori.Entities.Physics2D.Samples.BenchmarkGUI
 --- !u!4 &1773815904
@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45a335734b1572644a6a5d09d87adc65, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Scenes::Unity.Scenes.SubScene
-  _SceneAsset: {fileID: 102900000, guid: 72060e2303ca4887aac56b87624ca2cf, type: 3}
+  _SceneAsset: {fileID: 102900000, guid: edc18378d845036a4902dad6b1e0b85f, type: 3}
   _HierarchyColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   AutoLoadScene: 1
   _SceneGUID:
