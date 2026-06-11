@@ -1,6 +1,6 @@
 {
   "name": "is.zori.entities.physics2d",
-  "displayName": "Zori Entities Physics 2D",
+  "displayName": "Entities Physics 2D",
   "version": "0.1.0",
   "unity": "6000.0",
   "description": "DOTS 2D physics: built-in Rigidbody2D/Collider2D authoring baked to ECS, stepped over the low-level Unity.U2D.Physics (Box2D) batch surface, with each body's pose written into Unity.Transforms.LocalToWorld. Renderer-agnostic.",
