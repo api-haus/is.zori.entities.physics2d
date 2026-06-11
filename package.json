@@ -14,7 +14,7 @@
   "samples": [
     {
       "displayName": "Custom Authoring 2D",
-      "description": "Custom PhysicsBody2D/PhysicsShape2D authoring — the customisable beyond-built-in surface and the low-level direct/bulk creation path (CreateBodyBatch).",
+      "description": "The complete custom PhysicsBody2D/PhysicsShape2D authoring surface with a 2D-native scene-view editor: an authored sample scene demonstrating the five shape kinds, a material template with a per-field override, a filtered pair, and a static floor; plus the low-level direct/bulk creation path (CreateBodyBatch). Renderer-agnostic — no Entities.Graphics dependency.",
       "path": "Samples~/CustomAuthoring2D"
     }
   ]

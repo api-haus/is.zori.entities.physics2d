@@ -26,7 +26,7 @@ Some built-in features are not authored on the GameObject — they are runtime A
 
 ## Not supported on this path
 
-The per-collider `Rigidbody2D.includeLayers` / `excludeLayers` overrides, `sleepMode`, and an explicit centre-of-mass / inertia override are not baked; setting them on a GameObject has no effect. The authoritative coverage and the reason each is deferred is in `parity-matrix.md` (still-not-covered).
+The per-collider `Rigidbody2D.includeLayers` / `excludeLayers` overrides, `sleepMode`, and an explicit centre-of-mass / inertia override are not baked on the built-in path; setting them on a GameObject has no effect. The authoritative coverage and the reason each is deferred is in `parity-matrix.md` (still-not-covered). The centre-of-mass / inertia override does have a custom-path home: the `PhysicsBody2DAuthoring` component exposes a 2D mass-distribution override (a `float2` centre of mass + a scalar rotational inertia), documented in [custom authoring](custom-authoring.md). It is a custom-surface feature, not a built-in `Rigidbody2D` field the bake path reads.
 
 ## What the package does with a baked body
 
