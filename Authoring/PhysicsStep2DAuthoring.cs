@@ -101,6 +101,22 @@ namespace Zori.Entities.Physics2D.Authoring
         [Tooltip("Maximum linear speed clamp, m/s (PhysicsWorldDefinition.maximumLinearSpeed).")]
         float m_MaximumLinearSpeed = PhysicsWorld2DConfig.Default.maximumLinearSpeed;
 
+        [SerializeField]
+        [Tooltip(
+            "Cache the prepared body+shape definition per form once a form's body count crosses the threshold "
+                + "below, so spray-spawning identical bodies (ecb.Instantiate of one prefab) skips the per-entity "
+                + "definition construction. Transparent — on vs off produces the same simulation. Default on."
+        )]
+        bool m_CacheIdenticalBodies = PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
+
+        [SerializeField]
+        [Tooltip(
+            "The form body-count past which a cached template is built and used (N). High enough that a form "
+                + "spawned a handful of times never builds one; low enough that a real spray crosses it almost "
+                + "immediately. Clamped to >= 1. Default 8."
+        )]
+        int m_IdenticalBodyThreshold = PhysicsWorld2DConfig.Default.identicalBodyThreshold;
+
         public float2 Gravity
         {
             get => m_Gravity;
@@ -173,6 +189,18 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_MaximumLinearSpeed = math.max(0f, value);
         }
 
+        public bool CacheIdenticalBodies
+        {
+            get => m_CacheIdenticalBodies;
+            set => m_CacheIdenticalBodies = value;
+        }
+
+        public int IdenticalBodyThreshold
+        {
+            get => m_IdenticalBodyThreshold;
+            set => m_IdenticalBodyThreshold = math.max(1, value);
+        }
+
         /// <summary>The runtime config this component bakes to. Read by <c>PhysicsStep2DAuthoringBaker</c>.</summary>
         public PhysicsWorld2DConfig AsConfig =>
             new PhysicsWorld2DConfig
@@ -189,6 +217,8 @@ namespace Zori.Entities.Physics2D.Authoring
                 contactSpeed = m_ContactSpeed,
                 contactRecycleDistance = m_ContactRecycleDistance,
                 maximumLinearSpeed = m_MaximumLinearSpeed,
+                cacheIdenticalBodies = m_CacheIdenticalBodies,
+                identicalBodyThreshold = m_IdenticalBodyThreshold,
             };
 
         void OnValidate()
@@ -204,6 +234,8 @@ namespace Zori.Entities.Physics2D.Authoring
             m_ContactSpeed = math.max(0f, m_ContactSpeed);
             m_ContactRecycleDistance = math.max(0f, m_ContactRecycleDistance);
             m_MaximumLinearSpeed = math.max(0f, m_MaximumLinearSpeed);
+            // The threshold needs at least 1 (a form's first body is its seenCount==1).
+            m_IdenticalBodyThreshold = math.max(1, m_IdenticalBodyThreshold);
         }
     }
 }

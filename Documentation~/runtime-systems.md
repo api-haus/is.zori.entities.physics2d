@@ -76,9 +76,8 @@ In `FixedStepSimulationSystemGroup`:
 
 1. `PhysicsBody2DCleanupSystem` — free the Box2D bodies of destroyed entities (`[UpdateBefore(PhysicsWorld2DSystem)]`).
 2. `PhysicsJoint2DCreationSystem` — create joints whose bodies now both exist (`[UpdateBefore(PhysicsWorld2DSystem)]`).
-3. `PhysicsBody2DBatchCreationSystem` — bulk-create runs of identical bodies from a `PhysicsBody2DBatchRequest` (the optimisation seam, `low-level-surface.md`).
-4. `PhysicsWorld2DSystem` — create missing bodies, apply commands + effectors, `Simulate(dt)`, collect events, collect joint breaks, record the fixed-step time.
-5. `PhysicsJoint2DBreakSystem` — apply Destroy / Disable joint breaks (`[UpdateAfter(PhysicsWorld2DSystem)]`).
-6. `PhysicsBody2DWriteBackSystem` — bulk-read poses, Burst-write `LocalToWorld`, capture smoothing (`[UpdateAfter(PhysicsWorld2DSystem)]`).
+3. `PhysicsWorld2DSystem` — create missing bodies (per-entity, or from a cached body template for identical instantiated forms past the threshold, collapsing same-frame runs through one `CreateBodyBatch`; the optimisation seam, `low-level-surface.md`), apply commands + effectors, `Simulate(dt)`, collect events, collect joint breaks, record the fixed-step time.
+4. `PhysicsJoint2DBreakSystem` — apply Destroy / Disable joint breaks (`[UpdateAfter(PhysicsWorld2DSystem)]`).
+5. `PhysicsBody2DWriteBackSystem` — bulk-read poses, Burst-write `LocalToWorld`, capture smoothing (`[UpdateAfter(PhysicsWorld2DSystem)]`).
 
 In `TransformSystemGroup`: `PhysicsBody2DSmoothingSystem` (`[UpdateBefore(LocalToWorldSystem)]`) for interpolated bodies. `LocalToWorldSystem` runs later and skips the physics-owned entities because of the write group / unchanged `LocalTransform`. Rendering consumers read `LocalToWorld` after that — out of scope.

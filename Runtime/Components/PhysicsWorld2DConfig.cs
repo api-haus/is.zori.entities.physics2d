@@ -80,6 +80,25 @@ namespace Zori.Entities.Physics2D
         public float maximumLinearSpeed;
 
         /// <summary>
+        /// Enable the cached-template creation optimisation. When <c>true</c> (the default), <c>PhysicsWorld2DSystem</c>
+        /// caches the prepared body+shape definition per <see cref="PhysicsBody2DFormHash"/> form once that form's
+        /// seen-count crosses <see cref="identicalBodyThreshold"/>, then serves every later identical body from the
+        /// template (skipping the per-entity definition construction + mass arithmetic). When <c>false</c>, every
+        /// body takes the unchanged per-entity creation path. The optimisation is transparent — a cached-template
+        /// body is bit-identical to a per-entity one, so on vs off produces the same simulation. Default <c>true</c>.
+        /// </summary>
+        public bool cacheIdenticalBodies;
+
+        /// <summary>
+        /// The form seen-count past which a template is built and used (N in the design). A form whose body count
+        /// stays below N never builds a template (no warm-up waste on cold forms); a real spray crosses N almost
+        /// immediately and spends the rest of the spray on the cheap cached path. Clamped to <c>&gt;= 1</c>. Default
+        /// <c>8</c> (a provisional order-of-magnitude value, deferred to the benchmark sample). Inert when
+        /// <see cref="cacheIdenticalBodies"/> is <c>false</c>.
+        /// </summary>
+        public int identicalBodyThreshold;
+
+        /// <summary>
         /// The Box2D <c>PhysicsWorldDefinition.defaultDefinition</c> values for editor <c>6000.6.0a6</c>
         /// (probed at HEAD). A config built from these reproduces the default world exactly, so the authoring
         /// component's inspector defaults seed from here.
@@ -99,6 +118,8 @@ namespace Zori.Entities.Physics2D
                 contactSpeed = 3f,
                 contactRecycleDistance = 0.05f,
                 maximumLinearSpeed = 400f,
+                cacheIdenticalBodies = true,
+                identicalBodyThreshold = 8,
             };
     }
 }

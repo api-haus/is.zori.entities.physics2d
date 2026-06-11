@@ -51,7 +51,6 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsJoint2DCreationSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DBatchCreationSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
             fixedGroup.SortSystems();
 
@@ -379,38 +378,49 @@ namespace Zori.Entities.Physics2D.Tests
             var world = MakePhysicsWorld(out var group);
             var em = world.EntityManager;
 
+            // Spray N IDENTICAL-form dynamic circle bodies in one frame. With the cache default on (threshold 8),
+            // the form crosses the threshold and the same-frame run is created through the in-frame CreateBodyBatch
+            // collapse — the path that replaced the removed PhysicsBody2DBatchRequest. This exercises exactly the
+            // possible contiguous/index-aligned body-array assumption the destruction probe is here to pin.
             const int N = 24;
-            var requestEntity = em.CreateEntity();
-            em.AddComponentData(
-                requestEntity,
-                new PhysicsBody2DBatchRequest
-                {
-                    count = N,
-                    bodyType = PhysicsBody.BodyType.Dynamic,
-                    gravityScale = 1f,
-                    radius = 0.25f,
-                    density = 1f,
-                    spawnMin = new float2(-8f, 20f),
-                    spawnMax = new float2(8f, 30f),
-                    seed = 0xC0FFEEu,
-                }
-            );
+            var formKey = new Unity.Mathematics.uint4(0xDEADu, 0xBEEFu, 0xC0FFu, 0xEE00u);
+            for (var i = 0; i < N; i++)
+            {
+                var x = -8f + (16f * i / (N - 1));
+                var e = DirectPhysics2DAuthoring.Create(
+                    em,
+                    new PhysicsBody2DDefinition
+                    {
+                        bodyType = PhysicsBody.BodyType.Dynamic,
+                        gravityScale = 1f,
+                        initialPosition = new float2(x, 20f + (i % 5)),
+                        useAutoMass = true,
+                    },
+                    new PhysicsShape2D
+                    {
+                        kind = PhysicsShape2DKind.Circle,
+                        radius = 0.25f,
+                        density = 1f,
+                        friction = 0.4f,
+                    }
+                );
+                em.AddComponentData(e, new PhysicsBody2DFormHash { value = formKey });
+            }
 
-            group.Update(); // batch system creates N bodies + N entities
-            Assert.AreEqual(N, LiveBodyCount(em), $"Batch did not create {N} live bodies.");
+            group.Update(); // creates N bodies (the same-frame collapse fires for the run past the threshold)
+            Assert.AreEqual(N, LiveBodyCount(em), $"Spray did not create {N} live bodies.");
 
             // Step a few times so the bodies have moved apart from their spawn poses (genuinely simulated).
             for (var f = 0; f < 10; f++)
                 group.Update();
 
-            // Collect every batch entity (PhysicsBody2D + LocalToWorld, no definition/shape — the batch
-            // archetype), pair each with its native body handle.
+            // Collect every sprayed body entity (PhysicsBody2D + LocalToWorld), pair each with its native handle.
             var batchQuery = em.CreateEntityQuery(
                 ComponentType.ReadOnly<PhysicsBody2D>(),
                 ComponentType.ReadOnly<LocalToWorld>()
             );
             var entities = batchQuery.ToEntityArray(Allocator.Temp);
-            Assert.AreEqual(N, entities.Length, "Batch entity count mismatch before partial despawn.");
+            Assert.AreEqual(N, entities.Length, "Sprayed entity count mismatch before partial despawn.");
 
             // Destroy every OTHER entity (the odd indices). The survivors are the even indices.
             var survivorEntities = new System.Collections.Generic.List<Entity>();

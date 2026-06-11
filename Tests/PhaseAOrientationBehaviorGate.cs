@@ -65,7 +65,6 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DBatchCreationSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
             fixedGroup.SortSystems();
             group = fixedGroup;

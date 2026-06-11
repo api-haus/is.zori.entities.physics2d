@@ -33,10 +33,421 @@ namespace Zori.Entities.Physics2D
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     public partial struct PhysicsWorld2DSystem : ISystem
     {
+        // The cross-frame cached body-template store, keyed by the baked PhysicsBody2DFormHash. An entry is built
+        // lazily once a form's seenCount crosses the threshold (PhysicsWorld2DConfig.identicalBodyThreshold) and
+        // then serves every subsequent identical body of that form from the prepared definition/geometry/mass —
+        // skipping the per-entity definition construction + mass arithmetic. The store holds pose-free,
+        // world-independent data, so it SURVIVES a world recreate (only live PhysicsBody handles are invalidated by
+        // a module reset, and the store holds none). Disposed on OnDestroy. Created lazily on first use because an
+        // ISystem has no OnCreate here and the map must be allocated exactly once.
+        NativeHashMap<uint4, CachedBodyTemplate> m_Templates;
+
         public void OnDestroy(ref SystemState state)
         {
             if (SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var s) && s.world.isValid)
                 s.world.Destroy();
+            if (m_Templates.IsCreated)
+                m_Templates.Dispose();
+        }
+
+        // What the cache keeps for one form: the prepared body definition (pose/velocity overwritten per instance),
+        // the prepared shape definition + geometry value, and the resolved mass write — plus the threshold
+        // bookkeeping. All members are blittable values (the geometry kinds admitted to the cached arm are
+        // Circle/Box/Capsule/simple-Polygon, whose geometry is a fixed-size value; Edge/decompose/multi-shape stay
+        // on the per-entity path), so the whole struct lives in a NativeHashMap with no cache-owned allocation.
+        struct CachedBodyTemplate
+        {
+            public PhysicsBodyDefinition bodyDef; // pose + velocity zeroed; overwritten per instance
+            public PhysicsShapeDefinition shapeDef; // surface / filter / trigger flags
+            public GeometryUnion geometry; // the prepared geometry value + kind tag
+            public MassResolution mass; // the pre-decided massConfiguration write (or "leave auto")
+            public PhysicsBody2DInterpolation interpolation; // the form's smoothing mode (in the form hash)
+            public int seenCount; // how many bodies of this form have been initialised
+            public byte isBuilt; // 0 = counting toward threshold; 1 = template built and in use
+        }
+
+        // A tagged union of the value-cacheable geometry kinds. The kind tag selects which value the template path
+        // feeds to body.CreateShape. Only the kinds whose creation is exactly CreateShape(geometryValue, shapeDef)
+        // are admitted — Circle/Box/Capsule (inline structs) and a simple (non-decompose) Polygon (a
+        // fixed-max-vertex PolygonGeometry value). Edge (a NativeArray-backed ChainGeometry), a decompose polygon
+        // (a multi-fragment CreateShapeBatch), and multi-shape bodies are NOT admitted and never reach here.
+        struct GeometryUnion
+        {
+            public CachedGeometryKind kind;
+            public CircleGeometry circle;
+            public PolygonGeometry polygon; // also carries the prepared box (PolygonGeometry.CreateBox)
+            public CapsuleGeometry capsule;
+        }
+
+        enum CachedGeometryKind : byte
+        {
+            Circle,
+            Polygon,
+            Capsule,
+        }
+
+        // The resolved mass write for a form: whether ApplyMass would write the body's massConfiguration at all,
+        // and (if so) the exact MassConfiguration to write. Because the auto-mass Box2D derives from a form's shape
+        // is identical across every body of that form, the donor's post-ApplyMass massConfiguration is the value
+        // every replay body must end at — so the cache captures the donor's resolved write verbatim.
+        struct MassResolution
+        {
+            public byte write; // 1 = write massConfiguration; 0 = leave the auto-computed mass untouched
+            public PhysicsBody.MassConfiguration config;
+        }
+
+        // One entity deferred into the same-frame collapse bucket: its identity plus the per-instance pose and
+        // velocity overwrite. Accumulated during the creation scan and consumed by DrainSameFrameCollapse.
+        struct PendingInit
+        {
+            public Entity entity;
+            public float2 position;
+            public float rotationRadians;
+            public byte hasVelocity;
+            public PhysicsBody2DInitialVelocity velocity;
+        }
+
+        // The unchanged per-entity body creation: build the full body definition (with this instance's pose and
+        // velocity), CreateBody, pack the entity into userData, attach the primary shape and any extra shapes, then
+        // resolve and apply mass. This is the exact path the system used before the cached-template optimisation —
+        // the cached arm reproduces its RESULT, so this is also the donor builder and the transparency oracle.
+        static PhysicsBody CreatePerEntityBody(
+            PhysicsWorld world,
+            Entity entity,
+            in PhysicsBody2DDefinition d,
+            in PhysicsShape2D sh,
+            bool hasVelocity,
+            in PhysicsBody2DInitialVelocity velocity,
+            DynamicBuffer<PhysicsShape2DElement> extra
+        )
+        {
+            var bodyDef = PhysicsBodyDefinition.defaultDefinition;
+            bodyDef.type = d.bodyType;
+            bodyDef.gravityScale = d.gravityScale;
+            bodyDef.linearDamping = d.linearDamping;
+            bodyDef.angularDamping = d.angularDamping;
+            bodyDef.position = (Vector2)d.initialPosition;
+            bodyDef.rotation = PhysicsRotate.FromRadians(d.initialRotationRadians);
+            // Initial velocity seed from the optional PhysicsBody2DInitialVelocity (absent → zero). The units match
+            // 1:1: XML P:…PhysicsBodyDefinition.linearVelocity is m/s and .angularVelocity is deg/sec, the same units
+            // InitialVelocity2DAuthoring carries.
+            if (hasVelocity)
+            {
+                bodyDef.linearVelocity = (Vector2)velocity.linearVelocity;
+                bodyDef.angularVelocity = velocity.angularVelocity;
+            }
+            // DOF constraint locks.
+            bodyDef.constraints = d.constraints;
+            // Continuous collision detection (Rigidbody2D.collisionDetectionMode = Continuous). The "fast" body flag
+            // enables CCD against Dynamic/Kinematic bodies so a fast body does not tunnel them in one step;
+            // Dynamic-vs-Static CCD is the world-level continuousAllowed (on by default), so a Discrete body still
+            // does not tunnel a static wall, but a Continuous body additionally does not tunnel a fast dynamic body.
+            // Discrete bakes false (the Box2D default).
+            bodyDef.fastCollisionsAllowed = d.fastCollisions;
+            // Locked DOTS posture: never write a managed Transform; poses move via GetBatchTransform.
+            bodyDef.transformWriteMode = PhysicsBody.TransformWriteMode.Off;
+
+            var body = world.CreateBody(bodyDef);
+            // Pack the owning entity into the body's userData so a spatial query can map a hit shape back to its
+            // entity (shape.body.userData.int64Value → Entity). Set once per body; the body's lone shape resolves
+            // through .body.
+            body.userData = PhysicsQueries2D.PackEntity(entity);
+
+            CreateShapeForBody(body, sh);
+
+            // Multi-shape bodies (CompositeCollider2D merged paths, CustomCollider2D shape groups) carry their extra
+            // shapes in an optional DynamicBuffer<PhysicsShape2DElement> alongside the primary PhysicsShape2D. A
+            // normal one-shape body has no buffer, so this is a no-op for it (the single-shape archetype is
+            // unchanged). Each extra shape attaches to the SAME body via the same CreateShapeForBody path, so it gets
+            // identical surface/filter/trigger/offset handling. Box2D accumulates the auto-mass from all attached
+            // shapes, so ApplyMass (run once below, after every shape exists) derives the correct multi-shape mass.
+            if (extra.IsCreated)
+                for (var i = 0; i < extra.Length; i++)
+                    CreateShapeForBody(body, extra[i].shape);
+
+            ApplyMass(body, d);
+            return body;
+        }
+
+        // Add the PhysicsBody2D handle witness, the cleanup witness, and (for an interpolated/extrapolated body) the
+        // render-rate smoothing seed to a just-created body's entity, via the deferred ECB. Identical across every
+        // creation path (per-entity, template, in-frame collapse) — the body handle is the only varying input.
+        static void AddPhysicalBodyComponents(
+            ref EntityCommandBuffer ecb,
+            Entity entity,
+            in PhysicsBody2DDefinition d,
+            PhysicsBody body
+        )
+        {
+            ecb.AddComponent(entity, new PhysicsBody2D { body = body });
+            // The retained handle witness that survives the entity's destruction, so PhysicsBody2DCleanupSystem can
+            // free this body when the entity is despawned.
+            ecb.AddComponent(entity, new PhysicsBody2DCleanup { body = body });
+
+            // Render-rate smoothing state for an interpolated/extrapolated body (Rigidbody2D.interpolation). Added
+            // only when the mode is not None — a non-interpolated body never carries it and keeps its fixed-rate
+            // LocalToWorld. Seeded with prev == cur == the authored pose so the first render-rate pass before any
+            // step is a no-op (hasPrev = 0 until the write-back captures a second pose).
+            if (d.interpolation != PhysicsBody2DInterpolation.None)
+            {
+                sincos(d.initialRotationRadians, out var s0, out var c0);
+                var cosSin0 = float2(c0, s0);
+                ecb.AddComponent(
+                    entity,
+                    new PhysicsBody2DSmoothing
+                    {
+                        prevPos = d.initialPosition,
+                        prevCosSin = cosSin0,
+                        curPos = d.initialPosition,
+                        curCosSin = cosSin0,
+                        linearVel = Unity.Mathematics.float2.zero,
+                        angularVelRad = 0f,
+                        mode = (byte)d.interpolation,
+                        hasPrev = 0,
+                    }
+                );
+            }
+        }
+
+        // The pose-free body definition cached for a form: the per-entity body definition with position, rotation,
+        // and velocity zeroed (every instance overwrites them). transformWriteMode is locked Off, as on the
+        // per-entity path. The cached value is overwritten per instance with the real pose/velocity at creation.
+        static PhysicsBodyDefinition BuildTemplateBodyDef(in PhysicsBody2DDefinition d)
+        {
+            var bodyDef = PhysicsBodyDefinition.defaultDefinition;
+            bodyDef.type = d.bodyType;
+            bodyDef.gravityScale = d.gravityScale;
+            bodyDef.linearDamping = d.linearDamping;
+            bodyDef.angularDamping = d.angularDamping;
+            bodyDef.constraints = d.constraints;
+            bodyDef.fastCollisionsAllowed = d.fastCollisions;
+            bodyDef.transformWriteMode = PhysicsBody.TransformWriteMode.Off;
+            // position / rotation / linearVelocity / angularVelocity stay at the default (zero) — overwritten per
+            // instance from the entity's own pose + optional velocity seed.
+            return bodyDef;
+        }
+
+        // Whether a shape's geometry is value-cacheable (Circle/Box/Capsule/simple-Polygon), and if so the prepared
+        // geometry value. Edge (a NativeArray-backed ChainGeometry) and a decompose polygon (a multi-fragment
+        // CreateShapeBatch) are NOT value-cacheable and return false — those forms stay on the per-entity path.
+        static bool TryGetCacheableGeometry(in PhysicsShape2D sh, out GeometryUnion geometry)
+        {
+            geometry = default;
+            switch (sh.kind)
+            {
+                case PhysicsShape2DKind.Circle:
+                    geometry.kind = CachedGeometryKind.Circle;
+                    geometry.circle = BuildCircleGeometry(in sh);
+                    return true;
+                case PhysicsShape2DKind.Box:
+                    geometry.kind = CachedGeometryKind.Polygon;
+                    geometry.polygon = BuildBoxGeometry(in sh);
+                    return true;
+                case PhysicsShape2DKind.Capsule:
+                    geometry.kind = CachedGeometryKind.Capsule;
+                    geometry.capsule = BuildCapsuleGeometry(in sh);
+                    return true;
+                case PhysicsShape2DKind.Polygon:
+                    if (sh.polygonDecompose)
+                        return false;
+                    // Marshal the blob into the inline-storage PolygonGeometry once; the value is self-contained.
+                    {
+                        ref var blob = ref sh.vertices.Value.points;
+                        var span = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
+                        for (var i = 0; i < blob.Length; i++)
+                            span[i] = (Vector2)blob[i];
+                        geometry.kind = CachedGeometryKind.Polygon;
+                        geometry.polygon = BuildPolygonGeometry(in sh, span);
+                        span.Dispose();
+                    }
+                    return true;
+                default: // Edge — chain geometry is NativeArray-backed, not cacheable by value.
+                    return false;
+            }
+        }
+
+        // Attach the cached shape to a body from the template's prepared geometry + shapeDef. The kind tag selects
+        // the geometry value; the call is the identical CreateShape the per-entity path issues, with cached inputs.
+        static void CreateShapeFromTemplate(PhysicsBody body, in CachedBodyTemplate t)
+        {
+            switch (t.geometry.kind)
+            {
+                case CachedGeometryKind.Circle:
+                    body.CreateShape(t.geometry.circle, t.shapeDef);
+                    break;
+                case CachedGeometryKind.Polygon:
+                    body.CreateShape(t.geometry.polygon, t.shapeDef);
+                    break;
+                case CachedGeometryKind.Capsule:
+                    body.CreateShape(t.geometry.capsule, t.shapeDef);
+                    break;
+            }
+        }
+
+        // Create one body from a cached template: copy the cached body def, overwrite the per-instance pose +
+        // velocity, CreateBody, pack userData, attach the cached shape, apply the cached mass resolution. The result
+        // is bit-identical to the per-entity path (same definition + same shape → same Box2D body + same mass).
+        static PhysicsBody CreateBodyFromTemplate(
+            PhysicsWorld world,
+            Entity entity,
+            in CachedBodyTemplate t,
+            float2 position,
+            float rotationRadians,
+            bool hasVelocity,
+            in PhysicsBody2DInitialVelocity velocity
+        )
+        {
+            var bodyDef = t.bodyDef;
+            bodyDef.position = (Vector2)position;
+            bodyDef.rotation = PhysicsRotate.FromRadians(rotationRadians);
+            if (hasVelocity)
+            {
+                bodyDef.linearVelocity = (Vector2)velocity.linearVelocity;
+                bodyDef.angularVelocity = velocity.angularVelocity;
+            }
+
+            var body = world.CreateBody(bodyDef);
+            body.userData = PhysicsQueries2D.PackEntity(entity);
+            CreateShapeFromTemplate(body, in t);
+            ApplyResolvedMass(body, in t.mass);
+            return body;
+        }
+
+        // Drain the same-frame collapse buckets. For each form with K >= 2 members that arrived this frame, issue one
+        // CreateBodyBatch from the cached body def, attach the K cached shapes, apply the K cached masses, and one
+        // SetBatchTransform writing the K individual poses — the inner routine factored from the removed batch
+        // creation system. A lone member (K == 1) takes the plain template path (a 1-body batch buys nothing). Every
+        // created body gets the same ECS components through the shared ECB. The K bodies are bit-identical to K
+        // per-entity bodies; only the native body-CREATION call count is collapsed (the K CreateShape calls remain).
+        void DrainSameFrameCollapse(
+            PhysicsWorld world,
+            ref EntityCommandBuffer ecb,
+            NativeParallelMultiHashMap<uint4, PendingInit> collapse
+        )
+        {
+            var keys = collapse.GetKeyArray(Allocator.Temp);
+            var seen = new NativeHashSet<uint4>(keys.Length, Allocator.Temp);
+            var members = new NativeList<PendingInit>(16, Allocator.Temp);
+
+            for (var k = 0; k < keys.Length; k++)
+            {
+                var hash = keys[k];
+                if (!seen.Add(hash))
+                    continue; // GetKeyArray repeats a key once per member; handle each key's whole run once.
+
+                members.Clear();
+                foreach (var m in collapse.GetValuesForKey(hash))
+                    members.Add(m);
+
+                var t = m_Templates[hash];
+
+                if (members.Length == 1)
+                {
+                    var p = members[0];
+                    var body = CreateBodyFromTemplate(
+                        world,
+                        p.entity,
+                        in t,
+                        p.position,
+                        p.rotationRadians,
+                        p.hasVelocity != 0,
+                        in p.velocity
+                    );
+                    AddPhysicalBodyComponentsFromTemplate(ref ecb, in t, p, body);
+                    continue;
+                }
+
+                CreateBodyBatchInto(world, ref ecb, in t, members);
+            }
+
+            members.Dispose();
+            seen.Dispose();
+            keys.Dispose();
+        }
+
+        // One CreateBodyBatch for the K same-frame members of an isBuilt form: one native body-creation call for all
+        // K bodies from the shared cached def, then the K cached-shape attachments, the K cached-mass applies, one
+        // SetBatchTransform writing each member's individual pose, and the per-body userData + ECS components. This
+        // is the inner routine of the removed PhysicsBody2DBatchCreationSystem, now fed by the cached template and
+        // attaching to the already-instantiated entities (not fresh em.CreateEntity ones).
+        void CreateBodyBatchInto(
+            PhysicsWorld world,
+            ref EntityCommandBuffer ecb,
+            in CachedBodyTemplate t,
+            NativeList<PendingInit> members
+        )
+        {
+            var count = members.Length;
+            var bodies = world.CreateBodyBatch(t.bodyDef, count, Allocator.Persistent);
+            var transforms = new NativeArray<PhysicsBody.BatchTransform>(count, Allocator.Temp);
+
+            for (var i = 0; i < count; i++)
+            {
+                var p = members[i];
+                // Local copy because PhysicsBody is a 64-bit-ID handle struct: a NativeArray indexer returns a copy,
+                // so setting userData on `body` still routes to the same native body the handle names.
+                var body = bodies[i];
+                body.userData = PhysicsQueries2D.PackEntity(p.entity);
+                CreateShapeFromTemplate(body, in t);
+                ApplyResolvedMass(body, in t.mass);
+
+                // Per-instance velocity: CreateBodyBatch fans out the single cached def (zero velocity), so a member
+                // carrying an initial-velocity seed has it set on its body after creation, matching the per-entity
+                // path where the def carried it. (A pure-pose spray sets nothing here.)
+                if (p.hasVelocity != 0)
+                {
+                    body.linearVelocity = (Vector2)p.velocity.linearVelocity;
+                    body.angularVelocity = p.velocity.angularVelocity;
+                }
+
+                var rot = PhysicsRotate.FromRadians(p.rotationRadians);
+                transforms[i] = new PhysicsBody.BatchTransform(body)
+                {
+                    position = (Vector2)p.position,
+                    rotation = rot,
+                };
+                AddPhysicalBodyComponentsFromTemplate(ref ecb, in t, p, body);
+            }
+
+            PhysicsBody.SetBatchTransform(transforms.AsReadOnlySpan());
+
+            transforms.Dispose();
+            bodies.Dispose();
+        }
+
+        // The PhysicsBody2D / cleanup / smoothing component adds for a template-created body. Mirrors
+        // AddPhysicalBodyComponents, but reads the interpolation mode from the cached template (the form's
+        // interpolation is part of the form hash, so every body of the form shares the donor's mode) and seeds the
+        // smoothing from the PendingInit pose. Identical to the per-entity smoothing seed for the same pose + mode.
+        static void AddPhysicalBodyComponentsFromTemplate(
+            ref EntityCommandBuffer ecb,
+            in CachedBodyTemplate t,
+            in PendingInit p,
+            PhysicsBody body
+        )
+        {
+            ecb.AddComponent(p.entity, new PhysicsBody2D { body = body });
+            ecb.AddComponent(p.entity, new PhysicsBody2DCleanup { body = body });
+
+            if (t.interpolation != PhysicsBody2DInterpolation.None)
+            {
+                sincos(p.rotationRadians, out var s0, out var c0);
+                var cosSin0 = float2(c0, s0);
+                ecb.AddComponent(
+                    p.entity,
+                    new PhysicsBody2DSmoothing
+                    {
+                        prevPos = p.position,
+                        prevCosSin = cosSin0,
+                        curPos = p.position,
+                        curCosSin = cosSin0,
+                        linearVel = Unity.Mathematics.float2.zero,
+                        angularVelRad = 0f,
+                        mode = (byte)t.interpolation,
+                        hasPrev = 0,
+                    }
+                );
+            }
         }
 
         // Create the one PhysicsWorld this ECS World owns, and publish its handle as the singleton.
@@ -82,6 +493,99 @@ namespace Zori.Entities.Physics2D
         // both end centers, Edge by translating each chain vertex. Managed Unity.U2D.Physics calls, main
         // thread — not Burst.
         static void CreateShapeForBody(PhysicsBody body, in PhysicsShape2D sh)
+        {
+            var shapeDef = BuildShapeDef(in sh);
+
+            var offset = (Vector2)sh.offset;
+
+            switch (sh.kind)
+            {
+                case PhysicsShape2DKind.Circle:
+                    body.CreateShape(BuildCircleGeometry(in sh), shapeDef);
+                    break;
+
+                case PhysicsShape2DKind.Box:
+                    body.CreateShape(BuildBoxGeometry(in sh), shapeDef);
+                    break;
+
+                case PhysicsShape2DKind.Capsule:
+                    body.CreateShape(BuildCapsuleGeometry(in sh), shapeDef);
+                    break;
+
+                case PhysicsShape2DKind.Polygon:
+                {
+                    ref var blob = ref sh.vertices.Value.points;
+                    var span = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
+                    for (var i = 0; i < blob.Length; i++)
+                        span[i] = (Vector2)blob[i];
+                    if (sh.polygonDecompose)
+                    {
+                        // A closed (possibly concave, possibly over-MaxPolygonVertices) outline — a composite
+                        // Polygons path or a concave/large custom polygon. PolygonGeometry.CreatePolygons
+                        // decomposes it into convex fragments (each within MaxPolygonVertices) and validates
+                        // them; the fragments are attached in one CreateShapeBatch call. The returned array
+                        // must be disposed. An empty result (degenerate outline) attaches nothing.
+                        var fragments = PolygonGeometry.CreatePolygons(
+                            vertices: span.AsReadOnlySpan(),
+                            transform: new PhysicsTransform(offset),
+                            allocator: Allocator.Temp
+                        );
+                        if (fragments.Length > 0)
+                            body.CreateShapeBatch(
+                                fragments.AsReadOnlySpan(),
+                                shapeDef,
+                                Allocator.Temp
+                            );
+                        if (fragments.IsCreated)
+                            fragments.Dispose();
+                    }
+                    else
+                    {
+                        body.CreateShape(BuildPolygonGeometry(in sh, span), shapeDef);
+                    }
+                    span.Dispose();
+                    break;
+                }
+
+                case PhysicsShape2DKind.Edge:
+                {
+                    ref var blob = ref sh.vertices.Value.points;
+                    var verts = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
+                    for (var i = 0; i < blob.Length; i++)
+                        verts[i] = (Vector2)(blob[i] + sh.offset);
+                    // A chain carries its OWN definition (no PhysicsShapeDefinition overload): its
+                    // surfaceMaterial, contactFilter, triggerEvents, and isLoop ride the chain def, not the
+                    // shape def. Propagate the baked surface/filter/trigger so a composite-Outlines (or edge)
+                    // surface has the right friction/bounciness/layer the same way a solid shape does. A chain
+                    // is non-solid, so it carries no density and no contactEvents flag (contacts on a chain are
+                    // implicit); the surface material + filter + trigger are the propagatable knobs.
+                    var chainDef = PhysicsChainDefinition.defaultDefinition;
+                    chainDef.isLoop = sh.edgeIsLoop;
+                    var chainSurface = chainDef.surfaceMaterial;
+                    chainSurface.friction = sh.friction;
+                    chainSurface.bounciness = sh.bounciness;
+                    chainSurface.frictionMixing = MapMixing(sh.frictionMixing);
+                    chainSurface.bouncinessMixing = MapMixing(sh.bouncinessMixing);
+                    chainDef.surfaceMaterial = chainSurface;
+                    if (sh.categoryBits != 0ul)
+                    {
+                        var chainFilter = PhysicsShape.ContactFilter.defaultFilter;
+                        chainFilter.categories = new PhysicsMask { bitMask = sh.categoryBits };
+                        chainFilter.contacts = new PhysicsMask { bitMask = sh.contactBits };
+                        chainDef.contactFilter = chainFilter;
+                    }
+                    chainDef.triggerEvents = true;
+                    body.CreateChain(new ChainGeometry(verts), chainDef);
+                    verts.Dispose();
+                    break;
+                }
+            }
+        }
+
+        // Build the shared PhysicsShapeDefinition (surface material, density, contact filter, trigger + event
+        // flags) for a baked shape. Factored out of CreateShapeForBody so the per-entity path and the cached
+        // template build the identical definition — the template caches this value and replays it.
+        static PhysicsShapeDefinition BuildShapeDef(in PhysicsShape2D sh)
         {
             var shapeDef = PhysicsShapeDefinition.defaultDefinition;
 
@@ -130,122 +634,47 @@ namespace Zori.Entities.Physics2D
             shapeDef.triggerEvents = true;
             shapeDef.startStaticContacts = true;
 
-            var offset = (Vector2)sh.offset;
-
-            switch (sh.kind)
-            {
-                case PhysicsShape2DKind.Circle:
-                    body.CreateShape(
-                        new CircleGeometry { radius = sh.radius, center = offset },
-                        shapeDef
-                    );
-                    break;
-
-                case PhysicsShape2DKind.Box:
-                    // The box's free z-rotation (radians) rides the creation PhysicsTransform alongside the
-                    // folded offset. A 0 angle is PhysicsRotate.FromRadians(0) = identity, the prior offset-only
-                    // transform, so an un-rotated box is unchanged.
-                    body.CreateShape(
-                        PolygonGeometry.CreateBox(
-                            size: (Vector2)sh.size,
-                            radius: sh.radius,
-                            transform: new PhysicsTransform(
-                                offset,
-                                PhysicsRotate.FromRadians(sh.boxAngleRadians)
-                            ),
-                            inscribe: false
-                        ),
-                        shapeDef
-                    );
-                    break;
-
-                case PhysicsShape2DKind.Capsule:
-                    body.CreateShape(
-                        CapsuleGeometry.Create(
-                            center1: (Vector2)(sh.capsuleCenter1 + sh.offset),
-                            center2: (Vector2)(sh.capsuleCenter2 + sh.offset),
-                            radius: sh.radius
-                        ),
-                        shapeDef
-                    );
-                    break;
-
-                case PhysicsShape2DKind.Polygon:
-                {
-                    ref var blob = ref sh.vertices.Value.points;
-                    var span = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
-                    for (var i = 0; i < blob.Length; i++)
-                        span[i] = (Vector2)blob[i];
-                    if (sh.polygonDecompose)
-                    {
-                        // A closed (possibly concave, possibly over-MaxPolygonVertices) outline — a composite
-                        // Polygons path or a concave/large custom polygon. PolygonGeometry.CreatePolygons
-                        // decomposes it into convex fragments (each within MaxPolygonVertices) and validates
-                        // them; the fragments are attached in one CreateShapeBatch call. The returned array
-                        // must be disposed. An empty result (degenerate outline) attaches nothing.
-                        var fragments = PolygonGeometry.CreatePolygons(
-                            vertices: span.AsReadOnlySpan(),
-                            transform: new PhysicsTransform(offset),
-                            allocator: Allocator.Temp
-                        );
-                        if (fragments.Length > 0)
-                            body.CreateShapeBatch(
-                                fragments.AsReadOnlySpan(),
-                                shapeDef,
-                                Allocator.Temp
-                            );
-                        if (fragments.IsCreated)
-                            fragments.Dispose();
-                    }
-                    else
-                    {
-                        body.CreateShape(
-                            PolygonGeometry.Create(
-                                vertices: span.AsReadOnlySpan(),
-                                radius: sh.radius,
-                                transform: new PhysicsTransform(offset)
-                            ),
-                            shapeDef
-                        );
-                    }
-                    span.Dispose();
-                    break;
-                }
-
-                case PhysicsShape2DKind.Edge:
-                {
-                    ref var blob = ref sh.vertices.Value.points;
-                    var verts = new NativeArray<Vector2>(blob.Length, Allocator.Temp);
-                    for (var i = 0; i < blob.Length; i++)
-                        verts[i] = (Vector2)(blob[i] + sh.offset);
-                    // A chain carries its OWN definition (no PhysicsShapeDefinition overload): its
-                    // surfaceMaterial, contactFilter, triggerEvents, and isLoop ride the chain def, not the
-                    // shape def. Propagate the baked surface/filter/trigger so a composite-Outlines (or edge)
-                    // surface has the right friction/bounciness/layer the same way a solid shape does. A chain
-                    // is non-solid, so it carries no density and no contactEvents flag (contacts on a chain are
-                    // implicit); the surface material + filter + trigger are the propagatable knobs.
-                    var chainDef = PhysicsChainDefinition.defaultDefinition;
-                    chainDef.isLoop = sh.edgeIsLoop;
-                    var chainSurface = chainDef.surfaceMaterial;
-                    chainSurface.friction = sh.friction;
-                    chainSurface.bounciness = sh.bounciness;
-                    chainSurface.frictionMixing = MapMixing(sh.frictionMixing);
-                    chainSurface.bouncinessMixing = MapMixing(sh.bouncinessMixing);
-                    chainDef.surfaceMaterial = chainSurface;
-                    if (sh.categoryBits != 0ul)
-                    {
-                        var chainFilter = PhysicsShape.ContactFilter.defaultFilter;
-                        chainFilter.categories = new PhysicsMask { bitMask = sh.categoryBits };
-                        chainFilter.contacts = new PhysicsMask { bitMask = sh.contactBits };
-                        chainDef.contactFilter = chainFilter;
-                    }
-                    chainDef.triggerEvents = true;
-                    body.CreateChain(new ChainGeometry(verts), chainDef);
-                    verts.Dispose();
-                    break;
-                }
-            }
+            return shapeDef;
         }
+
+        // The folded-offset circle geometry — Collider2D.offset rides CircleGeometry.center (no CreateShape
+        // overload takes an offset transform). Pure function of the shape, so it is also the cached value.
+        static CircleGeometry BuildCircleGeometry(in PhysicsShape2D sh) =>
+            new CircleGeometry { radius = sh.radius, center = (Vector2)sh.offset };
+
+        // The box-as-polygon geometry. The box's free z-rotation (radians) rides the creation PhysicsTransform
+        // alongside the folded offset. A 0 angle is PhysicsRotate.FromRadians(0) = identity, the prior offset-only
+        // transform, so an un-rotated box is unchanged. Pure function of the shape, so it is the cached value.
+        static PolygonGeometry BuildBoxGeometry(in PhysicsShape2D sh) =>
+            PolygonGeometry.CreateBox(
+                size: (Vector2)sh.size,
+                radius: sh.radius,
+                transform: new PhysicsTransform(
+                    (Vector2)sh.offset,
+                    PhysicsRotate.FromRadians(sh.boxAngleRadians)
+                ),
+                inscribe: false
+            );
+
+        // The capsule geometry — the offset is folded into both end centers (no offset transform overload). Pure
+        // function of the shape, so it is the cached value.
+        static CapsuleGeometry BuildCapsuleGeometry(in PhysicsShape2D sh) =>
+            CapsuleGeometry.Create(
+                center1: (Vector2)(sh.capsuleCenter1 + sh.offset),
+                center2: (Vector2)(sh.capsuleCenter2 + sh.offset),
+                radius: sh.radius
+            );
+
+        // The simple (convex, non-decompose) polygon geometry from the baked vertex blob, with the offset folded
+        // via a PhysicsTransform. The PolygonGeometry has a fixed maximum vertex count, so the returned value is
+        // self-contained (no NativeArray) and is the cached value. The caller owns the span; CreateShape copies the
+        // vertices into the geometry's inline storage.
+        static PolygonGeometry BuildPolygonGeometry(in PhysicsShape2D sh, NativeArray<Vector2> span) =>
+            PolygonGeometry.Create(
+                vertices: span.AsReadOnlySpan(),
+                radius: sh.radius,
+                transform: new PhysicsTransform((Vector2)sh.offset)
+            );
 
         // Map the package-local PhysicsSurfaceMixing2D onto the engine SurfaceMaterial.MixingMode (XML
         // T:…PhysicsShape.SurfaceMaterial.MixingMode). The two share the same five members in the same order, so
@@ -284,11 +713,20 @@ namespace Zori.Entities.Physics2D
         //   - useAutoMass false, custom mass (or a body with no auto mass, e.g. a chain): apply the explicit
         //     Rigidbody2D.mass via massConfiguration, scaling the rotational inertia by mass/oldMass so spin
         //     stays consistent. Scenes that set a custom mass carry a band wide enough for the perturbed slope.
-        // Non-dynamic bodies (Static/Kinematic) ignore mass entirely.
-        static void ApplyMass(PhysicsBody body, in PhysicsBody2DDefinition d)
+        // Non-dynamic bodies (Static/Kinematic) ignore mass entirely. Implemented as a pure RESOLVE (read the
+        // body's shape-derived mass, decide whether and what to write) followed by an APPLY, so the cached-template
+        // path can capture the resolution from the donor body and replay the identical write on every later body of
+        // the form — making a template-path body bit-identical to a per-entity-path one.
+        static void ApplyMass(PhysicsBody body, in PhysicsBody2DDefinition d) =>
+            ApplyResolvedMass(body, ResolveMass(body, in d));
+
+        // Decide the mass write for a body whose shapes already exist. Pure function of the form (the body
+        // definition) and the body's shape-derived auto mass — which is identical for every body of one form — so
+        // the returned MassResolution is the same for all bodies of the form and can be cached from the donor.
+        static MassResolution ResolveMass(PhysicsBody body, in PhysicsBody2DDefinition d)
         {
             if (d.bodyType != PhysicsBody.BodyType.Dynamic)
-                return;
+                return default; // write = 0; non-dynamic bodies never touch massConfiguration.
 
             if (d.useAutoMass)
             {
@@ -298,20 +736,16 @@ namespace Zori.Entities.Physics2D
                     massCfg.mass = 1f;
                     if (massCfg.rotationalInertia <= 0f)
                         massCfg.rotationalInertia = 1f;
-                    body.massConfiguration = massCfg;
+                    return WithOverride(body, massCfg, in d, forceWrite: true);
                 }
-                ApplyMassDistributionOverride(body, d);
-                return;
+                return WithOverride(body, body.massConfiguration, in d, forceWrite: false);
             }
 
             // Explicit mass requested. If the author left the default mass and the shape already produced a
             // positive auto mass, do not perturb the solver — the default-mass body falls correctly as is.
             var isDefaultMass = Mathf.Abs(d.mass - DefaultRigidbody2DMass) < 1e-6f;
             if (isDefaultMass && body.mass > 0f)
-            {
-                ApplyMassDistributionOverride(body, d);
-                return;
-            }
+                return WithOverride(body, body.massConfiguration, in d, forceWrite: false);
 
             var cfg = body.massConfiguration;
             var oldMass = cfg.mass;
@@ -323,27 +757,38 @@ namespace Zori.Entities.Physics2D
             else if (cfg.rotationalInertia <= 0f)
                 cfg.rotationalInertia = newMass;
             cfg.mass = newMass;
-            body.massConfiguration = cfg;
-
-            ApplyMassDistributionOverride(body, d);
+            return WithOverride(body, cfg, in d, forceWrite: true);
         }
 
-        // Apply the custom mass-distribution override (PhysicsBody2DAuthoring.OverrideMassDistribution): set the
-        // body's center of mass and, when an explicit inertia was authored (> 0), its rotational inertia, on top
-        // of whatever mass the resolution above produced (the override is orthogonal to the mass magnitude — a
-        // body can override COM while keeping its auto mass). A no-op when the override is off, so a body that
-        // does not opt in never enters this massConfiguration write and keeps the solver convention the gates are
-        // calibrated to (touching massConfiguration shifts the v3 free-fall integration — see ApplyMass remarks).
-        static void ApplyMassDistributionOverride(PhysicsBody body, in PhysicsBody2DDefinition d)
+        // Fold the custom mass-distribution override (PhysicsBody2DAuthoring.OverrideMassDistribution) into a mass
+        // resolution: set the body's center of mass and, when an explicit inertia was authored (> 0), its rotational
+        // inertia, on top of whatever mass the resolution above produced (the override is orthogonal to the mass
+        // magnitude — a body can override COM while keeping its auto mass). When the override is off the resolution
+        // is the input cfg with the input write flag, so a body that does not opt in keeps the solver convention the
+        // gates are calibrated to (touching massConfiguration shifts the v3 free-fall integration — see ApplyMass
+        // remarks). When on, the write flag becomes true because the override always mutates massConfiguration.
+        static MassResolution WithOverride(
+            PhysicsBody body,
+            PhysicsBody.MassConfiguration cfg,
+            in PhysicsBody2DDefinition d,
+            bool forceWrite
+        )
         {
             if (!d.overrideMassDistribution)
-                return;
+                return new MassResolution { write = (byte)(forceWrite ? 1 : 0), config = cfg };
 
-            var cfg = body.massConfiguration;
             cfg.center = (Vector2)d.centerOfMass;
             if (d.rotationalInertia > 0f)
                 cfg.rotationalInertia = d.rotationalInertia;
-            body.massConfiguration = cfg;
+            return new MassResolution { write = 1, config = cfg };
+        }
+
+        // Apply a resolved mass to a body: write the massConfiguration only when the resolution decided to. A
+        // no-op resolution leaves the body's auto-computed mass untouched.
+        static void ApplyResolvedMass(PhysicsBody body, in MassResolution res)
+        {
+            if (res.write != 0)
+                body.massConfiguration = res.config;
         }
 
         public void OnUpdate(ref SystemState state)
@@ -393,14 +838,37 @@ namespace Zori.Entities.Physics2D
             if (!world.isValid)
                 return;
 
-            // Per-entity CreateBody + CreateShape for each baked entity lacking a live PhysicsBody2D
-            // handle. Runs once per entity at spawn (off the per-frame hot path), so the bulk
-            // CreateBodyBatch surface buys nothing here — the entities arrive heterogeneously through a
-            // query, each with its own definition/geometry, with no shared definition to batch over. The
-            // PhysicsBody2D association is added through an EntityCommandBuffer (structural change deferred
-            // out of the query) and played back immediately, so the new bodies are live for the next step.
+            // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle. Three paths,
+            // chosen per entity by the cached-template optimisation (PhysicsWorld2DConfig.cacheIdenticalBodies):
+            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
+            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
+            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
+            //     definition/geometry/mass instead of re-constructing them;
+            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
+            //     CreateBodyBatch instead of K CreateBody calls (the inner routine factored from the removed batch
+            //     creation system). A 1/frame cross-frame spray gets K = 1 and the plain template path.
+            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
+            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
+            // so the new bodies are live for the next step. Whatever path created a body, the RESULT is identical —
+            // a cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
+            // body), which is what keeps the optimisation transparent.
             var createdAny = false;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            var cacheEnabled =
+                config.HasValue ? config.Value.cacheIdenticalBodies : PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
+            var threshold = max(
+                1,
+                config.HasValue ? config.Value.identicalBodyThreshold : PhysicsWorld2DConfig.Default.identicalBodyThreshold
+            );
+            if (cacheEnabled && !m_Templates.IsCreated)
+                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(16, Allocator.Persistent);
+
+            // Same-frame buckets: per form-hash, the entities of an isBuilt form that arrived this frame and are
+            // deferred for the in-frame CreateBodyBatch collapse. Allocated lazily only when the optimisation admits
+            // at least one such entity.
+            var collapse = default(NativeParallelMultiHashMap<uint4, PendingInit>);
+
             foreach (
                 var (defRO, shapeRO, entity) in SystemAPI
                     .Query<RefRO<PhysicsBody2DDefinition>, RefRO<PhysicsShape2D>>()
@@ -412,85 +880,82 @@ namespace Zori.Entities.Physics2D
                 var d = defRO.ValueRO;
                 var sh = shapeRO.ValueRO;
 
-                var bodyDef = PhysicsBodyDefinition.defaultDefinition;
-                bodyDef.type = d.bodyType;
-                bodyDef.gravityScale = d.gravityScale;
-                bodyDef.linearDamping = d.linearDamping;
-                bodyDef.angularDamping = d.angularDamping;
-                bodyDef.position = (Vector2)d.initialPosition;
-                bodyDef.rotation = PhysicsRotate.FromRadians(d.initialRotationRadians);
-                // Initial velocity seed from the optional PhysicsBody2DInitialVelocity (absent → zero). The
-                // units match 1:1: XML P:…PhysicsBodyDefinition.linearVelocity is m/s and .angularVelocity is
-                // deg/sec, the same units InitialVelocity2DAuthoring carries.
-                if (SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity))
+                var hasVelocity = SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity);
+                var velocity = hasVelocity
+                    ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity)
+                    : default;
+                var hasExtraShapes = SystemAPI.HasBuffer<PhysicsShape2DElement>(entity);
+                var extra = hasExtraShapes
+                    ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity)
+                    : default;
+
+                // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
+                // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
+                // Edge's chain geometry and a decompose polygon are NOT cacheable, multi-shape is excluded). Anything
+                // failing this falls to the unchanged per-entity path, exactly as before this optimisation existed.
+                var geometry = default(GeometryUnion);
+                var eligible =
+                    cacheEnabled
+                    && !hasExtraShapes
+                    && SystemAPI.HasComponent<PhysicsBody2DFormHash>(entity)
+                    && TryGetCacheableGeometry(in sh, out geometry);
+
+                if (!eligible)
                 {
-                    var vel = SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity);
-                    bodyDef.linearVelocity = (Vector2)vel.linearVelocity;
-                    bodyDef.angularVelocity = vel.angularVelocity;
-                }
-                // DOF constraint locks.
-                bodyDef.constraints = d.constraints;
-                // Continuous collision detection (Rigidbody2D.collisionDetectionMode = Continuous). The "fast"
-                // body flag enables CCD against Dynamic/Kinematic bodies so a fast body does not tunnel them in
-                // one step; Dynamic-vs-Static CCD is the world-level continuousAllowed (on by default), so a
-                // Discrete body still does not tunnel a static wall, but a Continuous body additionally does not
-                // tunnel a fast dynamic body. Discrete bakes false (the Box2D default).
-                bodyDef.fastCollisionsAllowed = d.fastCollisions;
-                // Locked DOTS posture: never write a managed Transform; poses move via GetBatchTransform.
-                bodyDef.transformWriteMode = PhysicsBody.TransformWriteMode.Off;
-
-                var body = world.CreateBody(bodyDef);
-                // Pack the owning entity into the body's userData so a spatial query can map a hit shape back to
-                // its entity (shape.body.userData.int64Value → Entity). Set once per body; the body's lone shape
-                // resolves through .body.
-                body.userData = PhysicsQueries2D.PackEntity(entity);
-
-                CreateShapeForBody(body, sh);
-
-                // Multi-shape bodies (CompositeCollider2D merged paths, CustomCollider2D shape groups) carry their
-                // extra shapes in an optional DynamicBuffer<PhysicsShape2DElement> alongside the primary
-                // PhysicsShape2D. A normal one-shape body has no buffer, so this is a no-op for it (the
-                // single-shape archetype is unchanged). Each extra shape attaches to the SAME body via the same
-                // CreateShapeForBody path, so it gets identical surface/filter/trigger/offset handling. Box2D
-                // accumulates the auto-mass from all attached shapes, so ApplyMass (run once below, after every
-                // shape exists) derives the correct multi-shape mass.
-                if (SystemAPI.HasBuffer<PhysicsShape2DElement>(entity))
-                {
-                    var extra = SystemAPI.GetBuffer<PhysicsShape2DElement>(entity);
-                    for (var i = 0; i < extra.Length; i++)
-                        CreateShapeForBody(body, extra[i].shape);
+                    var bodyA = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
+                    AddPhysicalBodyComponents(ref ecb, entity, in d, bodyA);
+                    continue;
                 }
 
-                ApplyMass(body, d);
+                var hash = SystemAPI.GetComponent<PhysicsBody2DFormHash>(entity).value;
+                m_Templates.TryGetValue(hash, out var tmpl);
+                tmpl.seenCount++;
 
-                ecb.AddComponent(entity, new PhysicsBody2D { body = body });
-                // The retained handle witness that survives the entity's destruction, so
-                // PhysicsBody2DCleanupSystem can free this body when the entity is despawned.
-                ecb.AddComponent(entity, new PhysicsBody2DCleanup { body = body });
-
-                // Render-rate smoothing state for an interpolated/extrapolated body (Rigidbody2D.interpolation).
-                // Added only when the mode is not None — a non-interpolated body never carries it and keeps its
-                // fixed-rate LocalToWorld. Seeded with prev == cur == the authored pose so the first render-rate
-                // pass before any step is a no-op (hasPrev = 0 until the write-back captures a second pose).
-                if (d.interpolation != PhysicsBody2DInterpolation.None)
+                if (tmpl.isBuilt != 0)
                 {
-                    sincos(d.initialRotationRadians, out var s0, out var c0);
-                    var cosSin0 = float2(c0, s0);
-                    ecb.AddComponent(
-                        entity,
-                        new PhysicsBody2DSmoothing
+                    // The form's template already exists. Defer this entity into the same-frame bucket; the K-member
+                    // runs are created after the scan (one CreateBodyBatch for K >= 2, the plain template path for
+                    // K == 1). The template stays in the map; only the counter advanced.
+                    m_Templates[hash] = tmpl;
+                    if (!collapse.IsCreated)
+                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(64, Allocator.Temp);
+                    collapse.Add(
+                        hash,
+                        new PendingInit
                         {
-                            prevPos = d.initialPosition,
-                            prevCosSin = cosSin0,
-                            curPos = d.initialPosition,
-                            curCosSin = cosSin0,
-                            linearVel = Unity.Mathematics.float2.zero,
-                            angularVelRad = 0f,
-                            mode = (byte)d.interpolation,
-                            hasPrev = 0,
+                            entity = entity,
+                            position = d.initialPosition,
+                            rotationRadians = d.initialRotationRadians,
+                            hasVelocity = (byte)(hasVelocity ? 1 : 0),
+                            velocity = velocity,
                         }
                     );
+                    continue;
                 }
+
+                // Below or crossing the threshold. Create this body through the unchanged per-entity path (its
+                // result is the donor for the template), and on the crossing build the template from it.
+                var body = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
+                AddPhysicalBodyComponents(ref ecb, entity, in d, body);
+
+                if (tmpl.seenCount >= threshold)
+                {
+                    tmpl.bodyDef = BuildTemplateBodyDef(in d); // pose + velocity zeroed; overwritten per instance
+                    tmpl.shapeDef = BuildShapeDef(in sh);
+                    tmpl.geometry = geometry;
+                    tmpl.mass = ResolveMass(body, in d); // the donor's resolved write — bit-identical for the form
+                    tmpl.interpolation = d.interpolation; // the form's smoothing mode (part of the form hash)
+                    tmpl.isBuilt = 1;
+                }
+                m_Templates[hash] = tmpl;
+            }
+
+            // Drain the same-frame buckets: one CreateBodyBatch per form with K >= 2 members, the plain template
+            // path for a lone member. The bodies' ECS components are added through the same ECB.
+            if (collapse.IsCreated)
+            {
+                DrainSameFrameCollapse(world, ref ecb, collapse);
+                collapse.Dispose();
             }
 
             ecb.Playback(state.EntityManager);

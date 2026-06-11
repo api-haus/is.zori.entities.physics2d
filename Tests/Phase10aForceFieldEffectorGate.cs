@@ -85,7 +85,6 @@ namespace Zori.Entities.Physics2D.Tests
                 _group.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
                 _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsWorld2DSystem>());
                 _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DBatchCreationSystem>());
                 _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
                 _group.SortSystems();
             }

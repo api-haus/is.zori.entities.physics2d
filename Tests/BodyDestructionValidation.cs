@@ -18,9 +18,9 @@ namespace Zori.Entities.Physics2D.Tests
     /// </summary>
     /// <remarks>
     /// Runs in a DEDICATED disposable <see cref="World"/> (not the default injection world), holding the
-    /// package's four FixedStep systems — <see cref="PhysicsWorld2DSystem"/>,
-    /// <see cref="PhysicsBody2DCleanupSystem"/>, <see cref="PhysicsBody2DBatchCreationSystem"/>,
-    /// <see cref="PhysicsBody2DWriteBackSystem"/> — in a <see cref="FixedStepSimulationSystemGroup"/> driven
+    /// package's three FixedStep systems — <see cref="PhysicsWorld2DSystem"/>,
+    /// <see cref="PhysicsBody2DCleanupSystem"/>, <see cref="PhysicsBody2DWriteBackSystem"/> — in a
+    /// <see cref="FixedStepSimulationSystemGroup"/> driven
     /// one step per <c>group.Update()</c>. The live body count is read directly from the Box2D world via
     /// <c>PhysicsWorld.GetBodies</c>, the authoritative witness of what the simulation actually holds (not an
     /// ECS-side proxy).
@@ -37,7 +37,6 @@ namespace Zori.Entities.Physics2D.Tests
 
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DBatchCreationSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
             fixedGroup.SortSystems();
 

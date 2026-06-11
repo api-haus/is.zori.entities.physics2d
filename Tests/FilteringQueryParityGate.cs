@@ -117,7 +117,6 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DBatchCreationSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
             fixedGroup.SortSystems();
             group = fixedGroup;
@@ -414,24 +413,22 @@ namespace Zori.Entities.Physics2D.Tests
         //     a hit on a BATCH-created body resolves the correct entity.
         // =====================================================================================================
 
-        // A query scene: four static circle targets at distinct positions on distinct layers, authored in
-        // BOTH backends. Two of the package targets come through the BULK BATCH path (the batch-body pin),
-        // two through direct authoring. The GameObject side authors all four as plain colliders. Bodies are
-        // matched across backends by authored position (single-authoring identity key).
+        // A query scene: four static circle targets at distinct positions on distinct layers, authored in BOTH
+        // backends. The package side direct-authors all four; the GameObject side authors all four as plain
+        // colliders. Bodies are matched across backends by authored position (single-authoring identity key).
         struct QueryTarget
         {
             public float2 pos;
             public float radius;
             public int layer;
-            public bool viaBatch; // package side: created through PhysicsBody2DBatchRequest
         }
 
         static readonly QueryTarget[] Targets =
         {
-            new() { pos = new float2(0f, 5f), radius = 1f, layer = LA, viaBatch = true },
-            new() { pos = new float2(0f, 9f), radius = 1f, layer = LB, viaBatch = true },
-            new() { pos = new float2(4f, 5f), radius = 1f, layer = LA, viaBatch = false },
-            new() { pos = new float2(-4f, 5f), radius = 1f, layer = LB, viaBatch = false },
+            new() { pos = new float2(0f, 5f), radius = 1f, layer = LA },
+            new() { pos = new float2(0f, 9f), radius = 1f, layer = LB },
+            new() { pos = new float2(4f, 5f), radius = 1f, layer = LA },
+            new() { pos = new float2(-4f, 5f), radius = 1f, layer = LB },
         };
 
         // Build the package query scene. Returns the world + a position→entity map for hit-set identity.
@@ -441,42 +438,15 @@ namespace Zori.Entities.Physics2D.Tests
             var em = world.EntityManager;
             entityPos = new Dictionary<Entity, float2>();
 
-            // Batch targets: one request per batch target so each lands at a known position (spawnMin==
-            // spawnMax pins the scatter to a single point). This exercises the CreateBodyBatch path AND the
-            // per-body userData packing the batch system does.
+            // All four targets are direct-authored static circles on their distinct layers. (Before the batch
+            // request was removed, two of these came through the CreateBodyBatch path to pin that a hit on a
+            // bulk-created body resolves the correct entity; that userData-packing coverage now lives in
+            // DirectAndBatchPathValidation's cached-template/in-frame-collapse spray.) The per-shape userData
+            // packing the query parity asserts here is identical on every creation path.
             foreach (var t in Targets)
-            {
-                if (!t.viaBatch)
-                    continue;
-                BitsForLayer(t.layer, out var cat, out var con);
-                var req = em.CreateEntity();
-                em.AddComponentData(
-                    req,
-                    new PhysicsBody2DBatchRequest
-                    {
-                        count = 1,
-                        bodyType = PhysicsBody.BodyType.Static,
-                        gravityScale = 0f,
-                        radius = t.radius,
-                        density = 1f,
-                        spawnMin = t.pos,
-                        spawnMax = t.pos,
-                        seed = 0xABCDu,
-                        categoryBits = cat,
-                        contactBits = con,
-                    }
-                );
-            }
-
-            // Direct targets.
-            foreach (var t in Targets)
-            {
-                if (t.viaBatch)
-                    continue;
                 SpawnPackageCircle(em, t.pos, t.radius, t.layer, dynamic: false);
-            }
 
-            group.Update(); // creates per-entity bodies AND consumes batch requests (batch system runs after world)
+            group.Update(); // creates the per-entity bodies, packing each body's userData with its owning entity
 
             // Map every live body entity to its authored position (read LocalToWorld, which the batch path
             // seeds at the scatter pose and the direct path seeds at the authored pose).
