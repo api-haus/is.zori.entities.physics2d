@@ -490,6 +490,21 @@ namespace Zori.Entities.Physics2D
             return world;
         }
 
+        // The contacts row to bake into a categorized shape's Box2D ContactFilter so its query-visibility does
+        // not depend on its collision-matrix row. Box2D's query-vs-shape match is bidirectional and ANDs
+        // (shape.categories & query.hitCategories) with (shape.contacts & query.categories); the query surface
+        // sets query.categories = All, so a shape with contacts = 0 fails the second clause and is invisible to
+        // EVERY query — even the documented "mask 0 = hit everything" path. A shape on a dedicated layer whose 2D
+        // collision-matrix row is fully unchecked (GetLayerCollisionMask(layer) = 0, e.g. a non-blocking rope
+        // anchor / detection marker) bakes contactBits = 0 and so was unqueryable. Substituting the shape's own
+        // categoryBits when the authored row is empty keeps it colliding with nothing on every OTHER category
+        // (the real collision surfaces) while restoring (contacts & All) != 0 so a category query finds it. A
+        // non-empty authored row passes through unchanged, so a shape that already collides is untouched.
+        static ulong QueryVisibleContacts(in PhysicsShape2D sh)
+        {
+            return sh.contactBits != 0ul ? sh.contactBits : sh.categoryBits;
+        }
+
         // Create the Box2D shape for one baked geometry on a freshly-created body. The Collider2D.offset is
         // folded into the geometry here because none of the CreateShape overloads takes an offset transform:
         // Box/Polygon fold it via a PhysicsTransform, Circle via the geometry center, Capsule by translating
@@ -574,7 +589,7 @@ namespace Zori.Entities.Physics2D
                     {
                         var chainFilter = PhysicsShape.ContactFilter.defaultFilter;
                         chainFilter.categories = new PhysicsMask { bitMask = sh.categoryBits };
-                        chainFilter.contacts = new PhysicsMask { bitMask = sh.contactBits };
+                        chainFilter.contacts = new PhysicsMask { bitMask = QueryVisibleContacts(sh) };
                         chainDef.contactFilter = chainFilter;
                     }
                     chainDef.triggerEvents = true;
@@ -618,7 +633,7 @@ namespace Zori.Entities.Physics2D
             {
                 var filter = PhysicsShape.ContactFilter.defaultFilter;
                 filter.categories = new PhysicsMask { bitMask = sh.categoryBits };
-                filter.contacts = new PhysicsMask { bitMask = sh.contactBits };
+                filter.contacts = new PhysicsMask { bitMask = QueryVisibleContacts(sh) };
                 shapeDef.contactFilter = filter;
             }
 

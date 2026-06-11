@@ -75,6 +75,14 @@ namespace Zori.Entities.Physics2D
         // ---- query filter ----------------------------------------------------------------------------------
 
         // Build a QueryFilter honoring a layer mask. A 0 or all-ones mask means "hit everything".
+        //
+        // The query matches a shape by WHAT THE SHAPE IS (its categories), not by what it collides with. Box2D's
+        // query-vs-shape match is bidirectional: (shape.categories & query.hitCategories) != 0 AND
+        // (shape.contacts & query.categories) != 0. We keep query.categories = All (inherited from Everything) so
+        // the second clause reduces to shape.contacts != 0, and put the caller's layer mask in hitCategories so the
+        // first clause is the category test. The mask therefore selects shapes by category; the shape's own
+        // collision-matrix row is decoupled at shape creation, where a categorized "collides with nothing" shape is
+        // baked with a non-zero contacts so it stays query-visible (PhysicsWorld2DSystem.QueryVisibleContacts).
         static PhysicsQuery.QueryFilter Filter(ulong hitLayerMask)
         {
             var filter = PhysicsQuery.QueryFilter.Everything;
