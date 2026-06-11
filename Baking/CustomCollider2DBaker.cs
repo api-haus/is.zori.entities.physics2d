@@ -54,6 +54,9 @@ namespace Zori.Entities.Physics2D.Baking
             var scale = Collider2DBaking.ReadScale(authoring.transform);
             var flip = Collider2DBaking.FlipsWinding(scale);
             var radiusScale = max(abs(scale.x), abs(scale.y));
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,

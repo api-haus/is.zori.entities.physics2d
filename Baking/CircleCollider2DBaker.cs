@@ -27,6 +27,9 @@ namespace Zori.Entities.Physics2D.Baking
             // A circle cannot become an ellipse, so the radius takes the LARGER absolute axis scale
             // (CircleCollider2D's rule); the offset scales signed per-axis.
             var scale = Collider2DBaking.ReadScale(authoring.transform);
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,

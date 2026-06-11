@@ -49,6 +49,9 @@ namespace Zori.Entities.Physics2D.Baking
                 return; // an empty composite (no merged children) bakes no shape
 
             var entity = GetEntity(TransformUsageFlags.Dynamic);
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,

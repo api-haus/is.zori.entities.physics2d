@@ -154,6 +154,27 @@ namespace Zori.Entities.Physics2D.Baking
         }
 
         /// <summary>
+        /// Register the built-in collider's <c>sharedMaterial</c> as a bake dependency, so editing the shared
+        /// <see cref="PhysicsMaterial2D"/> asset re-bakes every collider that reads it — the symmetric partner to
+        /// the custom shape baker's <c>DependsOn(MaterialTemplate)</c>. <see cref="ReadSurface"/> reads the
+        /// material's friction/bounciness/combine but is a <c>static</c> helper with no <c>Baker</c> context, so
+        /// the dependency is registered here by the calling baker, exactly as
+        /// <see cref="AddStaticBodyIfNoRigidbody{TAuthoring}"/> takes the baker to register the
+        /// <c>Rigidbody2D</c>/<c>Transform</c> dependencies. <c>DependsOn(null)</c> is a benign no-op for a
+        /// material-less collider (the same null-tolerant call the custom path makes for a null template), and it
+        /// does NOT change the from-scratch baked surface — only whether a later material edit re-bakes — so the
+        /// dual-surface convergence (which bakes from scratch) is unaffected.
+        /// </summary>
+        public static void DependsOnSharedMaterial<TAuthoring>(
+            Baker<TAuthoring> baker,
+            Collider2D collider
+        )
+            where TAuthoring : Component
+        {
+            baker.DependsOn(collider.sharedMaterial);
+        }
+
+        /// <summary>
         /// Map the built-in <c>UnityEngine.PhysicsMaterialCombine2D</c> friction/bounce combine policy onto the
         /// package-local <see cref="PhysicsSurfaceMixing2D"/> (which mirrors the low-level
         /// <c>PhysicsShape.SurfaceMaterial.MixingMode</c>). Both enums share the same five members in the same
@@ -237,6 +258,9 @@ namespace Zori.Entities.Physics2D.Baking
             // corner-rounding radius, signed on the offset. A Box2D box carries no scale, so this is the only
             // way a scaled BoxCollider2D collides at its rendered size (the manual-QA wide-floor bug).
             var scale = Collider2DBaking.ReadScale(authoring.transform);
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,
@@ -310,6 +334,9 @@ namespace Zori.Entities.Physics2D.Baking
                 c2 = new float2(half, 0f);
             }
 
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,
@@ -380,6 +407,9 @@ namespace Zori.Entities.Physics2D.Baking
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,
@@ -450,6 +480,9 @@ namespace Zori.Entities.Physics2D.Baking
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 
+            // Register the shared material as a bake dependency so editing it re-bakes (symmetric with the
+            // custom shape baker's DependsOn(MaterialTemplate)).
+            Collider2DBaking.DependsOnSharedMaterial(this, authoring);
             Collider2DBaking.ReadSurface(
                 authoring,
                 out var friction,
