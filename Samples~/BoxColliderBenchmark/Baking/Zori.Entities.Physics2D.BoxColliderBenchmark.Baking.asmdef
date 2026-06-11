@@ -1,0 +1,23 @@
+{
+  "name": "Zori.Entities.Physics2D.BoxColliderBenchmark.Baking",
+  "rootNamespace": "Zori.Entities.Physics2D.Samples.Baking",
+  "references": [
+    "Zori.Entities.Physics2D.BoxColliderBenchmark",
+    "Zori.Entities.Physics2D.BoxColliderBenchmark.Authoring",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Mathematics",
+    "Unity.Collections"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -15,10 +15,13 @@ namespace Zori.Entities.Physics2D.Samples
     /// (<see cref="PhysicsShape2DKind.Box"/>) carrying its <see cref="PhysicsBody2DDefinition"/> +
     /// <see cref="PhysicsShape2D"/> + a baked-equivalent <see cref="PhysicsBody2DFormHash"/> + the official
     /// Unity.Entities.Graphics render components (a <c>RenderMeshArray</c> quad + <c>MaterialMeshInfo</c>) — then
-    /// <c>ecb.Instantiate(prefab)</c> a few copies per frame over many frames (the cross-frame spray), scattering
-    /// each instance's pose. The instances are self-describing, so <c>PhysicsWorld2DSystem</c> recognises the
-    /// shared form (via the replicated form hash) and serves them from a cached body template once the form's
-    /// count crosses the threshold — the optimisation this sample measures.
+    /// <c>ecb.Instantiate(prefab)</c> copies over many frames (the cross-frame spray), scattering each instance's
+    /// pose. The pace is the config's three knobs: <c>spawnedPerSecondTarget</c> (the rate, applied against the
+    /// frame's dt with a carried fractional remainder), <c>spawnedPerFrameMax</c> (the per-frame ceiling), and
+    /// <c>spawnedTotalLimit</c> (the stop point, up to ~1M for an on-screen stress test). The instances are
+    /// self-describing, so <c>PhysicsWorld2DSystem</c> recognises the shared form (via the replicated form hash)
+    /// and serves them from a cached body template once the form's count crosses the threshold — the optimisation
+    /// this sample measures.
     /// </summary>
     /// <remarks>
     /// The rendering integration is the whole point of the box-collider sample: the prefab carries NO transform
@@ -50,7 +53,14 @@ namespace Zori.Entities.Physics2D.Samples
         Entity m_Prefab;
         Mesh m_QuadMesh;
         Material m_Material;
-        int m_Remaining;
+        int m_Created;
+        int m_TotalLimit;
+        int m_PerFrameMax;
+        float m_PerSecondTarget;
+
+        // Fractional spawn carried across frames: round(rate * dt) per frame loses sub-1 spawns at a low rate, so
+        // accumulate rate * dt and spawn the integer part, keeping the remainder for the next frame.
+        float m_SpawnCarry;
         Unity.Mathematics.Random m_Rng;
 
         protected override void OnCreate()
@@ -81,22 +91,38 @@ namespace Zori.Entities.Physics2D.Samples
                     ? config.boxSize
                     : BoxColliderBenchmarkConfig.DefaultBoxSize;
                 m_Prefab = BuildRenderPrefab(em, size);
-                m_Remaining =
-                    config.count > 0 ? config.count : BoxColliderBenchmarkConfig.DefaultCount;
+                m_TotalLimit =
+                    config.spawnedTotalLimit > 0
+                        ? config.spawnedTotalLimit
+                        : BoxColliderBenchmarkConfig.DefaultTotalLimit;
+                m_PerFrameMax =
+                    config.spawnedPerFrameMax > 0
+                        ? config.spawnedPerFrameMax
+                        : BoxColliderBenchmarkConfig.DefaultPerFrameMax;
+                m_PerSecondTarget =
+                    config.spawnedPerSecondTarget > 0f
+                        ? config.spawnedPerSecondTarget
+                        : BoxColliderBenchmarkConfig.DefaultPerSecondTarget;
             }
 
-            if (m_Remaining <= 0)
+            if (m_Created >= m_TotalLimit)
             {
                 Enabled = false;
                 return;
             }
 
-            // Spray a few instances this frame, each scattered to a distinct pose across the spawn AABB. The pose
-            // is the only per-instance difference; the body + box shape + form hash + render components ride the
-            // prefab and are replicated by Instantiate.
-            var perFrame =
-                config.perFrame > 0 ? config.perFrame : BoxColliderBenchmarkConfig.DefaultPerFrame;
-            var thisFrame = min(m_Remaining, perFrame);
+            // Pace the spray by the three workload knobs: accumulate the per-second target against this frame's dt
+            // (carrying the fractional remainder so a low rate still spawns exactly over time), take the integer
+            // part, cap it at the per-frame ceiling, and clamp to the remaining total. The pose is the only
+            // per-instance difference; the body + box shape + form hash + render components ride the prefab and are
+            // replicated by Instantiate.
+            m_SpawnCarry += m_PerSecondTarget * SystemAPI.Time.DeltaTime;
+            var requested = (int)m_SpawnCarry;
+            m_SpawnCarry -= requested;
+            var thisFrame = min(min(requested, m_PerFrameMax), m_TotalLimit - m_Created);
+            if (thisFrame <= 0)
+                return;
+
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             for (var i = 0; i < thisFrame; i++)
             {
@@ -117,7 +143,7 @@ namespace Zori.Entities.Physics2D.Samples
             ecb.Playback(em);
             ecb.Dispose();
 
-            m_Remaining -= thisFrame;
+            m_Created += thisFrame;
         }
 
         // Build the one prefab entity: a dynamic box-collider body + the form hash + the Entities.Graphics render

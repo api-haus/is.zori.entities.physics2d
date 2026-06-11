@@ -20,10 +20,25 @@ The version pairs with `com.unity.entities` `6.5.0`. Without it, the sample's as
 
 ## How to run it
 
+The sample ships a ready-to-open demo scene, so the fast path is open-and-Play:
+
 1. Add `com.unity.entities.graphics` to your manifest (above).
-2. Add a `BoxColliderBenchmarkConfig` singleton to a scene — from a bootstrap system, a tiny authoring MonoBehaviour + baker, or a directly-authored entity — to set the workload shape (`count`, `perFrame`, `boxSize`, the spawn AABB). The sample is inert until this singleton exists.
-3. Add a `PhysicsStep2DAuthoring` to the scene (in a SubScene). This is the **control surface** — its `Cache Identical Bodies` (on/off) and `Identical Body Threshold` (N) fields drive the optimisation. This is the package's existing per-world config, not a sample-specific knob.
-4. Press Play. The spray spawns, the quads render via Entities.Graphics off the physics `LocalToWorld`, and the timing instrument logs one line per creation frame to the console.
+2. Open **`Scenes/BoxColliderBenchmarkDemo.unity`** (in the imported sample folder under `Assets/Samples/.../Box Collider Creation Benchmark/`) and press **Play**. The SubScene bakes, the spray spawns a few thousand box-collider quads over a few seconds, each falls under gravity and renders via Entities.Graphics off the physics `LocalToWorld`, the quads pile on a static floor, and the timing instrument logs one line per creation frame to the Console.
+3. **Toggle the optimisation.** Open the demo's SubScene (`Scenes/BoxColliderBenchmarkDemo_Sub.unity`), select the `PhysicsStep2D` GameObject, and change `Cache Identical Bodies` (on/off) or `Identical Body Threshold` (N). These are the **control surface** — the package's existing per-world config (`PhysicsStep2DAuthoring`), not a sample-specific knob. Re-bake the SubScene (or re-enter Play) and re-read the timing log. The spray + workload are identical across the toggle, so only the body-creation path differs.
+
+The demo scene's contents (so you can build your own): a `BoxColliderBenchmark` GameObject with `BoxColliderBenchmarkAuthoring` (its baker emits the `BoxColliderBenchmarkConfig` singleton that arms the spray — the three workload knobs below, plus `boxSize` and the spawn AABB), the `PhysicsStep2D` control GameObject, a static `Floor`, and an orthographic camera in the host scene framing the spawn band and the pile.
+
+To wire it from scratch instead of opening the shipped scene, add a `BoxColliderBenchmarkConfig` singleton to a scene (from a bootstrap system, the `BoxColliderBenchmarkAuthoring` MonoBehaviour + its baker, or a directly-authored entity), add a `PhysicsStep2DAuthoring` in a SubScene for the control surface, and press Play — the sample is inert until the config singleton exists.
+
+## Workload knobs
+
+`BoxColliderBenchmarkAuthoring` exposes three inspector fields that control the spray, all freely editable:
+
+- **Spawned per second (target)** — the spray RATE. Each frame the spawner creates `round(perSecondTarget × dt)` quads (carrying the fractional remainder across frames, so a low rate still spawns exactly over time), making the pace frame-rate independent.
+- **Spawned per frame (max)** — a hard CEILING on how many quads are instantiated in one frame, bounding the per-frame structural-change cost regardless of how high the rate or how long a frame stalls.
+- **Spawned total (limit)** — the run stops once this many quads have been created.
+
+The shipped demo scene uses a watchable default (a few thousand total at a modest per-second rate, sprayed over a few seconds). The fields scale up to a supported on-screen stress ceiling of **~1,000,000 entities** — raise the per-second target into the tens of thousands and the total limit toward 1M to stress-test the simulation and renderer at scale. Real timing at any scale is deck-only (see below); the desktop spray is for watching it work.
 
 ## Reading the timing
 
