@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using Zori.Entities.Physics2D.Authoring;
 using static Unity.Mathematics.math;
 
-namespace Zori.Entities.Physics2D.Tests
+namespace Zori.Entities.Physics2D.Tests.EditorMath
 {
     /// <summary>
     /// Pure-math smoke for the Phase-D editor's testable core, <see cref="PhysicsShape2DGizmos"/> — the
