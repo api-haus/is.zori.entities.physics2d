@@ -48,11 +48,20 @@ namespace Zori.Entities.Physics2D.Tests
         // A fixed, arbitrary form hash stamped on every identical authored body in a test. Its value is irrelevant
         // to correctness (the runtime rebuilds the template from the donor's components) — it only has to be EQUAL
         // across bodies the test means to be one form, and DIFFERENT across forms.
-        static readonly uint4 FormKeyA = new uint4(0x1111_1111u, 0x2222_2222u, 0x3333_3333u, 0x4444_4444u);
+        static readonly uint4 FormKeyA = new uint4(
+            0x1111_1111u,
+            0x2222_2222u,
+            0x3333_3333u,
+            0x4444_4444u
+        );
 
         // Build a fresh world holding only what the physics step needs, optionally seeding a config singleton with
         // the cache knobs. Without a config the world uses the defaults (cache ON, threshold 8).
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group, bool? cacheEnabled = null, int threshold = 8)
+        static World MakePhysicsWorld(
+            out FixedStepSimulationSystemGroup group,
+            bool? cacheEnabled = null,
+            int threshold = 8
+        )
         {
             var world = new World("Physics2DDirectTestWorld");
             var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
@@ -60,7 +69,9 @@ namespace Zori.Entities.Physics2D.Tests
 
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
+            fixedGroup.AddSystemToUpdateList(
+                world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>()
+            );
             fixedGroup.SortSystems();
 
             if (cacheEnabled.HasValue)
@@ -97,7 +108,11 @@ namespace Zori.Entities.Physics2D.Tests
         // of a form. The entity flows through the same creation loop as a baked one.
         static Entity AuthorFormBody(EntityManager em, float2 pos, float radius)
         {
-            var entity = DirectPhysics2DAuthoring.Create(em, DynamicCircleBody(pos), Circle(radius));
+            var entity = DirectPhysics2DAuthoring.Create(
+                em,
+                DynamicCircleBody(pos),
+                Circle(radius)
+            );
             em.AddComponentData(entity, new PhysicsBody2DFormHash { value = FormKeyA });
             return entity;
         }
@@ -105,12 +120,22 @@ namespace Zori.Entities.Physics2D.Tests
         // Same, but with an initial velocity seed. Velocity is EXCLUDED from the form hash, so a velocity body and a
         // plain body of the same circle form share a template — the template path overwrites only the per-instance
         // pose + velocity. This exercises the velocity overwrite through both the single-body and the collapse path.
-        static Entity AuthorFormBodyWithVelocity(EntityManager em, float2 pos, float radius, float2 linVel, float angVel)
+        static Entity AuthorFormBodyWithVelocity(
+            EntityManager em,
+            float2 pos,
+            float radius,
+            float2 linVel,
+            float angVel
+        )
         {
             var entity = AuthorFormBody(em, pos, radius);
             em.AddComponentData(
                 entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = linVel, angularVelocity = angVel }
+                new PhysicsBody2DInitialVelocity
+                {
+                    linearVelocity = linVel,
+                    angularVelocity = angVel,
+                }
             );
             return entity;
         }
@@ -252,7 +277,13 @@ namespace Zori.Entities.Physics2D.Tests
             const float angVel = 45f; // deg/s
 
             var offWorld = MakePhysicsWorld(out var offGroup, cacheEnabled: false);
-            var offProbe = AuthorFormBodyWithVelocity(offWorld.EntityManager, probePos, 0.5f, linVel, angVel);
+            var offProbe = AuthorFormBodyWithVelocity(
+                offWorld.EntityManager,
+                probePos,
+                0.5f,
+                linVel,
+                angVel
+            );
 
             var onWorld = MakePhysicsWorld(out var onGroup, cacheEnabled: true, threshold: 2);
             var onEm = onWorld.EntityManager;
@@ -291,10 +322,20 @@ namespace Zori.Entities.Physics2D.Tests
 
             var offPos = (float2)(Vector2)offBody.position;
             var onPos = (float2)(Vector2)onBody.position;
-            Assert.AreEqual(offPos.x, onPos.x, $"Velocity body X diverged: off={offPos}, on={onPos}.");
-            Assert.AreEqual(offPos.y, onPos.y, $"Velocity body Y diverged: off={offPos}, on={onPos}.");
+            Assert.AreEqual(
+                offPos.x,
+                onPos.x,
+                $"Velocity body X diverged: off={offPos}, on={onPos}."
+            );
+            Assert.AreEqual(
+                offPos.y,
+                onPos.y,
+                $"Velocity body Y diverged: off={offPos}, on={onPos}."
+            );
 
-            Debug.Log($"[PHYSICS2D-TRANSPARENT-VEL] velocity body identical through the cached path (pos={onPos}).");
+            Debug.Log(
+                $"[PHYSICS2D-TRANSPARENT-VEL] velocity body identical through the cached path (pos={onPos})."
+            );
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -333,7 +374,9 @@ namespace Zori.Entities.Physics2D.Tests
                 }
             }
 
-            Debug.Log($"[PHYSICS2D-ONOFF] {N} bodies identical across cache off and N in {{1,2,4,8,16,32}}.");
+            Debug.Log(
+                $"[PHYSICS2D-ONOFF] {N} bodies identical across cache off and N in {{1,2,4,8,16,32}}."
+            );
             yield break;
         }
 
@@ -341,7 +384,11 @@ namespace Zori.Entities.Physics2D.Tests
         // position. Used as the on/off + threshold equivalence oracle.
         static float2[] RunSpawnAndStep(int n, float2[] startPos, bool cacheEnabled, int threshold)
         {
-            var world = MakePhysicsWorld(out var group, cacheEnabled: cacheEnabled, threshold: threshold);
+            var world = MakePhysicsWorld(
+                out var group,
+                cacheEnabled: cacheEnabled,
+                threshold: threshold
+            );
             var em = world.EntityManager;
             var entities = new Entity[n];
             for (var i = 0; i < n; i++)
@@ -353,7 +400,8 @@ namespace Zori.Entities.Physics2D.Tests
 
             var result = new float2[n];
             for (var i = 0; i < n; i++)
-                result[i] = (float2)(Vector2)em.GetComponentData<PhysicsBody2D>(entities[i]).body.position;
+                result[i] = (float2)
+                    (Vector2)em.GetComponentData<PhysicsBody2D>(entities[i]).body.position;
 
             world.Dispose();
             return result;
@@ -413,7 +461,64 @@ namespace Zori.Entities.Physics2D.Tests
                 );
             }
 
-            Debug.Log($"[PHYSICS2D-SPRAY] {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN.");
+            Debug.Log(
+                $"[PHYSICS2D-SPRAY] {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN."
+            );
+
+            world.Dispose();
+            yield break;
+        }
+
+        // The deferred-simulation regression gate. The world step must run for the bodies ALREADY live even on a
+        // frame that ALSO creates new bodies — i.e. an early-sprayed body keeps falling WHILE later bodies are
+        // still being created, not frozen until the spray ends. (A prior per-frame "skip the step on any
+        // creation frame" gate froze the whole population for the entire cross-frame spray: every frame created,
+        // so no frame ever stepped until the spray finished, then all bodies dropped at once.) This asserts the
+        // MID-spray displacement the older spray tests never checked — they only asserted the final settled pose
+        // after a post-spray settle phase, which is exactly why the freeze-until-spray-ends bug passed them.
+        [UnityTest]
+        public IEnumerator CrossFrameSpray_EarlyBodiesFall_WhileLaterStillSpawning()
+        {
+            var world = MakePhysicsWorld(out var group, cacheEnabled: true, threshold: 4);
+            var em = world.EntityManager;
+
+            // Body 0 is created on frame 0; it must be falling well before the spray finishes.
+            const float Body0StartY = 50f;
+            var body0 = AuthorFormBody(em, new float2(0f, Body0StartY), 0.25f);
+
+            // Frame 0: body0 is created (created AFTER this frame's step, so it does not integrate yet).
+            group.Update();
+            Assert.IsTrue(
+                em.HasComponent<PhysicsBody2D>(body0),
+                "body 0 should be physical on the frame it spawned."
+            );
+            var y0AtCreation = em.GetComponentData<PhysicsBody2D>(body0).body.position.y;
+
+            // Keep creating a NEW body every frame for many frames. On each of these frames a new body is created,
+            // so the old per-frame gate would skip the step entirely and body0 would never move. With the fix, the
+            // step runs for the already-live population every frame, so body0 falls continuously during the spray.
+            const int SprayFrames = 30;
+            for (var f = 0; f < SprayFrames; f++)
+            {
+                AuthorFormBody(em, new float2(1f + f, 60f + f), 0.25f);
+                group.Update(); // creates a new body this frame AND must step the already-live body0
+            }
+
+            // Body0 was created on frame 0 and has been stepped on every subsequent creation frame, so by now —
+            // still mid-spray (a new body was created on the very last frame) — it must have fallen measurably.
+            var y0MidSpray = em.GetComponentData<PhysicsBody2D>(body0).body.position.y;
+            Assert.Less(
+                y0MidSpray,
+                y0AtCreation - 1f,
+                $"body 0 did not fall during the spray: y at creation={y0AtCreation}, y mid-spray={y0MidSpray}. "
+                    + "The world step is being deferred until the spray completes — bodies are frozen while "
+                    + "later bodies are still being created."
+            );
+
+            Debug.Log(
+                $"[PHYSICS2D-SPRAY-MIDFALL] body0 fell from {y0AtCreation} to {y0MidSpray} mid-spray "
+                    + $"(over {SprayFrames} creation frames), concurrent with the ongoing spray."
+            );
 
             world.Dispose();
             yield break;
@@ -423,7 +528,11 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var ma = a.massConfiguration;
             var mb = b.massConfiguration;
-            Assert.AreEqual(ma.mass, mb.mass, $"mass differs {when} (per-entity {ma.mass} vs template {mb.mass}).");
+            Assert.AreEqual(
+                ma.mass,
+                mb.mass,
+                $"mass differs {when} (per-entity {ma.mass} vs template {mb.mass})."
+            );
             Assert.AreEqual(
                 ma.rotationalInertia,
                 mb.rotationalInertia,

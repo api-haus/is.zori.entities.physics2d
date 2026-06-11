@@ -8,10 +8,12 @@ using static Unity.Mathematics.math;
 namespace Zori.Entities.Physics2D
 {
     /// <summary>
-    /// Owns the one <see cref="PhysicsWorld"/> this ECS <c>World</c> uses, creates a Box2D body+shape for
-    /// each baked entity that does not yet have one, and issues exactly one <c>Simulate(dt)</c> per group
-    /// update. Lives in <see cref="FixedStepSimulationSystemGroup"/> so the step runs at the group's
-    /// fixed timestep with the catch-up manager sub-stepping to wall-clock — deterministic, framerate
+    /// Owns the one <see cref="PhysicsWorld"/> this ECS <c>World</c> uses. Each group update first issues
+    /// exactly one <c>Simulate(dt)</c> for the bodies already live, THEN creates a Box2D body+shape for each
+    /// baked entity that does not yet have one — so a body never integrates on the frame it is created (it
+    /// joins the simulation on the next step) while the existing population keeps stepping on a frame that
+    /// also creates new bodies. Lives in <see cref="FixedStepSimulationSystemGroup"/> so the step runs at the
+    /// group's fixed timestep with the catch-up manager sub-stepping to wall-clock — deterministic, framerate
     /// independent, no bespoke sub-stepping.
     /// </summary>
     /// <remarks>
@@ -250,6 +252,7 @@ namespace Zori.Entities.Physics2D
                 case PhysicsShape2DKind.Polygon:
                     if (sh.polygonDecompose)
                         return false;
+
                     // Marshal the blob into the inline-storage PolygonGeometry once; the value is self-contained.
                     {
                         ref var blob = ref sh.vertices.Value.points;
@@ -669,7 +672,10 @@ namespace Zori.Entities.Physics2D
         // via a PhysicsTransform. The PolygonGeometry has a fixed maximum vertex count, so the returned value is
         // self-contained (no NativeArray) and is the cached value. The caller owns the span; CreateShape copies the
         // vertices into the geometry's inline storage.
-        static PolygonGeometry BuildPolygonGeometry(in PhysicsShape2D sh, NativeArray<Vector2> span) =>
+        static PolygonGeometry BuildPolygonGeometry(
+            in PhysicsShape2D sh,
+            NativeArray<Vector2> span
+        ) =>
             PolygonGeometry.Create(
                 vertices: span.AsReadOnlySpan(),
                 radius: sh.radius,
@@ -852,117 +858,23 @@ namespace Zori.Entities.Physics2D
             // so the new bodies are live for the next step. Whatever path created a body, the RESULT is identical —
             // a cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
             // body), which is what keeps the optimisation transparent.
-            var createdAny = false;
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
-
-            var cacheEnabled =
-                config.HasValue ? config.Value.cacheIdenticalBodies : PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
+            var cacheEnabled = config.HasValue
+                ? config.Value.cacheIdenticalBodies
+                : PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
             var threshold = max(
                 1,
-                config.HasValue ? config.Value.identicalBodyThreshold : PhysicsWorld2DConfig.Default.identicalBodyThreshold
+                config.HasValue
+                    ? config.Value.identicalBodyThreshold
+                    : PhysicsWorld2DConfig.Default.identicalBodyThreshold
             );
             if (cacheEnabled && !m_Templates.IsCreated)
-                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(16, Allocator.Persistent);
+                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(
+                    16,
+                    Allocator.Persistent
+                );
 
-            // Same-frame buckets: per form-hash, the entities of an isBuilt form that arrived this frame and are
-            // deferred for the in-frame CreateBodyBatch collapse. Allocated lazily only when the optimisation admits
-            // at least one such entity.
-            var collapse = default(NativeParallelMultiHashMap<uint4, PendingInit>);
-
-            foreach (
-                var (defRO, shapeRO, entity) in SystemAPI
-                    .Query<RefRO<PhysicsBody2DDefinition>, RefRO<PhysicsShape2D>>()
-                    .WithNone<PhysicsBody2D>()
-                    .WithEntityAccess()
-            )
-            {
-                createdAny = true;
-                var d = defRO.ValueRO;
-                var sh = shapeRO.ValueRO;
-
-                var hasVelocity = SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity);
-                var velocity = hasVelocity
-                    ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity)
-                    : default;
-                var hasExtraShapes = SystemAPI.HasBuffer<PhysicsShape2DElement>(entity);
-                var extra = hasExtraShapes
-                    ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity)
-                    : default;
-
-                // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
-                // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
-                // Edge's chain geometry and a decompose polygon are NOT cacheable, multi-shape is excluded). Anything
-                // failing this falls to the unchanged per-entity path, exactly as before this optimisation existed.
-                var geometry = default(GeometryUnion);
-                var eligible =
-                    cacheEnabled
-                    && !hasExtraShapes
-                    && SystemAPI.HasComponent<PhysicsBody2DFormHash>(entity)
-                    && TryGetCacheableGeometry(in sh, out geometry);
-
-                if (!eligible)
-                {
-                    var bodyA = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
-                    AddPhysicalBodyComponents(ref ecb, entity, in d, bodyA);
-                    continue;
-                }
-
-                var hash = SystemAPI.GetComponent<PhysicsBody2DFormHash>(entity).value;
-                m_Templates.TryGetValue(hash, out var tmpl);
-                tmpl.seenCount++;
-
-                if (tmpl.isBuilt != 0)
-                {
-                    // The form's template already exists. Defer this entity into the same-frame bucket; the K-member
-                    // runs are created after the scan (one CreateBodyBatch for K >= 2, the plain template path for
-                    // K == 1). The template stays in the map; only the counter advanced.
-                    m_Templates[hash] = tmpl;
-                    if (!collapse.IsCreated)
-                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(64, Allocator.Temp);
-                    collapse.Add(
-                        hash,
-                        new PendingInit
-                        {
-                            entity = entity,
-                            position = d.initialPosition,
-                            rotationRadians = d.initialRotationRadians,
-                            hasVelocity = (byte)(hasVelocity ? 1 : 0),
-                            velocity = velocity,
-                        }
-                    );
-                    continue;
-                }
-
-                // Below or crossing the threshold. Create this body through the unchanged per-entity path (its
-                // result is the donor for the template), and on the crossing build the template from it.
-                var body = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
-                AddPhysicalBodyComponents(ref ecb, entity, in d, body);
-
-                if (tmpl.seenCount >= threshold)
-                {
-                    tmpl.bodyDef = BuildTemplateBodyDef(in d); // pose + velocity zeroed; overwritten per instance
-                    tmpl.shapeDef = BuildShapeDef(in sh);
-                    tmpl.geometry = geometry;
-                    tmpl.mass = ResolveMass(body, in d); // the donor's resolved write — bit-identical for the form
-                    tmpl.interpolation = d.interpolation; // the form's smoothing mode (part of the form hash)
-                    tmpl.isBuilt = 1;
-                }
-                m_Templates[hash] = tmpl;
-            }
-
-            // Drain the same-frame buckets: one CreateBodyBatch per form with K >= 2 members, the plain template
-            // path for a lone member. The bodies' ECS components are added through the same ECB.
-            if (collapse.IsCreated)
-            {
-                DrainSameFrameCollapse(world, ref ecb, collapse);
-                collapse.Dispose();
-            }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
-
-            // The per-frame event buffers on the singleton entity. Cleared every frame so a spawn (no-step)
-            // frame leaves no stale events visible, and refilled below only when a step actually ran.
+            // The per-frame event buffers on the singleton entity. Cleared every frame and refilled below from the
+            // post-Simulate spans, so they always reflect exactly this step's events.
             var contactEvents = SystemAPI.GetSingletonBuffer<PhysicsContactEvent2D>();
             var triggerEvents = SystemAPI.GetSingletonBuffer<PhysicsTriggerEvent2D>();
             var jointBreakEvents = SystemAPI.GetSingletonBuffer<PhysicsJointBreakEvent2D>();
@@ -970,15 +882,17 @@ namespace Zori.Entities.Physics2D
             triggerEvents.Clear();
             jointBreakEvents.Clear();
 
-            // Do NOT step on a frame that created bodies: creation and integration are decoupled so a body
-            // does not silently advance one fixed step the instant it spawns. A newly-created body therefore
-            // sits at its authored pose until the NEXT update steps it — which is both more correct for runtime
-            // (no spawn-frame teleport-step) and what keeps the GameObject-vs-ECS parity harness in lockstep:
-            // the harness's first group Update creates the bodies (no step), then advances both backends one
-            // step per loop iteration. Stepping on the creation frame put the ECS body one fixed step ahead of
-            // the reference — invisible in free fall (sub-mm) but a 0.08–0.17 m/step constant offset for a body
-            // carrying an initial velocity.
-            if (!createdAny)
+            // STEP, THEN CREATE — in this order, every frame. The step integrates the bodies that are ALREADY live
+            // at the top of this update; the bodies created later in this same update (below) are created AFTER the
+            // step, so they first integrate on the NEXT update. This preserves the spawn-frame-no-step rule per BODY
+            // (a body never advances on the frame it is created — it sits at its authored pose until the next step),
+            // while letting the world keep stepping the existing population on a frame that ALSO creates new bodies.
+            // The previous form gated the whole step on "no body was created this frame" (if (!createdAny)), which
+            // froze every body for the entire duration of a cross-frame spray (the spawner creates each frame, so no
+            // frame ever stepped until the spray ended) — the deferred-simulation bug. The parity harness lockstep
+            // still holds: its first group Update has no live body to step (the step is a no-op) and then creates
+            // all bodies; each later Update steps the now-live population exactly once before creating nothing, so
+            // capture s still reflects (s + 1) integrations, matched against the reference's per-loop Simulate.
             {
                 var dt = SystemAPI.Time.DeltaTime;
 
@@ -1075,6 +989,138 @@ namespace Zori.Entities.Physics2D
                     }
                 );
             }
+
+            // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle, AFTER the step
+            // above. Three paths, chosen per entity by the cached-template optimisation
+            // (PhysicsWorld2DConfig.cacheIdenticalBodies):
+            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
+            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
+            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
+            //     definition/geometry/mass instead of re-constructing them;
+            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
+            //     CreateBodyBatch instead of K CreateBody calls (the inner routine factored from the removed batch
+            //     creation system). A 1/frame cross-frame spray gets K = 1 and the plain template path.
+            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
+            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
+            // so the new bodies are live for the NEXT step (the step above already ran for this frame). Whatever path
+            // created a body, the RESULT is identical — a cached-template body is bit-identical to a per-entity one
+            // (same definition + same shape → same Box2D body), which is what keeps the optimisation transparent.
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            // Same-frame buckets: per form-hash, the entities of an isBuilt form that arrived this frame and are
+            // deferred for the in-frame CreateBodyBatch collapse. Allocated lazily only when the optimisation admits
+            // at least one such entity.
+            var collapse = default(NativeParallelMultiHashMap<uint4, PendingInit>);
+
+            foreach (
+                var (defRO, shapeRO, entity) in SystemAPI
+                    .Query<RefRO<PhysicsBody2DDefinition>, RefRO<PhysicsShape2D>>()
+                    .WithNone<PhysicsBody2D>()
+                    .WithEntityAccess()
+            )
+            {
+                var d = defRO.ValueRO;
+                var sh = shapeRO.ValueRO;
+
+                var hasVelocity = SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity);
+                var velocity = hasVelocity
+                    ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity)
+                    : default;
+                var hasExtraShapes = SystemAPI.HasBuffer<PhysicsShape2DElement>(entity);
+                var extra = hasExtraShapes
+                    ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity)
+                    : default;
+
+                // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
+                // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
+                // Edge's chain geometry and a decompose polygon are NOT cacheable, multi-shape is excluded). Anything
+                // failing this falls to the unchanged per-entity path, exactly as before this optimisation existed.
+                var geometry = default(GeometryUnion);
+                var eligible =
+                    cacheEnabled
+                    && !hasExtraShapes
+                    && SystemAPI.HasComponent<PhysicsBody2DFormHash>(entity)
+                    && TryGetCacheableGeometry(in sh, out geometry);
+
+                if (!eligible)
+                {
+                    var bodyA = CreatePerEntityBody(
+                        world,
+                        entity,
+                        in d,
+                        in sh,
+                        hasVelocity,
+                        in velocity,
+                        extra
+                    );
+                    AddPhysicalBodyComponents(ref ecb, entity, in d, bodyA);
+                    continue;
+                }
+
+                var hash = SystemAPI.GetComponent<PhysicsBody2DFormHash>(entity).value;
+                m_Templates.TryGetValue(hash, out var tmpl);
+                tmpl.seenCount++;
+
+                if (tmpl.isBuilt != 0)
+                {
+                    // The form's template already exists. Defer this entity into the same-frame bucket; the K-member
+                    // runs are created after the scan (one CreateBodyBatch for K >= 2, the plain template path for
+                    // K == 1). The template stays in the map; only the counter advanced.
+                    m_Templates[hash] = tmpl;
+                    if (!collapse.IsCreated)
+                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(
+                            64,
+                            Allocator.Temp
+                        );
+                    collapse.Add(
+                        hash,
+                        new PendingInit
+                        {
+                            entity = entity,
+                            position = d.initialPosition,
+                            rotationRadians = d.initialRotationRadians,
+                            hasVelocity = (byte)(hasVelocity ? 1 : 0),
+                            velocity = velocity,
+                        }
+                    );
+                    continue;
+                }
+
+                // Below or crossing the threshold. Create this body through the unchanged per-entity path (its
+                // result is the donor for the template), and on the crossing build the template from it.
+                var body = CreatePerEntityBody(
+                    world,
+                    entity,
+                    in d,
+                    in sh,
+                    hasVelocity,
+                    in velocity,
+                    extra
+                );
+                AddPhysicalBodyComponents(ref ecb, entity, in d, body);
+
+                if (tmpl.seenCount >= threshold)
+                {
+                    tmpl.bodyDef = BuildTemplateBodyDef(in d); // pose + velocity zeroed; overwritten per instance
+                    tmpl.shapeDef = BuildShapeDef(in sh);
+                    tmpl.geometry = geometry;
+                    tmpl.mass = ResolveMass(body, in d); // the donor's resolved write — bit-identical for the form
+                    tmpl.interpolation = d.interpolation; // the form's smoothing mode (part of the form hash)
+                    tmpl.isBuilt = 1;
+                }
+                m_Templates[hash] = tmpl;
+            }
+
+            // Drain the same-frame buckets: one CreateBodyBatch per form with K >= 2 members, the plain template
+            // path for a lone member. The bodies' ECS components are added through the same ECB.
+            if (collapse.IsCreated)
+            {
+                DrainSameFrameCollapse(world, ref ecb, collapse);
+                collapse.Dispose();
+            }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
 
         // Apply one runtime write-in command to a live body. Managed Unity.U2D.Physics instance calls on the main

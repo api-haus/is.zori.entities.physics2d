@@ -321,8 +321,8 @@ MonoBehaviour:
   m_SpawnedPerSecondTarget: 1000
   m_SpawnedPerFrameMax: 256
   m_BoxSize: {x: 0.4, y: 0.4}
-  m_SpawnMin: {x: -8, y: 5}
-  m_SpawnMax: {x: 8, y: 12}
+  m_SpawnMin: {x: -18, y: 5}
+  m_SpawnMax: {x: 18, y: 12}
 --- !u!4 &1923568899
 Transform:
   m_ObjectHideFlags: 0
