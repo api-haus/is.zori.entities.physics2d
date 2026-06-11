@@ -46,6 +46,9 @@ namespace Zori.Entities.Physics2D.Tests.Editor
 
         // X-keys for each owner body: even X = custom, odd-offset X = built-in twin. Distinct per kind so the
         // gate can pick out each pair. Anchors sit just below their owner so they never collide with the X-keys.
+        // The original four representative kinds occupy X ∈ [−10, 10]; the five kinds the validation gate adds
+        // (Slider/Distance/Spring/Fixed/Friction) sit in a clear second band at X ≥ 20 so no owner is within the
+        // gate's 0.25 X-pick tolerance of another. The gate now pins all nine baker arms, not just four.
         public const float XHingeCustom = -10f;
         public const float XHingeBuiltIn = -8f;
         public const float XWheelCustom = -4f;
@@ -54,6 +57,16 @@ namespace Zori.Entities.Physics2D.Tests.Editor
         public const float XRelativeBuiltIn = 4f;
         public const float XTargetCustom = 8f;
         public const float XTargetBuiltIn = 10f;
+        public const float XSliderCustom = 20f;
+        public const float XSliderBuiltIn = 22f;
+        public const float XDistanceCustom = 26f;
+        public const float XDistanceBuiltIn = 28f;
+        public const float XSpringCustom = 32f;
+        public const float XSpringBuiltIn = 34f;
+        public const float XFixedCustom = 38f;
+        public const float XFixedBuiltIn = 40f;
+        public const float XFrictionCustom = 44f;
+        public const float XFrictionBuiltIn = 46f;
 
         const float OwnerY = 5f;
         const float AnchorY = 8f;
@@ -69,6 +82,11 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             BuildWheelPair();
             BuildRelativePair();
             BuildTargetPair();
+            BuildSliderPair();
+            BuildDistancePair();
+            BuildSpringPair();
+            BuildFixedPair();
+            BuildFrictionPair();
 
             EditorSceneManager.MarkSceneDirty(child);
             EditorSceneManager.SaveScene(child, ChildPath);
@@ -87,8 +105,8 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log(
-                "Entities Physics2D custom-joint convergence fixture built "
-                    + "(Hinge / Wheel / Relative / Target custom-vs-built-in pairs)."
+                "Entities Physics2D custom-joint convergence fixture built (all NINE kinds: Hinge / Wheel / "
+                    + "Relative / Target / Slider / Distance / Spring / Fixed / Friction custom-vs-built-in pairs)."
             );
         }
 
@@ -228,6 +246,160 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             target.dampingRatio = 1f;
             // TargetJoint2D.enableCollision is single-body and bakes collideConnected=true regardless of this
             // setter; the custom side is set to true to match (negative space, documented in 08-phaseF).
+        }
+
+        // ---- Slider: slide axis (deg) + linear motor (m/s, max FORCE) + translation limit (m), no spring. ----
+        // This arm also re-proves the break-force + break-action mapping (a NON-default break surface with the
+        // Disable action) and the collideConnected field (true), on a fresh kind — so a future regression in the
+        // shared-field handling trips here as well as on the Hinge pair.
+        static void BuildSliderPair()
+        {
+            var (customOwner, customAnchor) = NewCustomPair(XSliderCustom);
+            var cj = customOwner.AddComponent<PhysicsJoint2DAuthoring>();
+            cj.Kind = PhysicsJoint2DKind.Slider;
+            cj.ConnectedBody = customAnchor.GetComponent<PhysicsBody2DAuthoring>();
+            cj.Anchor = new Unity.Mathematics.float2(0.25f, -0.1f);
+            cj.ConnectedAnchor = new Unity.Mathematics.float2(-0.3f, 0.2f);
+            cj.AxisAngle = 30f; // a NON-zero slide axis: a Hinge bakes this to 0, so a kind mismap diverges here
+            cj.UseMotor = true;
+            cj.MotorSpeed = 4f; // m/s along the axis
+            cj.MaxMotorEffort = 120f; // → maxMotorForce for the slider
+            cj.UseLimits = true;
+            cj.LowerLimit = -2.5f; // metres
+            cj.UpperLimit = 3.5f;
+            cj.CollideConnected = true;
+            cj.BreakForce = 333f;
+            cj.BreakTorque = 444f;
+            cj.BreakAction = PhysicsJointBreakAction2D.Disable;
+
+            var (builtinOwner, builtinAnchorRb) = NewBuiltInPair(XSliderBuiltIn);
+            var slider = builtinOwner.AddComponent<SliderJoint2D>();
+            slider.connectedBody = builtinAnchorRb;
+            slider.autoConfigureConnectedAnchor = false;
+            slider.autoConfigureAngle = false;
+            slider.anchor = new Vector2(0.25f, -0.1f);
+            slider.connectedAnchor = new Vector2(-0.3f, 0.2f);
+            slider.angle = 30f;
+            slider.useMotor = true;
+            var sm = slider.motor;
+            sm.motorSpeed = 4f;
+            sm.maxMotorTorque = 120f; // the built-in stores the cap in maxMotorTorque; the slider reads it as force
+            slider.motor = sm;
+            slider.useLimits = true;
+            var sl = slider.limits;
+            sl.min = -2.5f;
+            sl.max = 3.5f;
+            slider.limits = sl;
+            slider.enableCollision = true;
+            slider.breakForce = 333f;
+            slider.breakTorque = 444f;
+            slider.breakAction = JointBreakAction2D.Disable;
+        }
+
+        // ---- Distance: anchors + rest length, RIGID (enableSpring false), no motor/limit/axis. ----
+        static void BuildDistancePair()
+        {
+            var (customOwner, customAnchor) = NewCustomPair(XDistanceCustom);
+            var cj = customOwner.AddComponent<PhysicsJoint2DAuthoring>();
+            cj.Kind = PhysicsJoint2DKind.Distance;
+            cj.ConnectedBody = customAnchor.GetComponent<PhysicsBody2DAuthoring>();
+            cj.Anchor = new Unity.Mathematics.float2(0.4f, 0f);
+            cj.ConnectedAnchor = new Unity.Mathematics.float2(0f, -0.2f);
+            cj.RestLength = 2.75f; // the fixed separation the rigid distance joint holds
+            // Frequency/DampingRatio default to 1; the Distance arm must DROP them (enableSpring false, spring
+            // fields zero). If the baker leaked the authored 1f into a Distance's spring fields, the gate trips.
+            cj.CollideConnected = false;
+
+            var (builtinOwner, builtinAnchorRb) = NewBuiltInPair(XDistanceBuiltIn);
+            var dist = builtinOwner.AddComponent<DistanceJoint2D>();
+            dist.connectedBody = builtinAnchorRb;
+            dist.autoConfigureConnectedAnchor = false;
+            dist.autoConfigureDistance = false;
+            dist.anchor = new Vector2(0.4f, 0f);
+            dist.connectedAnchor = new Vector2(0f, -0.2f);
+            dist.distance = 2.75f;
+            dist.maxDistanceOnly = false;
+            dist.enableCollision = false;
+        }
+
+        // ---- Spring: anchors + rest length + spring freq/damp, enableSpring TRUE. ----
+        static void BuildSpringPair()
+        {
+            var (customOwner, customAnchor) = NewCustomPair(XSpringCustom);
+            var cj = customOwner.AddComponent<PhysicsJoint2DAuthoring>();
+            cj.Kind = PhysicsJoint2DKind.Spring;
+            cj.ConnectedBody = customAnchor.GetComponent<PhysicsBody2DAuthoring>();
+            cj.Anchor = new Unity.Mathematics.float2(-0.2f, 0.3f);
+            cj.ConnectedAnchor = new Unity.Mathematics.float2(0.1f, 0f);
+            cj.RestLength = 1.5f;
+            cj.Frequency = 3.5f; // Hz — must reach springFrequency (the Spring arm is enableSpring TRUE)
+            cj.DampingRatio = 0.4f;
+            cj.CollideConnected = false;
+
+            var (builtinOwner, builtinAnchorRb) = NewBuiltInPair(XSpringBuiltIn);
+            var spring = builtinOwner.AddComponent<SpringJoint2D>();
+            spring.connectedBody = builtinAnchorRb;
+            spring.autoConfigureConnectedAnchor = false;
+            spring.autoConfigureDistance = false;
+            spring.anchor = new Vector2(-0.2f, 0.3f);
+            spring.connectedAnchor = new Vector2(0.1f, 0f);
+            spring.distance = 1.5f;
+            spring.frequency = 3.5f;
+            spring.dampingRatio = 0.4f;
+            spring.enableCollision = false;
+        }
+
+        // ---- Fixed: anchors + freq/damp ride the shared spring fields with enableSpring FALSE (the trickiest
+        // arm: the spring fields carry data the creation system applies to BOTH linear and angular stiffness,
+        // yet enableSpring stays false). A NON-zero frequency here proves the Fixed arm bakes the spring fields
+        // WITHOUT flipping enableSpring — distinct from the Spring arm above. ----
+        static void BuildFixedPair()
+        {
+            var (customOwner, customAnchor) = NewCustomPair(XFixedCustom);
+            var cj = customOwner.AddComponent<PhysicsJoint2DAuthoring>();
+            cj.Kind = PhysicsJoint2DKind.Fixed;
+            cj.ConnectedBody = customAnchor.GetComponent<PhysicsBody2DAuthoring>();
+            cj.Anchor = new Unity.Mathematics.float2(0.15f, -0.25f);
+            cj.ConnectedAnchor = new Unity.Mathematics.float2(-0.05f, 0.35f);
+            cj.Frequency = 2.5f; // non-zero stiffness, carried in springFrequency with enableSpring FALSE
+            cj.DampingRatio = 0.8f;
+            cj.CollideConnected = false;
+
+            var (builtinOwner, builtinAnchorRb) = NewBuiltInPair(XFixedBuiltIn);
+            var fixedJoint = builtinOwner.AddComponent<FixedJoint2D>();
+            fixedJoint.connectedBody = builtinAnchorRb;
+            fixedJoint.autoConfigureConnectedAnchor = false;
+            fixedJoint.anchor = new Vector2(0.15f, -0.25f);
+            fixedJoint.connectedAnchor = new Vector2(-0.05f, 0.35f);
+            fixedJoint.frequency = 2.5f;
+            fixedJoint.dampingRatio = 0.8f;
+            fixedJoint.enableCollision = false;
+        }
+
+        // ---- Friction: zero anchors + ZERO offset + force/torque caps, no spring (velocity-control friction). ----
+        static void BuildFrictionPair()
+        {
+            var (customOwner, customAnchor) = NewCustomPair(XFrictionCustom);
+            var cj = customOwner.AddComponent<PhysicsJoint2DAuthoring>();
+            cj.Kind = PhysicsJoint2DKind.Friction;
+            cj.ConnectedBody = customAnchor.GetComponent<PhysicsBody2DAuthoring>();
+            // The Friction arm forces anchors + offset to zero regardless of what is authored; author NON-zero
+            // values so the gate proves the arm actually zeroes them (a leak would diverge from the built-in,
+            // whose FrictionJoint2D has no anchors and bakes zero).
+            cj.Anchor = new Unity.Mathematics.float2(9f, 9f);
+            cj.ConnectedAnchor = new Unity.Mathematics.float2(-9f, -9f);
+            cj.LinearOffset = new Unity.Mathematics.float2(7f, 7f);
+            cj.AngularOffset = 33f;
+            cj.MaxForce = 75f;
+            cj.MaxTorque = 60f;
+            cj.CollideConnected = false;
+
+            var (builtinOwner, builtinAnchorRb) = NewBuiltInPair(XFrictionBuiltIn);
+            var friction = builtinOwner.AddComponent<FrictionJoint2D>();
+            friction.connectedBody = builtinAnchorRb;
+            friction.maxForce = 75f;
+            friction.maxTorque = 60f;
+            friction.enableCollision = false;
         }
 
         // A custom dynamic owner body + a custom static anchor body, returned as the GameObjects. The owner
