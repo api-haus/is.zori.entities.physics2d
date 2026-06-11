@@ -4,17 +4,23 @@ This is the programmatic surface a game's own ECS systems call against the packa
 
 ## Spatial queries — `PhysicsQueries2D`
 
-A `public static class` of synchronous spatial queries over the package's `PhysicsWorld`, the analogue of `UnityEngine.Physics2D.Raycast` / `OverlapCircle` / `OverlapBox` / `OverlapPoint` / `CircleCast` / `BoxCast`. A query reads the simulation state, so it is valid only against a stepped world — call it after `PhysicsWorld2DSystem` has run for the frame, or from a job that captured the world handle as a `[ReadOnly]` field. Obtain the world with `SystemAPI.GetSingleton<PhysicsWorldSingleton2D>().world`.
+A `public static class` of synchronous spatial queries over the package's `PhysicsWorld`, the analogue of `UnityEngine.Physics2D.Raycast` / `OverlapCircle` / `OverlapBox` / `OverlapPoint` / `CircleCast` / `BoxCast` / `CapsuleCast`. A query reads the simulation state, so it is valid only against a stepped world — call it after `PhysicsWorld2DSystem` has run for the frame, or from a job that captured the world handle as a `[ReadOnly]` field. Obtain the world with `SystemAPI.GetSingleton<PhysicsWorldSingleton2D>().world`.
 
 The methods, each taking the `PhysicsWorld`, a `ulong hitLayerMask`, and a caller-owned result container:
 
 - `Raycast(world, origin, direction, distance, hitLayerMask, NativeList<PhysicsQueryHit2D> hits)` — every hit, sorted nearest first; returns the count.
 - `RaycastClosest(world, origin, direction, distance, hitLayerMask, out PhysicsQueryHit2D hit)` — the closest hit only; returns whether anything was hit.
-- `OverlapCircle(world, center, radius, hitLayerMask, hits)` and `OverlapBox(world, center, size, angleRadians, hitLayerMask, hits)` — every shape overlapping the region.
+- `OverlapCircle(world, center, radius, hitLayerMask, hits)`, `OverlapBox(world, center, size, angleRadians, hitLayerMask, hits)`, and `OverlapCapsule(world, center1, center2, radius, hitLayerMask, hits)` — every shape overlapping the region.
 - `OverlapPoint(world, point, hitLayerMask)` — the cheap boolean form (`TestOverlapPoint`).
-- `CircleCast(world, origin, radius, direction, distance, hitLayerMask, hits)` and `BoxCast(world, origin, size, angleRadians, direction, distance, hitLayerMask, hits)` — sweep a shape through the world.
+- `CircleCast(world, origin, radius, direction, distance, hitLayerMask, hits)`, `BoxCast(world, origin, size, angleRadians, direction, distance, hitLayerMask, hits)`, and `CapsuleCast(world, center1, center2, radius, direction, distance, hitLayerMask, hits)` — sweep a shape through the world. The capsule is the two world-space end-cap centers plus the end radius (the `CapsuleGeometry.Create` form), the cast a rounded character sweeps so its caps clear edges a box corner would catch on.
 
 A `hitLayerMask` of `0` or `~0ul` means "hit every layer" (the `Physics2D.DefaultRaycastLayers` / `AllLayers` convention), so a caller that does not care about layers passes `0` and gets all hits rather than none; otherwise the mask is written into `PhysicsQuery.QueryFilter.hitCategories`, the same field the GameObject layer-mask raycast honors.
+
+### Closest point — `ClosestPoint`
+
+`ClosestPoint(world, point, maxDistance, hitLayerMask, NativeList<PhysicsQueryHit2D> hits, out ClosestPoint2D result)` returns the nearest world body to a query point, with the closest point on that body, the separation distance, and the surface normal — the 2D analogue of `com.unity.physics`'s `CollisionWorld.CalculateDistance(PointDistanceInput)`, which the 2D world exposes no single call for. It composes the existing overlap broad-phase (a disc of `maxDistance` finds candidate shapes within range) with the per-pair exact distance (`PhysicsQuery.ShapeDistance` measures the point against each candidate), and returns the closest; `hits` is a caller-owned scratch list the broad-phase reuses. It returns `false` when no body is within `maxDistance`.
+
+The result is a `ClosestPoint2D` value struct — `entity` (the nearest body, or `Entity.Null` if not a package body), `point` (the closest point on the body's surface), `normal` (pointing from the query point toward the body), `distance` (zero when the point is inside the body, where `normal` is then degenerate), and the raw `shape`. A caller that needs a push-out direction from inside a body uses the overlap-then-cast-back path, not this query, because Box2D's `ShapeDistance` reports a zero distance and a degenerate normal for an overlap.
 
 ### The hit struct — `PhysicsQueryHit2D`
 

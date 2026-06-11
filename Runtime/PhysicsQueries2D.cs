@@ -304,5 +304,148 @@ namespace Zori.Entities.Physics2D
             results.Dispose();
             return hits.Length;
         }
+
+        /// <summary>
+        /// Cast a capsule through the world along <paramref name="direction"/> for <paramref name="distance"/>,
+        /// appending hits (nearest first) into <paramref name="hits"/>. Honors the layer mask. Returns the hit
+        /// count. The capsule is the two world-space end-cap centers <paramref name="center1"/> /
+        /// <paramref name="center2"/> and the end <paramref name="radius"/> — the same
+        /// <c>CapsuleGeometry.Create</c> the creation system builds a capsule body's shape from
+        /// (<see cref="PhysicsWorld2DSystem"/>). The analogue of <c>CircleCast</c>/<c>BoxCast</c> for a capsule
+        /// proxy, the cast a rounded-bottom character sweeps so its caps clear step edges a box corner catches.
+        /// </summary>
+        public static int CapsuleCast(
+            PhysicsWorld world,
+            float2 center1,
+            float2 center2,
+            float radius,
+            float2 direction,
+            float distance,
+            ulong hitLayerMask,
+            NativeList<PhysicsQueryHit2D> hits
+        )
+        {
+            hits.Clear();
+            if (!world.isValid)
+                return 0;
+            var dir = normalizesafe(direction);
+            var geometry = CapsuleGeometry.Create((Vector2)center1, (Vector2)center2, radius);
+            var translation = (Vector2)(dir * distance);
+            var results = world.CastGeometry(
+                geometry,
+                translation,
+                Filter(hitLayerMask),
+                PhysicsQuery.WorldCastMode.AllSorted,
+                Allocator.Temp
+            );
+            for (var i = 0; i < results.Length; i++)
+                hits.Add(ToHit(results[i]));
+            results.Dispose();
+            return hits.Length;
+        }
+
+        /// <summary>Find every shape overlapping a capsule (the two end-cap centers
+        /// <paramref name="center1"/> / <paramref name="center2"/> and the end <paramref name="radius"/>),
+        /// appending hits into <paramref name="hits"/>. Honors the layer mask. Returns the hit count. The capsule
+        /// analogue of <see cref="OverlapCircle"/> / <see cref="OverlapBox"/>.</summary>
+        public static int OverlapCapsule(
+            PhysicsWorld world,
+            float2 center1,
+            float2 center2,
+            float radius,
+            ulong hitLayerMask,
+            NativeList<PhysicsQueryHit2D> hits
+        )
+        {
+            hits.Clear();
+            if (!world.isValid)
+                return 0;
+            var geometry = CapsuleGeometry.Create((Vector2)center1, (Vector2)center2, radius);
+            var results = world.OverlapGeometry(geometry, Filter(hitLayerMask), Allocator.Temp);
+            for (var i = 0; i < results.Length; i++)
+                hits.Add(ToHit(results[i]));
+            results.Dispose();
+            return hits.Length;
+        }
+
+        // ---- closest point / distance ----------------------------------------------------------------------
+
+        /// <summary>
+        /// The nearest world body to a query point, with the closest point on that body, the separation distance,
+        /// and the surface normal — the substrate analogue of <c>com.unity.physics</c>'s
+        /// <c>CollisionWorld.CalculateDistance(PointDistanceInput)</c> the 3D character controller uses for
+        /// anchor detection and depenetration. There is no world-level distance call on the 2D world; this
+        /// composes the existing overlap broad-phase with the per-pair <c>PhysicsQuery.ShapeDistance</c> exact
+        /// distance: a circle of <paramref name="maxDistance"/> finds the candidate shapes within range, then
+        /// <c>ShapeDistance</c> measures the query point (a zero-radius circle proxy) against each candidate and
+        /// the closest is returned. Honors <paramref name="hitLayerMask"/>. Returns false (and a default result)
+        /// when no body is within <paramref name="maxDistance"/>.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ClosestPoint2D.distance"/> is zero when the point is inside a body (Box2D returns a zero
+        /// distance for an overlap), and <see cref="ClosestPoint2D.normal"/> is then degenerate — a caller that
+        /// needs a push-out direction from inside a body uses the overlap+cast-back path, not this query.
+        /// <paramref name="hits"/> is a caller-owned scratch list the broad-phase overlap reuses (cleared on
+        /// entry), so a hot caller avoids a per-call allocation. Like the rest of the surface this is a plain
+        /// <c>static</c> helper (HPC#-clean, no <c>[BurstCompile]</c>), valid only against a stepped world.
+        /// </remarks>
+        public static bool ClosestPoint(
+            PhysicsWorld world,
+            float2 point,
+            float maxDistance,
+            ulong hitLayerMask,
+            NativeList<PhysicsQueryHit2D> hits,
+            out ClosestPoint2D result
+        )
+        {
+            result = default;
+            if (!world.isValid)
+                return false;
+
+            // Broad phase: every shape whose body is within maxDistance of the point (a generous over-set — the
+            // overlap is against a disc of that radius, so it includes any body whose nearest surface is within
+            // range). The exact ShapeDistance below culls the rest.
+            OverlapCircle(world, point, max(maxDistance, 0f), hitLayerMask, hits);
+            if (hits.Length == 0)
+                return false;
+
+            // A single-point shape proxy (the ShapeProxy(Vector2) form — radius 0, no validity check, unlike the
+            // CircleGeometry ctor which rejects a zero radius). The world position rides on transformA, so the
+            // local proxy point is the origin.
+            var queryProxy = new PhysicsShape.ShapeProxy(Vector2.zero);
+            var queryTransform = new PhysicsTransform((Vector2)point);
+
+            var found = false;
+            var best = float.MaxValue;
+            for (var i = 0; i < hits.Length; i++)
+            {
+                var shape = hits[i].shape;
+                if (!shape.isValid)
+                    continue;
+                var d = PhysicsQuery.ShapeDistance(
+                    new PhysicsQuery.DistanceInput
+                    {
+                        shapeProxyA = queryProxy,
+                        transformA = queryTransform,
+                        shapeProxyB = shape, // implicit PhysicsShape -> ShapeProxy (the shape's own geometry)
+                        transformB = shape.body.transform,
+                        useRadii = true,
+                    }
+                );
+                if (d.distance > maxDistance || d.distance >= best)
+                    continue;
+                best = d.distance;
+                result = new ClosestPoint2D
+                {
+                    entity = ResolveEntity(shape),
+                    point = (float2)(Vector2)d.pointB,
+                    normal = (float2)(Vector2)d.normal,
+                    distance = d.distance,
+                    shape = shape,
+                };
+                found = true;
+            }
+            return found;
+        }
     }
 }
