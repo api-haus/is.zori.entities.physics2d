@@ -39,12 +39,34 @@ namespace Zori.Entities.Physics2D.Baking
             var scale = Collider2DBaking.ReadScale(authoring.transform);
             var flip = Collider2DBaking.FlipsWinding(scale);
 
-            // Resolve the contact-filter bits. OverrideFilterBits authors the category/contact masks explicitly
-            // (the raw 32-bit masks widened to 64 bits with the upper bits zero, exactly as the layer path's
-            // unchecked-uint widening does). Otherwise the optional Layer drives them: a Layer of -1 (the
-            // default) leaves both masks 0, so the creation system applies the everything-default (collide with
-            // everything) — the custom surface's historical behaviour; a Layer in [0..31] bakes the same
-            // 1<<layer / matrix-row pair the built-in collider bakers do.
+            // Resolve the surface coefficients through the material-template + per-field override model (the
+            // 2D-native form of the 3D sample's PhysicsMaterialProperties): each of friction / bounciness /
+            // friction-combine / bounciness-combine is the inline value when its Override flag is set, else the
+            // referenced PhysicsMaterial2D template's value if a template is assigned, else the inline value
+            // (override > template > default). The DependsOn dependency makes editing the referenced material
+            // re-bake every shape that references it; DependsOn(null) is a benign no-op when no template is set.
+            var template = DependsOn(authoring.MaterialTemplate);
+            ResolveSurface(
+                authoring,
+                template,
+                out var friction,
+                out var bounciness,
+                out var frictionMixing,
+                out var bouncinessMixing
+            );
+
+            // Resolve the contact-filter bits with the FINALIZED filter precedence (override > layer > unfiltered):
+            //   1. OverrideFilterBits true  → the explicit CategoryBits/ContactBits masks (raw 32-bit, widened to
+            //      64 bits with the upper bits zero, exactly as the layer path's unchecked-uint widening does),
+            //      bypassing the project layer-collision matrix. Highest precedence.
+            //   2. else Layer in [0..31]    → 1<<layer / GetLayerCollisionMask(layer) — the same matrix-resolved
+            //      pair the built-in collider bakers bake. The "named categories" ARE the project's Unity layer
+            //      names (2D reuses the layer system; no bespoke category-names asset).
+            //   3. else Layer == -1 (default) → both masks 0, so the creation system applies the everything-default
+            //      (collide with everything) — the unfiltered default and the custom surface's historical
+            //      behaviour. Lowest precedence.
+            // This matches the Phase-5 runtime semantics: PhysicsShape2D.categoryBits == 0 means "no layer
+            // resolved → everything-default filter" at creation (PhysicsShape2D.cs / CreateShapeForBody).
             ulong categoryBits = 0ul;
             ulong contactBits = 0ul;
             if (authoring.OverrideFilterBits)
@@ -65,11 +87,11 @@ namespace Zori.Entities.Physics2D.Baking
             {
                 kind = authoring.Kind,
                 offset = Collider2DBaking.ScaleOffset(authoring.Offset, scale),
-                friction = authoring.Friction,
-                bounciness = authoring.Bounciness,
+                friction = friction,
+                bounciness = bounciness,
                 density = authoring.Density,
-                frictionMixing = authoring.FrictionCombine,
-                bouncinessMixing = authoring.BouncinessCombine,
+                frictionMixing = frictionMixing,
+                bouncinessMixing = bouncinessMixing,
                 categoryBits = categoryBits,
                 contactBits = contactBits,
                 // The 2D-expressible collision-response subset: Sensor → a trigger, Collide → solid.
@@ -117,6 +139,43 @@ namespace Zori.Entities.Physics2D.Baking
             AddComponent(entity, shape);
 
             AddStaticBodyIfNoCustomBody(authoring, scale);
+        }
+
+        /// <summary>
+        /// Resolve the four template-inheritable surface coefficients (friction / bounciness / friction-combine /
+        /// bounciness-combine) through the per-field override + <see cref="PhysicsMaterial2D"/> template model,
+        /// the 2D-native analogue of the 3D sample's <c>PhysicsMaterialProperties.Get</c>: a field's inline value
+        /// is used when its <c>Override…</c> flag is set, else the referenced material's value if a template is
+        /// assigned, else the inline value (<c>override &gt; template &gt; default</c>). The combine modes pass
+        /// through the same <see cref="Collider2DBaking.MapCombine"/> the built-in surface read uses, so a
+        /// template-inheriting shape and a built-in collider carrying the same <c>sharedMaterial</c> bake
+        /// identical mixing. Density and collision-response are NOT inheritable (no source on
+        /// <see cref="PhysicsMaterial2D"/>) and are read inline by the caller.
+        /// </summary>
+        static void ResolveSurface(
+            PhysicsShape2DAuthoring authoring,
+            PhysicsMaterial2D template,
+            out float friction,
+            out float bounciness,
+            out PhysicsSurfaceMixing2D frictionMixing,
+            out PhysicsSurfaceMixing2D bouncinessMixing
+        )
+        {
+            var hasTemplate = template != null;
+            friction =
+                authoring.OverrideFriction || !hasTemplate ? authoring.Friction : template.friction;
+            bounciness =
+                authoring.OverrideBounciness || !hasTemplate
+                    ? authoring.Bounciness
+                    : template.bounciness;
+            frictionMixing =
+                authoring.OverrideFrictionCombine || !hasTemplate
+                    ? authoring.FrictionCombine
+                    : Collider2DBaking.MapCombine(template.frictionCombine);
+            bouncinessMixing =
+                authoring.OverrideBouncinessCombine || !hasTemplate
+                    ? authoring.BouncinessCombine
+                    : Collider2DBaking.MapCombine(template.bounceCombine);
         }
 
         /// <summary>

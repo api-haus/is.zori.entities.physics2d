@@ -25,6 +25,22 @@ namespace Zori.Entities.Physics2D.Authoring
     /// baker does. Polygon/Edge read <see cref="Vertices"/> (a convex 3..8-vertex hull for Polygon; an open
     /// chain for Edge). <see cref="Offset"/> is the collider's local offset, folded into the geometry at
     /// creation. The unused fields for a given kind are inert.</para>
+    ///
+    /// <para><b>Material template + per-field override.</b> The surface coefficients support the 3D sample's
+    /// override-flag-plus-value-plus-template inheritance model, adapted to 2D's native material asset. The
+    /// template is an optional <see cref="MaterialTemplate"/> (a <see cref="PhysicsMaterial2D"/> — NOT a bespoke
+    /// ScriptableObject; 2D reuses what Unity ships). Each of friction, bounciness, friction-combine, and
+    /// bounciness-combine resolves to <em>the inline value if its <c>Override…</c> flag is set, else the
+    /// template's value if a template is assigned, else the inline value</em> (the <c>override &gt; template
+    /// &gt; default</c> precedence the baker applies). Density is a shape property (not on
+    /// <see cref="PhysicsMaterial2D"/>) and has no template fallback; <see cref="CollisionResponse"/> likewise
+    /// has no material source and stays inline.</para>
+    ///
+    /// <para><b>Filter precedence.</b> The contact filter resolves with a fixed precedence:
+    /// <see cref="OverrideFilterBits"/> (the explicit <see cref="CategoryBits"/> / <see cref="ContactBits"/>)
+    /// beats the <see cref="Layer"/>-resolved default, which beats the unfiltered default (<see cref="Layer"/>
+    /// = -1, collide with everything). The named categories are the project's Unity layer names — 2D reuses the
+    /// layer system rather than a bespoke category-names asset.</para>
     /// </remarks>
     [AddComponentMenu("Zori/Entities Physics 2D/Physics Shape 2D")]
     public sealed class PhysicsShape2DAuthoring : MonoBehaviour
@@ -81,31 +97,75 @@ namespace Zori.Entities.Physics2D.Authoring
 
         [SerializeField]
         [Tooltip(
-            "Surface friction (Coulomb coefficient). The material-less built-in default is 0.4."
+            "Optional surface material TEMPLATE (a UnityEngine.PhysicsMaterial2D asset). The 2D-native analogue "
+                + "of the 3D sample's PhysicsMaterialTemplate: a non-overridden friction / bounciness / combine "
+                + "field inherits the referenced material's value instead of the inline default. When no template "
+                + "is assigned, the inline values are used directly. Editing the referenced material re-bakes "
+                + "every shape that references it (the baker takes a DependsOn dependency on it)."
+        )]
+        PhysicsMaterial2D m_MaterialTemplate;
+
+        [SerializeField]
+        [Tooltip(
+            "When true, the inline Friction value is used; when false and a MaterialTemplate is assigned, the "
+                + "template's friction is inherited. With no template, the inline value is used either way."
+        )]
+        bool m_OverrideFriction;
+
+        [SerializeField]
+        [Tooltip(
+            "Surface friction (Coulomb coefficient). The override value AND the no-template default; the "
+                + "material-less built-in default is 0.4."
         )]
         float m_Friction = 0.4f;
 
         [SerializeField]
         [Tooltip(
-            "Surface bounciness (coefficient of restitution). The material-less default is 0."
+            "When true, the inline Bounciness value is used; when false and a MaterialTemplate is assigned, the "
+                + "template's bounciness is inherited."
+        )]
+        bool m_OverrideBounciness;
+
+        [SerializeField]
+        [Tooltip(
+            "Surface bounciness (coefficient of restitution). The override value AND the no-template default; "
+                + "the material-less default is 0."
         )]
         float m_Bounciness;
 
         [SerializeField]
         [Tooltip(
-            "Per-shape density driving the auto-mass-from-shapes path (Collider2D.density). Default 1."
+            "Per-shape density driving the auto-mass-from-shapes path (Collider2D.density). Default 1. Density "
+                + "is a shape property, not on PhysicsMaterial2D, so it has no template fallback — it is always "
+                + "the inline value."
         )]
         float m_Density = 1f;
 
         [SerializeField]
         [Tooltip(
-            "Surface friction combine mode — how this shape's friction mixes with a contacting shape's."
+            "When true, the inline FrictionCombine value is used; when false and a MaterialTemplate is assigned, "
+                + "the template's frictionCombine is inherited."
+        )]
+        bool m_OverrideFrictionCombine;
+
+        [SerializeField]
+        [Tooltip(
+            "Surface friction combine mode — how this shape's friction mixes with a contacting shape's. The "
+                + "override value AND the no-template default."
         )]
         PhysicsSurfaceMixing2D m_FrictionCombine = PhysicsSurfaceMixing2D.Average;
 
         [SerializeField]
         [Tooltip(
-            "Surface bounciness combine mode — how this shape's bounciness mixes with a contacting shape's."
+            "When true, the inline BouncinessCombine value is used; when false and a MaterialTemplate is "
+                + "assigned, the template's bounceCombine is inherited."
+        )]
+        bool m_OverrideBouncinessCombine;
+
+        [SerializeField]
+        [Tooltip(
+            "Surface bounciness combine mode — how this shape's bounciness mixes with a contacting shape's. The "
+                + "override value AND the no-template default."
         )]
         PhysicsSurfaceMixing2D m_BouncinessCombine = PhysicsSurfaceMixing2D.Average;
 
@@ -209,18 +269,55 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_Vertices = value ?? System.Array.Empty<Vector2>();
         }
 
+        /// <summary>
+        /// The optional surface material template — a <see cref="PhysicsMaterial2D"/> asset whose friction /
+        /// bounciness / combine values a non-overridden field inherits. The 2D-native analogue of the 3D sample's
+        /// <c>PhysicsMaterialTemplate</c> (which is a bespoke ScriptableObject); 2D reuses the
+        /// <see cref="PhysicsMaterial2D"/> asset Unity already ships. <c>null</c> (the default) means no template,
+        /// so the inline values are used. The baker takes a <c>DependsOn</c> dependency on it so editing the
+        /// material re-bakes.
+        /// </summary>
+        public PhysicsMaterial2D MaterialTemplate
+        {
+            get => m_MaterialTemplate;
+            set => m_MaterialTemplate = value;
+        }
+
+        /// <summary>When true, the inline <see cref="Friction"/> value is baked; when false and a
+        /// <see cref="MaterialTemplate"/> is assigned, the template's <c>friction</c> is inherited (the resolution
+        /// the baker applies: override value &gt; template &gt; inline default).</summary>
+        public bool OverrideFriction
+        {
+            get => m_OverrideFriction;
+            set => m_OverrideFriction = value;
+        }
+
+        /// <summary>Surface friction (Coulomb coefficient). The override value when
+        /// <see cref="OverrideFriction"/> is true, and the no-template default otherwise.</summary>
         public float Friction
         {
             get => m_Friction;
             set => m_Friction = math.max(0f, value);
         }
 
+        /// <summary>When true, the inline <see cref="Bounciness"/> value is baked; when false and a
+        /// <see cref="MaterialTemplate"/> is assigned, the template's <c>bounciness</c> is inherited.</summary>
+        public bool OverrideBounciness
+        {
+            get => m_OverrideBounciness;
+            set => m_OverrideBounciness = value;
+        }
+
+        /// <summary>Surface bounciness (coefficient of restitution). The override value when
+        /// <see cref="OverrideBounciness"/> is true, and the no-template default otherwise.</summary>
         public float Bounciness
         {
             get => m_Bounciness;
             set => m_Bounciness = value;
         }
 
+        /// <summary>Per-shape density (<c>Collider2D.density</c>). Density is a shape property, not on
+        /// <see cref="PhysicsMaterial2D"/>, so it has no template fallback — always the inline value.</summary>
         public float Density
         {
             get => m_Density;
@@ -241,7 +338,19 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_Layer = value < 0 ? -1 : math.clamp(value, 0, 31);
         }
 
-        /// <summary>How friction is combined with a contacting shape's friction. Baked to
+        /// <summary>When true, the inline <see cref="FrictionCombine"/> value is baked; when false and a
+        /// <see cref="MaterialTemplate"/> is assigned, the template's <c>frictionCombine</c> is inherited. The
+        /// combine has its own override flag (independent of <see cref="OverrideFriction"/>) because
+        /// <see cref="PhysicsMaterial2D"/> carries <c>frictionCombine</c> independently of <c>friction</c>, so a
+        /// user can keep the template's friction value but change how it mixes.</summary>
+        public bool OverrideFrictionCombine
+        {
+            get => m_OverrideFrictionCombine;
+            set => m_OverrideFrictionCombine = value;
+        }
+
+        /// <summary>How friction is combined with a contacting shape's friction. The override value when
+        /// <see cref="OverrideFrictionCombine"/> is true, and the no-template default otherwise. Baked to
         /// <see cref="PhysicsShape2D.frictionMixing"/>.</summary>
         public PhysicsSurfaceMixing2D FrictionCombine
         {
@@ -249,7 +358,16 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_FrictionCombine = value;
         }
 
-        /// <summary>How bounciness is combined with a contacting shape's bounciness. Baked to
+        /// <summary>When true, the inline <see cref="BouncinessCombine"/> value is baked; when false and a
+        /// <see cref="MaterialTemplate"/> is assigned, the template's <c>bounceCombine</c> is inherited.</summary>
+        public bool OverrideBouncinessCombine
+        {
+            get => m_OverrideBouncinessCombine;
+            set => m_OverrideBouncinessCombine = value;
+        }
+
+        /// <summary>How bounciness is combined with a contacting shape's bounciness. The override value when
+        /// <see cref="OverrideBouncinessCombine"/> is true, and the no-template default otherwise. Baked to
         /// <see cref="PhysicsShape2D.bouncinessMixing"/>.</summary>
         public PhysicsSurfaceMixing2D BouncinessCombine
         {

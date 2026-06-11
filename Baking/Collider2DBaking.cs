@@ -159,9 +159,10 @@ namespace Zori.Entities.Physics2D.Baking
         /// <c>PhysicsShape.SurfaceMaterial.MixingMode</c>). Both enums share the same five members in the same
         /// declaration order (<c>Average / Maximum / Mean / Minimum / Multiply</c>, CoreModule.xml
         /// <c>T:…PhysicsMaterialCombine2D</c>), so this is a 1:1 by-name match; <c>Average</c> covers any future
-        /// addition.
+        /// addition. Public so the custom shape baker can resolve a <c>PhysicsMaterial2D</c> template's combine
+        /// modes through the same map the built-in surface read uses (keeping the dual surface symmetric).
         /// </summary>
-        static PhysicsSurfaceMixing2D MapCombine(PhysicsMaterialCombine2D combine) =>
+        public static PhysicsSurfaceMixing2D MapCombine(PhysicsMaterialCombine2D combine) =>
             combine switch
             {
                 PhysicsMaterialCombine2D.Maximum => PhysicsSurfaceMixing2D.Maximum,
