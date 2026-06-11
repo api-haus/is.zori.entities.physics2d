@@ -106,7 +106,11 @@ namespace Zori.Entities.Physics2D.Baking
 
                 case PhysicsShape2DKind.Box:
                     shape.size = Collider2DBaking.ScaleBoxSize(authoring.BoxSize, scale);
-                    shape.radius = Collider2DBaking.ScaleRoundingRadius(authoring.Radius, scale);
+                    // The corner-rounding radius is the dedicated BoxCornerRadius (default 0, the
+                    // BoxCollider2D.edgeRadius analogue), NOT the circle/capsule Radius. Reading the shared Radius
+                    // here let an un-set box inherit the circle's 0.5 default as a 0.5-unit OUTWARD skin
+                    // (CreateBox inscribe:false), doubling a unit box's physical extent.
+                    shape.radius = Collider2DBaking.ScaleRoundingRadius(authoring.BoxCornerRadius, scale);
                     // The free box z-rotation (degrees → radians, the package convention), folded into the box
                     // geometry at creation. A mirror scale (odd negative-axis count) reverses the apparent sense
                     // of rotation, so negate the angle to keep the box's authored orientation under a flip.
@@ -126,7 +130,10 @@ namespace Zori.Entities.Physics2D.Baking
                     break;
 
                 case PhysicsShape2DKind.Polygon:
-                    shape.radius = Collider2DBaking.ScaleRoundingRadius(authoring.Radius, scale);
+                    // Corner-rounding from the dedicated BoxCornerRadius (default 0), matching the built-in
+                    // PolygonCollider2DBaker which bakes radius 0. The shared Radius (a circle's 0.5 default) is
+                    // not a polygon's corner rounding.
+                    shape.radius = Collider2DBaking.ScaleRoundingRadius(authoring.BoxCornerRadius, scale);
                     shape.vertices = BuildVertexBlob(authoring.Vertices, scale, flip);
                     // A >8-vertex or concave authored outline (typically from the auto-fit utility) is decomposed
                     // into convex fragments at creation; a simple convex hull stays single-hull (the default false).

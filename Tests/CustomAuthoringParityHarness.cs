@@ -428,7 +428,10 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var c = go.AddComponent<BoxCollider2D>();
             c.size = shape.BoxSize;
-            c.edgeRadius = shape.Radius;
+            // The box corner-rounding is BoxCornerRadius (the edgeRadius analogue, default 0), NOT the
+            // circle/capsule Radius — mirror the baker's field choice so the GameObject reference and the ECS
+            // bake agree (reading Radius here re-introduced the doubled-floor divergence the fix removed).
+            c.edgeRadius = shape.BoxCornerRadius;
             return c;
         }
 

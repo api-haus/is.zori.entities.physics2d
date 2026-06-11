@@ -23,6 +23,7 @@ namespace Zori.Entities.Physics2D.Editor
         SerializedProperty m_Kind;
         SerializedProperty m_Offset;
         SerializedProperty m_Radius;
+        SerializedProperty m_BoxCornerRadius;
         SerializedProperty m_BoxSize;
         SerializedProperty m_BoxAngle;
         SerializedProperty m_CapsuleSize;
@@ -69,6 +70,7 @@ namespace Zori.Entities.Physics2D.Editor
             m_Kind = serializedObject.FindProperty("m_Kind");
             m_Offset = serializedObject.FindProperty("m_Offset");
             m_Radius = serializedObject.FindProperty("m_Radius");
+            m_BoxCornerRadius = serializedObject.FindProperty("m_BoxCornerRadius");
             m_BoxSize = serializedObject.FindProperty("m_BoxSize");
             m_BoxAngle = serializedObject.FindProperty("m_BoxAngle");
             m_CapsuleSize = serializedObject.FindProperty("m_CapsuleSize");
@@ -129,7 +131,7 @@ namespace Zori.Entities.Physics2D.Editor
                 case PhysicsShape2DKind.Box:
                     EditorGUILayout.PropertyField(m_BoxSize);
                     EditorGUILayout.PropertyField(m_BoxAngle);
-                    EditorGUILayout.PropertyField(m_Radius, k_CornerRadiusLabel);
+                    EditorGUILayout.PropertyField(m_BoxCornerRadius, k_CornerRadiusLabel);
                     EditorGUILayout.PropertyField(m_Offset);
                     break;
                 case PhysicsShape2DKind.Capsule:
@@ -141,7 +143,7 @@ namespace Zori.Entities.Physics2D.Editor
                 case PhysicsShape2DKind.Polygon:
                     EditorGUILayout.PropertyField(m_Vertices, true);
                     EditorGUILayout.PropertyField(m_PolygonDecompose);
-                    EditorGUILayout.PropertyField(m_Radius, k_CornerRadiusLabel);
+                    EditorGUILayout.PropertyField(m_BoxCornerRadius, k_CornerRadiusLabel);
                     EditorGUILayout.PropertyField(m_Offset);
                     break;
                 case PhysicsShape2DKind.Edge:

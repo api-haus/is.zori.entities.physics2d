@@ -370,7 +370,7 @@ namespace Zori.Entities.Physics2D.Authoring
                     var fit = FitBox(cloud, oriented: true);
                     target.BoxSize = fit.size;
                     target.BoxAngle = fit.angleDeg;
-                    target.Radius = 0f;
+                    target.BoxCornerRadius = 0f; // a fitted box has square corners (no outward rounding)
                     target.Offset = sourceOffset + fit.center;
                     return true;
                 }
@@ -398,7 +398,7 @@ namespace Zori.Entities.Physics2D.Authoring
                         target.Vertices = ToVector2(cloud);
                         target.PolygonDecompose = true;
                     }
-                    target.Radius = 0f;
+                    target.BoxCornerRadius = 0f; // a fitted polygon hull has square corners (no outward rounding)
                     target.Offset = sourceOffset;
                     return true;
                 }

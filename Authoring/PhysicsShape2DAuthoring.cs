@@ -54,10 +54,18 @@ namespace Zori.Entities.Physics2D.Authoring
         float2 m_Offset = float2.zero;
 
         [SerializeField]
-        [Tooltip(
-            "Circle: the circle radius. Box/Polygon: the corner-rounding radius. Capsule: the end radius."
-        )]
+        [Tooltip("Circle: the circle radius. Capsule: the end radius.")]
         float m_Radius = 0.5f;
+
+        [SerializeField]
+        [Tooltip(
+            "Box/Polygon: the corner-rounding radius (the BoxCollider2D.edgeRadius analogue), added OUTWARD on "
+                + "top of the box size / polygon hull. Default 0 — a square-cornered box of exactly BoxSize, "
+                + "matching a BoxCollider2D whose edgeRadius is 0. This is a SEPARATE field from the circle/"
+                + "capsule Radius: sharing one field made an un-set box inherit the circle's 0.5 default as a "
+                + "0.5-unit outward skin, doubling a unit box's physical extent (size 1 → physical 2)."
+        )]
+        float m_BoxCornerRadius;
 
         [SerializeField]
         [Tooltip("Box: full extents (width, height).")]
@@ -225,10 +233,24 @@ namespace Zori.Entities.Physics2D.Authoring
             set => m_Offset = value;
         }
 
+        /// <summary>Circle: the circle radius. Capsule: the end radius. NOT the box/polygon corner rounding —
+        /// that is <see cref="BoxCornerRadius"/>, a separate field defaulting to 0 (a square-cornered box of
+        /// exactly <see cref="BoxSize"/>).</summary>
         public float Radius
         {
             get => m_Radius;
             set => m_Radius = math.max(0f, value);
+        }
+
+        /// <summary>Box/Polygon corner-rounding radius (the <c>BoxCollider2D.edgeRadius</c> analogue), baked to
+        /// <see cref="PhysicsShape2D.radius"/> and added OUTWARD on top of the box size / polygon hull at creation
+        /// (<c>PolygonGeometry.CreateBox(..., inscribe: false)</c>). Default 0 so an un-set box bakes to exactly
+        /// <see cref="BoxSize"/> — the parity with a <c>BoxCollider2D</c> of the same size. Distinct from the
+        /// circle/capsule <see cref="Radius"/> (whose 0.5 default, when shared, silently doubled a unit box).</summary>
+        public float BoxCornerRadius
+        {
+            get => m_BoxCornerRadius;
+            set => m_BoxCornerRadius = math.max(0f, value);
         }
 
         public float2 BoxSize
@@ -477,6 +499,7 @@ namespace Zori.Entities.Physics2D.Authoring
         void OnValidate()
         {
             m_Radius = math.max(0f, m_Radius);
+            m_BoxCornerRadius = math.max(0f, m_BoxCornerRadius);
             m_Friction = math.max(0f, m_Friction);
             m_Density = math.max(0f, m_Density);
         }

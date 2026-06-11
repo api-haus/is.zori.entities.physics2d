@@ -822,13 +822,19 @@ namespace Zori.Entities.Physics2D.Tests
                 hand.Kind = PhysicsShape2DKind.Box;
                 hand.BoxSize = new float2(4f, 2f);
                 hand.BoxAngle = 0f;
-                hand.Radius = 0f;
+                hand.BoxCornerRadius = 0f;
                 hand.Offset = Unity.Mathematics.float2.zero;
 
                 Assert.AreEqual(hand.Kind, fitted.Kind);
                 Assert.AreEqual(hand.BoxSize.x, fitted.BoxSize.x, 1e-4f, "fitted box width = hand-authored.");
                 Assert.AreEqual(hand.BoxSize.y, fitted.BoxSize.y, 1e-4f);
-                Assert.AreEqual(hand.Radius, fitted.Radius, 1e-4f, "fitted corner radius = hand-authored 0.");
+                Assert.AreEqual(
+                    hand.BoxCornerRadius,
+                    fitted.BoxCornerRadius,
+                    1e-4f,
+                    "fitted corner radius = hand-authored 0 (the box corner rounding is BoxCornerRadius, not the "
+                        + "circle/capsule Radius)."
+                );
                 Assert.AreEqual(hand.Offset.x, fitted.Offset.x, 1e-4f, "fitted offset = hand-authored.");
                 Assert.AreEqual(hand.Offset.y, fitted.Offset.y, 1e-4f);
                 Assert.AreEqual(
