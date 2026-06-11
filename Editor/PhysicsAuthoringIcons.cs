@@ -58,6 +58,19 @@ namespace Zori.Entities.Physics2D.Editor
                 "Settings Icon",
                 "d_Settings Icon"
             ),
+            // The unified joint authoring mirrors the built-in *Joint2D family — prefer the most representative
+            // 2D-joint glyph (Hinge), fall back through a generic joint icon and other concrete *Joint2D glyphs.
+            new IconAssignment(
+                typeof(Authoring.PhysicsJoint2DAuthoring),
+                "HingeJoint2D Icon",
+                "d_HingeJoint2D Icon",
+                "Joint Icon",
+                "d_Joint Icon",
+                "FixedJoint2D Icon",
+                "d_FixedJoint2D Icon",
+                "SpringJoint2D Icon",
+                "d_SpringJoint2D Icon"
+            ),
         };
 
         [MenuItem("Tools/Zori/Entities Physics 2D/Assign Authoring Icons")]
