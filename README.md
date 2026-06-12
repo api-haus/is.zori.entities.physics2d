@@ -1,12 +1,8 @@
 # Zori Entities Physics 2D
 
-2D physics for Unity Entities (DOTS / ECS), built on Unity's embedded Box2D v3.
+A 2D physics engine for Entities, via bindings to the Box2D v3 that Unity embeds since 6000.3 (the Low Level Physics 2D API, `Unity.U2D.Physics`).
 
-`is.zori.entities.physics2d` binds Unity's embedded Box2D v3 — the `Unity.U2D.Physics` API (`PhysicsWorld`, `PhysicsBody`, `PhysicsShape`, the geometry and query types) that ships in the editor from `6000.3` onward — to Entities. It bakes authoring to ECS components, creates and steps one `PhysicsWorld` per ECS `World` inside `FixedStepSimulationSystemGroup`, and writes each body's pose to `Unity.Transforms.LocalToWorld`. The simulation is Box2D's; this package is the ECS binding, not a new solver. It writes `LocalToWorld` and nothing else, so it doesn't assume a renderer.
-
-The API follows `com.unity.physics`. A `PhysicsWorldSingleton2D` holds the world handle, spatial queries run over it from Burst jobs, and the query surface mirrors Unity Physics where a 2D equivalent exists — for example, `PhysicsQueries2D.ClosestPoint` corresponds to `CollisionWorld.CalculateDistance(PointDistanceInput)`.
-
-It targets feature parity with GameObject 2D physics, checked by GameObject-vs-ECS parity tests (150 / 150 passing), with a few [known gaps](Documentation~/parity-matrix.md).
+It follows the `com.unity.physics` model: bake the built-in `Rigidbody2D` / `Collider2D` authoring to ECS, step one Box2D world per ECS `World`, and write each body's pose to `Unity.Transforms.LocalToWorld`. Parity with GameObject 2D physics is checked by parity tests (150 / 150), with a few [known gaps](Documentation~/parity-matrix.md).
 
 ## Install
 
