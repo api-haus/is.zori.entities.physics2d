@@ -46,9 +46,7 @@ namespace Zori.Entities.Physics2D.Authoring
     public sealed class PhysicsBody2DAuthoring : MonoBehaviour
     {
         [SerializeField]
-        [Tooltip(
-            "Whether the body is fully simulated (Dynamic), moved directly (Kinematic), or fixed (Static)."
-        )]
+        [Tooltip("Whether the body is fully simulated (Dynamic), moved directly (Kinematic), or fixed (Static).")]
         PhysicsBody2DMotionType m_BodyType = PhysicsBody2DMotionType.Dynamic;
 
         [SerializeField]
@@ -121,9 +119,7 @@ namespace Zori.Entities.Physics2D.Authoring
         bool m_OverrideMassDistribution;
 
         [SerializeField]
-        [Tooltip(
-            "Explicit local-space center of mass, applied when OverrideMassDistribution is true."
-        )]
+        [Tooltip("Explicit local-space center of mass, applied when OverrideMassDistribution is true.")]
         float2 m_CenterOfMass = float2.zero;
 
         [SerializeField]

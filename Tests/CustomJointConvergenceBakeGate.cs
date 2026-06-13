@@ -37,8 +37,7 @@ namespace Zori.Entities.Physics2D.Tests
     public sealed class CustomJointConvergenceBakeGate
     {
         const int LoadTimeoutFrames = 600;
-        const string ParentScenePath =
-            "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
+        const string ParentScenePath = "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
 
         // Mirror of CustomJointConvergenceFixtureBuilder X-keys. ALL NINE kinds are pinned (the four original
         // representative kinds at X ∈ [−10, 10] plus the five the validation gate added at X ≥ 20).
@@ -79,10 +78,7 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             var framesWaited = 0;
-            while (
-                query.CalculateEntityCount() < ExpectedJointCount
-                && framesWaited < LoadTimeoutFrames
-            )
+            while (query.CalculateEntityCount() < ExpectedJointCount && framesWaited < LoadTimeoutFrames)
             {
                 framesWaited++;
                 yield return null;
@@ -120,29 +116,14 @@ namespace Zori.Entities.Physics2D.Tests
 
             AssertConverges(hingeCustom, hingeBuiltIn, "Hinge", compareConnectedBody: false);
             AssertConverges(wheelCustom, wheelBuiltIn, "Wheel", compareConnectedBody: false);
-            AssertConverges(
-                relativeCustom,
-                relativeBuiltIn,
-                "Relative",
-                compareConnectedBody: false
-            );
+            AssertConverges(relativeCustom, relativeBuiltIn, "Relative", compareConnectedBody: false);
             // Target uses a null connected body on BOTH sides (Entity.Null), so the connected body matches too.
             AssertConverges(targetCustom, targetBuiltIn, "Target", compareConnectedBody: true);
             AssertConverges(sliderCustom, sliderBuiltIn, "Slider", compareConnectedBody: false);
-            AssertConverges(
-                distanceCustom,
-                distanceBuiltIn,
-                "Distance",
-                compareConnectedBody: false
-            );
+            AssertConverges(distanceCustom, distanceBuiltIn, "Distance", compareConnectedBody: false);
             AssertConverges(springCustom, springBuiltIn, "Spring", compareConnectedBody: false);
             AssertConverges(fixedCustom, fixedBuiltIn, "Fixed", compareConnectedBody: false);
-            AssertConverges(
-                frictionCustom,
-                frictionBuiltIn,
-                "Friction",
-                compareConnectedBody: false
-            );
+            AssertConverges(frictionCustom, frictionBuiltIn, "Friction", compareConnectedBody: false);
             Assert.AreEqual(
                 Entity.Null,
                 targetCustom.connectedBody,
@@ -202,21 +183,9 @@ namespace Zori.Entities.Physics2D.Tests
             Assert.AreEqual(builtIn.kind, custom.kind, $"{label}: kind diverged.");
             AssertEq(builtIn.anchor.x, custom.anchor.x, $"{label}: anchor.x");
             AssertEq(builtIn.anchor.y, custom.anchor.y, $"{label}: anchor.y");
-            AssertEq(
-                builtIn.connectedAnchor.x,
-                custom.connectedAnchor.x,
-                $"{label}: connectedAnchor.x"
-            );
-            AssertEq(
-                builtIn.connectedAnchor.y,
-                custom.connectedAnchor.y,
-                $"{label}: connectedAnchor.y"
-            );
-            AssertEq(
-                builtIn.axisAngleDegrees,
-                custom.axisAngleDegrees,
-                $"{label}: axisAngleDegrees"
-            );
+            AssertEq(builtIn.connectedAnchor.x, custom.connectedAnchor.x, $"{label}: connectedAnchor.x");
+            AssertEq(builtIn.connectedAnchor.y, custom.connectedAnchor.y, $"{label}: connectedAnchor.y");
+            AssertEq(builtIn.axisAngleDegrees, custom.axisAngleDegrees, $"{label}: axisAngleDegrees");
             Assert.AreEqual(builtIn.enableMotor, custom.enableMotor, $"{label}: enableMotor");
             AssertEq(builtIn.motorSpeed, custom.motorSpeed, $"{label}: motorSpeed");
             AssertEq(builtIn.maxMotorEffort, custom.maxMotorEffort, $"{label}: maxMotorEffort");
@@ -229,28 +198,16 @@ namespace Zori.Entities.Physics2D.Tests
             AssertEq(builtIn.restLength, custom.restLength, $"{label}: restLength");
             AssertEq(builtIn.linearOffset.x, custom.linearOffset.x, $"{label}: linearOffset.x");
             AssertEq(builtIn.linearOffset.y, custom.linearOffset.y, $"{label}: linearOffset.y");
-            AssertEq(
-                builtIn.angularOffsetDegrees,
-                custom.angularOffsetDegrees,
-                $"{label}: angularOffsetDegrees"
-            );
+            AssertEq(builtIn.angularOffsetDegrees, custom.angularOffsetDegrees, $"{label}: angularOffsetDegrees");
             AssertEq(builtIn.maxForce, custom.maxForce, $"{label}: maxForce");
             AssertEq(builtIn.maxTorque, custom.maxTorque, $"{label}: maxTorque");
-            Assert.AreEqual(
-                builtIn.collideConnected,
-                custom.collideConnected,
-                $"{label}: collideConnected"
-            );
+            Assert.AreEqual(builtIn.collideConnected, custom.collideConnected, $"{label}: collideConnected");
             AssertEq(builtIn.breakForce, custom.breakForce, $"{label}: breakForce");
             AssertEq(builtIn.breakTorque, custom.breakTorque, $"{label}: breakTorque");
             Assert.AreEqual(builtIn.breakAction, custom.breakAction, $"{label}: breakAction");
 
             if (compareConnectedBody)
-                Assert.AreEqual(
-                    builtIn.connectedBody,
-                    custom.connectedBody,
-                    $"{label}: connectedBody"
-                );
+                Assert.AreEqual(builtIn.connectedBody, custom.connectedBody, $"{label}: connectedBody");
         }
 
         // Near-exact float compare. Most fields are bit-identical (both bakers write the same authored value),

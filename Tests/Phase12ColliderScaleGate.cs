@@ -68,10 +68,7 @@ namespace Zori.Entities.Physics2D.Tests
         // WITHOUT creating any Box2D body (the ECS PhysicsShape2D carries the baked geometry directly). The
         // FixedStepSimulationSystemGroup is held DISABLED the whole time so nothing integrates or creates a body.
 
-        static IEnumerator LoadBakeReadOnly(
-            string parentScenePath,
-            System.Action<EntityManager> onReady
-        )
+        static IEnumerator LoadBakeReadOnly(string parentScenePath, System.Action<EntityManager> onReady)
         {
             SceneManager.LoadScene(parentScenePath, LoadSceneMode.Single);
             yield return null;
@@ -136,10 +133,7 @@ namespace Zori.Entities.Physics2D.Tests
         public IEnumerator WideBox_BakedExtentScales_AndEdgeDiscsRestAcrossFullWidth()
         {
             PhysicsShape2D shape = default;
-            yield return LoadBakeReadOnly(
-                WideBoxParent,
-                em => shape = ReadStaticFloorShape(em, out _)
-            );
+            yield return LoadBakeReadOnly(WideBoxParent, em => shape = ReadStaticFloorShape(em, out _));
 
             Debug.Log(
                 $"[PHYSICS2D-P12-WIDEBOX] kind={shape.kind} size={shape.size} offset={shape.offset} "
@@ -188,10 +182,7 @@ namespace Zori.Entities.Physics2D.Tests
         public IEnumerator NonUniformCircle_BakedRadiusIsCmax()
         {
             PhysicsShape2D shape = default;
-            yield return LoadBakeReadOnly(
-                NonUniformCircleParent,
-                em => shape = ReadStaticFloorShape(em, out _)
-            );
+            yield return LoadBakeReadOnly(NonUniformCircleParent, em => shape = ReadStaticFloorShape(em, out _));
 
             Debug.Log(
                 $"[PHYSICS2D-P12-CIRCLE] kind={shape.kind} radius={shape.radius} "
@@ -241,10 +232,7 @@ namespace Zori.Entities.Physics2D.Tests
         public IEnumerator NonUniformCapsule_BakedCapsuleFromScaledSize()
         {
             PhysicsShape2D shape = default;
-            yield return LoadBakeReadOnly(
-                NonUniformCapsuleParent,
-                em => shape = ReadStaticFloorShape(em, out _)
-            );
+            yield return LoadBakeReadOnly(NonUniformCapsuleParent, em => shape = ReadStaticFloorShape(em, out _));
 
             Debug.Log(
                 $"[PHYSICS2D-P12-CAPSULE] kind={shape.kind} radius={shape.radius} "
@@ -443,10 +431,7 @@ namespace Zori.Entities.Physics2D.Tests
         public IEnumerator ScaledOffset_BakedOffsetScalesPerAxis()
         {
             PhysicsShape2D shape = default;
-            yield return LoadBakeReadOnly(
-                ScaledOffsetParent,
-                em => shape = ReadStaticFloorShape(em, out _)
-            );
+            yield return LoadBakeReadOnly(ScaledOffsetParent, em => shape = ReadStaticFloorShape(em, out _));
 
             Debug.Log(
                 $"[PHYSICS2D-P12-OFFSET] kind={shape.kind} size={shape.size} offset={shape.offset} "

@@ -93,7 +93,13 @@ namespace Zori.Entities.Physics2D.Tests
 
         // --- the scan ---------------------------------------------------------------------------------------
 
-        static float[] ScanPackage(PhysicsWorld pw, float2 center, float ringRadius, ulong onlyEntity, Dictionary<Entity, byte> wanted)
+        static float[] ScanPackage(
+            PhysicsWorld pw,
+            float2 center,
+            float ringRadius,
+            ulong onlyEntity,
+            Dictionary<Entity, byte> wanted
+        )
         {
             var d = new float[Rays];
             for (var i = 0; i < Rays; i++)
@@ -290,8 +296,16 @@ namespace Zori.Entities.Physics2D.Tests
 
                     var builtinEntity = FindBakedAt(em, shapeQuery, builtinCentre);
                     var customEntity = FindBakedAt(em, shapeQuery, customCentre);
-                    Assert.AreNotEqual(Entity.Null, builtinEntity, $"[{label}] no baked builtin-bake body at {builtinCentre}.");
-                    Assert.AreNotEqual(Entity.Null, customEntity, $"[{label}] no baked custom-bake body at {customCentre}.");
+                    Assert.AreNotEqual(
+                        Entity.Null,
+                        builtinEntity,
+                        $"[{label}] no baked builtin-bake body at {builtinCentre}."
+                    );
+                    Assert.AreNotEqual(
+                        Entity.Null,
+                        customEntity,
+                        $"[{label}] no baked custom-bake body at {customCentre}."
+                    );
 
                     var builtinSet = new Dictionary<Entity, byte> { { builtinEntity, 1 } };
                     var customSet = new Dictionary<Entity, byte> { { customEntity, 1 } };
@@ -313,9 +327,21 @@ namespace Zori.Entities.Physics2D.Tests
                     // (a) built-in-bake vs native — the package's built-in baker must match native Unity physics.
                     AssertPair($"{label} builtinBake-vs-native", builtinScan, nativeScan, eps, tight: true);
                     // (b) custom-bake vs built-in-bake — the dual-surface convergence (the user's question).
-                    AssertPair($"{label} customBake-vs-builtinBake", customScan, builtinScan, eps, tight: !capsuleCustomApprox);
+                    AssertPair(
+                        $"{label} customBake-vs-builtinBake",
+                        customScan,
+                        builtinScan,
+                        eps,
+                        tight: !capsuleCustomApprox
+                    );
                     // (c) custom-bake vs native — the full chain.
-                    AssertPair($"{label} customBake-vs-native", customScan, nativeScan, eps, tight: !capsuleCustomApprox);
+                    AssertPair(
+                        $"{label} customBake-vs-native",
+                        customScan,
+                        nativeScan,
+                        eps,
+                        tight: !capsuleCustomApprox
+                    );
                 }
             }
 
@@ -364,8 +390,7 @@ namespace Zori.Entities.Physics2D.Tests
                     go.AddComponent<BoxCollider2D>().size = (Vector2)(BoxBaseSize / scale);
                     break;
                 case 1:
-                    go.AddComponent<CircleCollider2D>().radius =
-                        CircleBaseRadius / max(abs(scale.x), abs(scale.y));
+                    go.AddComponent<CircleCollider2D>().radius = CircleBaseRadius / max(abs(scale.x), abs(scale.y));
                     break;
                 case 2:
                     var cap = go.AddComponent<CapsuleCollider2D>();

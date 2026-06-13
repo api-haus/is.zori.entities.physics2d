@@ -83,9 +83,7 @@ namespace Zori.Entities.Physics2D.Authoring
         float2 m_CapsuleSize = new float2(1f, 2f);
 
         [SerializeField]
-        [Tooltip(
-            "Capsule: true for a vertical capsule (long axis Y), false for horizontal (long axis X)."
-        )]
+        [Tooltip("Capsule: true for a vertical capsule (long axis Y), false for horizontal (long axis X).")]
         bool m_CapsuleVertical = true;
 
         [SerializeField]
@@ -466,11 +464,7 @@ namespace Zori.Entities.Physics2D.Authoring
         /// capsule orientation the built-in <c>CapsuleCollider2D</c> cannot express. The runtime stores two free
         /// centers, so the rotated centers bake directly with no runtime change.
         /// </summary>
-        public void GetCapsuleCenters(
-            out float capsuleRadius,
-            out float2 center1,
-            out float2 center2
-        )
+        public void GetCapsuleCenters(out float capsuleRadius, out float2 center1, out float2 center2)
         {
             var halfSize = m_CapsuleSize * 0.5f;
             if (m_CapsuleVertical)

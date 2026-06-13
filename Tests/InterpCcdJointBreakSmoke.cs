@@ -84,10 +84,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                 }
             );
-            em.AddComponentData(
-                entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = new float2(vx, 0f) }
-            );
+            em.AddComponentData(entity, new PhysicsBody2DInitialVelocity { linearVelocity = new float2(vx, 0f) });
             return entity;
         }
 
@@ -95,11 +92,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -336,10 +329,7 @@ namespace Zori.Entities.Physics2D.Tests
             // The fixed-step time singleton the system reads: last step at elapsed=1.0 s, dt=1/60. Set the world
             // clock to 1.0 + half a step so timeAhead is exactly half the fixed step → normalizedTimeAhead=0.5.
             var timeSingleton = em.CreateEntity(typeof(PhysicsFixedStepTime2D));
-            em.SetComponentData(
-                timeSingleton,
-                new PhysicsFixedStepTime2D { elapsedTime = 1.0, deltaTime = Dt }
-            );
+            em.SetComponentData(timeSingleton, new PhysicsFixedStepTime2D { elapsedTime = 1.0, deltaTime = Dt });
             world.SetTime(new Unity.Core.TimeData(elapsedTime: 1.0 + 0.5 * Dt, deltaTime: Dt));
 
             // A body whose previous pose is (0,0)/angle 0 and current pose is (2,4)/angle 90°. At t=0.5 the
@@ -349,10 +339,7 @@ namespace Zori.Entities.Physics2D.Tests
             var curPos = new float2(2f, 4f);
             sincos(radians(90f), out var cs2, out var cc2);
 
-            var body = em.CreateEntity(
-                typeof(PhysicsBody2DSmoothing),
-                typeof(Unity.Transforms.LocalToWorld)
-            );
+            var body = em.CreateEntity(typeof(PhysicsBody2DSmoothing), typeof(Unity.Transforms.LocalToWorld));
             em.SetComponentData(
                 body,
                 new PhysicsBody2DSmoothing

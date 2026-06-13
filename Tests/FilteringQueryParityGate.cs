@@ -72,9 +72,18 @@ namespace Zori.Entities.Physics2D.Tests
         // All ordered layer pairs the gate's configs ever touch — snapshot + restore exactly these.
         static readonly (int a, int b)[] TouchedPairs =
         {
-            (LA, LA), (LB, LB), (LA, LB), (LA, LFloor), (LB, LFloor),
-            (LDefault, LDefault), (LDefault, LX), (LDefault, LFloor), (LX, LFloor), (LX, LX),
-            (LDefault, LA), (LDefault, LB),
+            (LA, LA),
+            (LB, LB),
+            (LA, LB),
+            (LA, LFloor),
+            (LB, LFloor),
+            (LDefault, LDefault),
+            (LDefault, LX),
+            (LDefault, LFloor),
+            (LX, LFloor),
+            (LX, LX),
+            (LDefault, LA),
+            (LDefault, LB),
         };
 
         [SetUp]
@@ -425,10 +434,30 @@ namespace Zori.Entities.Physics2D.Tests
 
         static readonly QueryTarget[] Targets =
         {
-            new() { pos = new float2(0f, 5f), radius = 1f, layer = LA },
-            new() { pos = new float2(0f, 9f), radius = 1f, layer = LB },
-            new() { pos = new float2(4f, 5f), radius = 1f, layer = LA },
-            new() { pos = new float2(-4f, 5f), radius = 1f, layer = LB },
+            new()
+            {
+                pos = new float2(0f, 5f),
+                radius = 1f,
+                layer = LA,
+            },
+            new()
+            {
+                pos = new float2(0f, 9f),
+                radius = 1f,
+                layer = LB,
+            },
+            new()
+            {
+                pos = new float2(4f, 5f),
+                radius = 1f,
+                layer = LA,
+            },
+            new()
+            {
+                pos = new float2(-4f, 5f),
+                radius = 1f,
+                layer = LB,
+            },
         };
 
         // Build the package query scene. Returns the world + a position→entity map for hit-set identity.
@@ -536,13 +565,7 @@ namespace Zori.Entities.Physics2D.Tests
             cf.useTriggers = false;
             cf.ClearLayerMask();
             var refHitsArr = new RaycastHit2D[16];
-            var n = UnityEngine.Physics2D.Raycast(
-                (Vector2)origin,
-                (Vector2)dir,
-                cf,
-                refHitsArr,
-                dist
-            );
+            var n = UnityEngine.Physics2D.Raycast((Vector2)origin, (Vector2)dir, cf, refHitsArr, dist);
             var refCols = new List<Collider2D>();
             for (var i = 0; i < n; i++)
                 refCols.Add(refHitsArr[i].collider);
@@ -653,7 +676,15 @@ namespace Zori.Entities.Physics2D.Tests
             var refCcKeys = RefHitKeys(ccCols);
 
             var bcArr = new RaycastHit2D[16];
-            var nb = UnityEngine.Physics2D.BoxCast((Vector2)origin, new Vector2(0.5f, 0.5f), 0f, (Vector2)dir, cf, bcArr, dist);
+            var nb = UnityEngine.Physics2D.BoxCast(
+                (Vector2)origin,
+                new Vector2(0.5f, 0.5f),
+                0f,
+                (Vector2)dir,
+                cf,
+                bcArr,
+                dist
+            );
             var bcCols = new List<Collider2D>();
             for (var i = 0; i < nb; i++)
                 bcCols.Add(bcArr[i].collider);

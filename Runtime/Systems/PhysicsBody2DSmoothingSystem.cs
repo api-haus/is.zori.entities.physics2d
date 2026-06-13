@@ -54,11 +54,7 @@ namespace Zori.Entities.Physics2D
             _localToWorldType = state.GetComponentTypeHandle<LocalToWorld>(isReadOnly: false);
             _entityType = state.GetEntityTypeHandle();
             _renderScaleLookup = state.GetComponentLookup<PhysicsBody2DRenderScale>(isReadOnly: true);
-            _query = SystemAPI
-                .QueryBuilder()
-                .WithAll<PhysicsBody2DSmoothing>()
-                .WithAllRW<LocalToWorld>()
-                .Build();
+            _query = SystemAPI.QueryBuilder().WithAll<PhysicsBody2DSmoothing>().WithAllRW<LocalToWorld>().Build();
             state.RequireForUpdate(_query);
             state.RequireForUpdate<PhysicsFixedStepTime2D>();
         }
@@ -98,8 +94,10 @@ namespace Zori.Entities.Physics2D
             [ReadOnly]
             public ComponentTypeHandle<PhysicsBody2DSmoothing> SmoothingType;
             public ComponentTypeHandle<LocalToWorld> LocalToWorldType;
+
             [ReadOnly]
             public EntityTypeHandle EntityType;
+
             [ReadOnly]
             public ComponentLookup<PhysicsBody2DRenderScale> RenderScaleLookup;
             public float TimeAhead;

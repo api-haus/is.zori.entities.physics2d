@@ -32,6 +32,7 @@ namespace Zori.Entities.Physics2D.Tests
         const int LoadTimeoutFrames = 600;
 
         const int ExpectedShapes = 9; // floor + edge + 7 body shapes
+
         // Every GameObject bakes a body definition: the 7 dynamic bodies AND the 2 collider-only static GameObjects
         // (floor + edge) through the shape baker's static-body fallback. So the definition count is the full 9.
         const int ExpectedBodyDefinitions = 9;
@@ -56,10 +57,7 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             var framesWaited = 0;
-            while (
-                shapeQuery.CalculateEntityCount() < ExpectedShapes
-                && framesWaited < LoadTimeoutFrames
-            )
+            while (shapeQuery.CalculateEntityCount() < ExpectedShapes && framesWaited < LoadTimeoutFrames)
             {
                 framesWaited++;
                 yield return null;

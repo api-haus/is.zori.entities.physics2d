@@ -157,13 +157,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // ends — a still disc (no-op bake) or one frozen at the anchor fails this.
                 minTravelMeters = 0.5f,
             };
-            yield return PhysicsParityHarness.RunParity(
-                "DistanceJoint",
-                "DistanceJoint_Sub",
-                Dt,
-                150,
-                envelope
-            );
+            yield return PhysicsParityHarness.RunParity("DistanceJoint", "DistanceJoint_Sub", Dt, 150, envelope);
         }
 
         [UnityTest]
@@ -197,13 +191,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // no-op bake (disc frozen at 3) fails it.
                 minTravelMeters = 0.4f,
             };
-            yield return PhysicsParityHarness.RunParity(
-                "SpringJoint",
-                "SpringJoint_Sub",
-                Dt,
-                180,
-                envelope
-            );
+            yield return PhysicsParityHarness.RunParity("SpringJoint", "SpringJoint_Sub", Dt, 180, envelope);
         }
 
         [UnityTest]
@@ -268,13 +256,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // fallen block fails the settle region.
                 minTravelMeters = 2.0f,
             };
-            yield return PhysicsParityHarness.RunParity(
-                "RelativeJoint",
-                "RelativeJoint_Sub",
-                Dt,
-                150,
-                envelope
-            );
+            yield return PhysicsParityHarness.RunParity("RelativeJoint", "RelativeJoint_Sub", Dt, 150, envelope);
         }
 
         [UnityTest]
@@ -309,13 +291,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // bake fails this floor, while a runaway launch fails the settle region's x bound.
                 minTravelMeters = 2.0e-2f,
             };
-            yield return PhysicsParityHarness.RunParity(
-                "FrictionJoint",
-                "FrictionJoint_Sub",
-                Dt,
-                120,
-                envelope
-            );
+            yield return PhysicsParityHarness.RunParity("FrictionJoint", "FrictionJoint_Sub", Dt, 120, envelope);
         }
 
         [UnityTest]

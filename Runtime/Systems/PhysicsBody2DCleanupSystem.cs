@@ -46,11 +46,7 @@ namespace Zori.Entities.Physics2D
 
         public void OnCreate(ref SystemState state)
         {
-            _ghostQuery = SystemAPI
-                .QueryBuilder()
-                .WithAll<PhysicsBody2DCleanup>()
-                .WithNone<PhysicsBody2D>()
-                .Build();
+            _ghostQuery = SystemAPI.QueryBuilder().WithAll<PhysicsBody2DCleanup>().WithNone<PhysicsBody2D>().Build();
             state.RequireForUpdate(_ghostQuery);
         }
 
@@ -66,11 +62,7 @@ namespace Zori.Entities.Physics2D
             // World teardown: free any bodies whose entity was destroyed but not yet cleaned up. The world is
             // also torn down by PhysicsWorld2DSystem.OnDestroy (which frees everything); this is the orderly
             // path and a no-op if the world went first (DestroyBatch ignores the invalid handles).
-            var query = SystemAPI
-                .QueryBuilder()
-                .WithAll<PhysicsBody2DCleanup>()
-                .WithNone<PhysicsBody2D>()
-                .Build();
+            var query = SystemAPI.QueryBuilder().WithAll<PhysicsBody2DCleanup>().WithNone<PhysicsBody2D>().Build();
             if (query.IsEmpty)
                 return;
             DestroyGhostBodies(ref state, query);

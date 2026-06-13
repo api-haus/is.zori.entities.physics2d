@@ -48,12 +48,7 @@ namespace Zori.Entities.Physics2D.Tests
         // A fixed, arbitrary form hash stamped on every identical authored body in a test. Its value is irrelevant
         // to correctness (the runtime rebuilds the template from the donor's components) — it only has to be EQUAL
         // across bodies the test means to be one form, and DIFFERENT across forms.
-        static readonly uint4 FormKeyA = new uint4(
-            0x1111_1111u,
-            0x2222_2222u,
-            0x3333_3333u,
-            0x4444_4444u
-        );
+        static readonly uint4 FormKeyA = new uint4(0x1111_1111u, 0x2222_2222u, 0x3333_3333u, 0x4444_4444u);
 
         // Build a fresh world holding only what the physics step needs, optionally seeding a config singleton with
         // the cache knobs. Without a config the world uses the defaults (cache ON, threshold 8).
@@ -69,9 +64,7 @@ namespace Zori.Entities.Physics2D.Tests
 
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>()
-            );
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
             fixedGroup.SortSystems();
 
             if (cacheEnabled.HasValue)
@@ -108,11 +101,7 @@ namespace Zori.Entities.Physics2D.Tests
         // of a form. The entity flows through the same creation loop as a baked one.
         static Entity AuthorFormBody(EntityManager em, float2 pos, float radius)
         {
-            var entity = DirectPhysics2DAuthoring.Create(
-                em,
-                DynamicCircleBody(pos),
-                Circle(radius)
-            );
+            var entity = DirectPhysics2DAuthoring.Create(em, DynamicCircleBody(pos), Circle(radius));
             em.AddComponentData(entity, new PhysicsBody2DFormHash { value = FormKeyA });
             return entity;
         }
@@ -131,11 +120,7 @@ namespace Zori.Entities.Physics2D.Tests
             var entity = AuthorFormBody(em, pos, radius);
             em.AddComponentData(
                 entity,
-                new PhysicsBody2DInitialVelocity
-                {
-                    linearVelocity = linVel,
-                    angularVelocity = angVel,
-                }
+                new PhysicsBody2DInitialVelocity { linearVelocity = linVel, angularVelocity = angVel }
             );
             return entity;
         }
@@ -180,11 +165,7 @@ namespace Zori.Entities.Physics2D.Tests
                     isnan(y) || isinf(y) || isnan(ltw.Position.x) || isinf(ltw.Position.x),
                     $"Direct-authored body {i} produced NaN/Inf: pos={ltw.Position}."
                 );
-                Assert.Less(
-                    y,
-                    startY[i] - 0.5f,
-                    $"Direct-authored body {i} did not fall: startY={startY[i]}, y={y}."
-                );
+                Assert.Less(y, startY[i] - 0.5f, $"Direct-authored body {i} did not fall: startY={startY[i]}, y={y}.");
             }
 
             Debug.Log($"[PHYSICS2D-DIRECT] {N} direct-authored bodies created + fell, no NaN.");
@@ -277,13 +258,7 @@ namespace Zori.Entities.Physics2D.Tests
             const float angVel = 45f; // deg/s
 
             var offWorld = MakePhysicsWorld(out var offGroup, cacheEnabled: false);
-            var offProbe = AuthorFormBodyWithVelocity(
-                offWorld.EntityManager,
-                probePos,
-                0.5f,
-                linVel,
-                angVel
-            );
+            var offProbe = AuthorFormBodyWithVelocity(offWorld.EntityManager, probePos, 0.5f, linVel, angVel);
 
             var onWorld = MakePhysicsWorld(out var onGroup, cacheEnabled: true, threshold: 2);
             var onEm = onWorld.EntityManager;
@@ -322,20 +297,10 @@ namespace Zori.Entities.Physics2D.Tests
 
             var offPos = (float2)(Vector2)offBody.position;
             var onPos = (float2)(Vector2)onBody.position;
-            Assert.AreEqual(
-                offPos.x,
-                onPos.x,
-                $"Velocity body X diverged: off={offPos}, on={onPos}."
-            );
-            Assert.AreEqual(
-                offPos.y,
-                onPos.y,
-                $"Velocity body Y diverged: off={offPos}, on={onPos}."
-            );
+            Assert.AreEqual(offPos.x, onPos.x, $"Velocity body X diverged: off={offPos}, on={onPos}.");
+            Assert.AreEqual(offPos.y, onPos.y, $"Velocity body Y diverged: off={offPos}, on={onPos}.");
 
-            Debug.Log(
-                $"[PHYSICS2D-TRANSPARENT-VEL] velocity body identical through the cached path (pos={onPos})."
-            );
+            Debug.Log($"[PHYSICS2D-TRANSPARENT-VEL] velocity body identical through the cached path (pos={onPos}).");
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -374,9 +339,7 @@ namespace Zori.Entities.Physics2D.Tests
                 }
             }
 
-            Debug.Log(
-                $"[PHYSICS2D-ONOFF] {N} bodies identical across cache off and N in {{1,2,4,8,16,32}}."
-            );
+            Debug.Log($"[PHYSICS2D-ONOFF] {N} bodies identical across cache off and N in {{1,2,4,8,16,32}}.");
             yield break;
         }
 
@@ -384,11 +347,7 @@ namespace Zori.Entities.Physics2D.Tests
         // position. Used as the on/off + threshold equivalence oracle.
         static float2[] RunSpawnAndStep(int n, float2[] startPos, bool cacheEnabled, int threshold)
         {
-            var world = MakePhysicsWorld(
-                out var group,
-                cacheEnabled: cacheEnabled,
-                threshold: threshold
-            );
+            var world = MakePhysicsWorld(out var group, cacheEnabled: cacheEnabled, threshold: threshold);
             var em = world.EntityManager;
             var entities = new Entity[n];
             for (var i = 0; i < n; i++)
@@ -400,8 +359,7 @@ namespace Zori.Entities.Physics2D.Tests
 
             var result = new float2[n];
             for (var i = 0; i < n; i++)
-                result[i] = (float2)
-                    (Vector2)em.GetComponentData<PhysicsBody2D>(entities[i]).body.position;
+                result[i] = (float2)(Vector2)em.GetComponentData<PhysicsBody2D>(entities[i]).body.position;
 
             world.Dispose();
             return result;
@@ -461,9 +419,7 @@ namespace Zori.Entities.Physics2D.Tests
                 );
             }
 
-            Debug.Log(
-                $"[PHYSICS2D-SPRAY] {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN."
-            );
+            Debug.Log($"[PHYSICS2D-SPRAY] {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN.");
 
             world.Dispose();
             yield break;
@@ -488,10 +444,7 @@ namespace Zori.Entities.Physics2D.Tests
 
             // Frame 0: body0 is created (created AFTER this frame's step, so it does not integrate yet).
             group.Update();
-            Assert.IsTrue(
-                em.HasComponent<PhysicsBody2D>(body0),
-                "body 0 should be physical on the frame it spawned."
-            );
+            Assert.IsTrue(em.HasComponent<PhysicsBody2D>(body0), "body 0 should be physical on the frame it spawned.");
             var y0AtCreation = em.GetComponentData<PhysicsBody2D>(body0).body.position.y;
 
             // Keep creating a NEW body every frame for many frames. On each of these frames a new body is created,
@@ -528,11 +481,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var ma = a.massConfiguration;
             var mb = b.massConfiguration;
-            Assert.AreEqual(
-                ma.mass,
-                mb.mass,
-                $"mass differs {when} (per-entity {ma.mass} vs template {mb.mass})."
-            );
+            Assert.AreEqual(ma.mass, mb.mass, $"mass differs {when} (per-entity {ma.mass} vs template {mb.mass}).");
             Assert.AreEqual(
                 ma.rotationalInertia,
                 mb.rotationalInertia,

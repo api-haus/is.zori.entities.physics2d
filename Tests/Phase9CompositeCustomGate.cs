@@ -59,10 +59,7 @@ namespace Zori.Entities.Physics2D.Tests
             public int segmentShapes; // Segment + ChainSegment (open chain pieces)
         }
 
-        static IEnumerator LoadBakeAndCreate(
-            string parentScenePath,
-            System.Action<World, EntityManager> onReady
-        )
+        static IEnumerator LoadBakeAndCreate(string parentScenePath, System.Action<World, EntityManager> onReady)
         {
             SceneManager.LoadScene(parentScenePath, LoadSceneMode.Single);
             yield return null;

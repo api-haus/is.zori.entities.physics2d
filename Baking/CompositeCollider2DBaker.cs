@@ -148,9 +148,7 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Length - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Allocator.Persistent);
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
             return blob;

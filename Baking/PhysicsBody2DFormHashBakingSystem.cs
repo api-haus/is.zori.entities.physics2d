@@ -117,10 +117,7 @@ namespace Zori.Entities.Physics2D.Baking
 
             // Variable-length kinds: fold each vertex into the hash so two outlines that differ produce different
             // forms (and so the inline kinds, which never created the blob, are unaffected — IsCreated is false).
-            if (
-                (sh.kind == PhysicsShape2DKind.Polygon || sh.kind == PhysicsShape2DKind.Edge)
-                && sh.vertices.IsCreated
-            )
+            if ((sh.kind == PhysicsShape2DKind.Polygon || sh.kind == PhysicsShape2DKind.Edge) && sh.vertices.IsCreated)
             {
                 ref var points = ref sh.vertices.Value.points;
                 for (var i = 0; i < points.Length; i++)

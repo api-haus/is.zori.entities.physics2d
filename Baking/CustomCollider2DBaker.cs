@@ -116,8 +116,7 @@ namespace Zori.Entities.Physics2D.Baking
                         shape.vertices = BuildVertexBlob(verts, scale, flip);
                         // Decompose only if the polygon exceeds the single-hull vertex cap; a normal small convex
                         // custom polygon keeps the single-hull path (decompose false).
-                        shape.polygonDecompose =
-                            verts.Count > Unity.U2D.Physics.PhysicsConstants.MaxPolygonVertices;
+                        shape.polygonDecompose = verts.Count > Unity.U2D.Physics.PhysicsConstants.MaxPolygonVertices;
                         break;
 
                     case PhysicsShapeType2D.Edges:
@@ -161,11 +160,7 @@ namespace Zori.Entities.Physics2D.Baking
         /// identically. The transform scale is baked into each vertex (signed); a winding-flipping (mirror)
         /// scale reverses the order so a polygon hull stays CCW and an edge chain's solid side is preserved.
         /// </summary>
-        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(
-            List<Vector2> points,
-            float2 scale,
-            bool flip
-        )
+        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(List<Vector2> points, float2 scale, bool flip)
         {
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsShape2DVertices>();
@@ -175,9 +170,7 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Count - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Allocator.Persistent);
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
             return blob;

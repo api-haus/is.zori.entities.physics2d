@@ -49,12 +49,7 @@ namespace Zori.Entities.Physics2D.Tests
 
         // A static effector entity: a sensor box/circle region (so a body overlaps without a collision response)
         // carrying a PhysicsEffector2D definition. The collider-only static body is the effector's own body.
-        static Entity SpawnEffector(
-            EntityManager em,
-            float2 pos,
-            PhysicsShape2D region,
-            PhysicsEffector2D eff
-        )
+        static Entity SpawnEffector(EntityManager em, float2 pos, PhysicsShape2D region, PhysicsEffector2D eff)
         {
             region.isTrigger = true; // the effector region is a sensor: overlaps, no collision response
             var entity = DirectPhysics2DAuthoring.Create(
@@ -94,8 +89,7 @@ namespace Zori.Entities.Physics2D.Tests
             );
         }
 
-        static PhysicsBody BodyOf(EntityManager em, Entity e) =>
-            em.GetComponentData<PhysicsBody2D>(e).body;
+        static PhysicsBody BodyOf(EntityManager em, Entity e) => em.GetComponentData<PhysicsBody2D>(e).body;
 
         [UnityTest]
         public IEnumerator Area_BodyInsideZone_AcceleratesInForceDirection()

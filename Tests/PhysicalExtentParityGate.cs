@@ -148,12 +148,7 @@ namespace Zori.Entities.Physics2D.Tests
             }
         }
 
-        static void AssertExtent(
-            string kind,
-            float2 measured,
-            float2 expectedAuthored,
-            float2 groundTruth
-        )
+        static void AssertExtent(string kind, float2 measured, float2 expectedAuthored, float2 groundTruth)
         {
             Debug.Log(
                 $"[PHYSICS2D-EXTENT-{kind}] physical=({measured.x:F4},{measured.y:F4}) "
@@ -310,18 +305,8 @@ namespace Zori.Entities.Physics2D.Tests
             Debug.Log(
                 $"[PHYSICS2D-EXTENT-OBOX] physical=({measured.x:F4},{measured.y:F4}) expected=({diag:F4},{diag:F4})"
             );
-            Assert.AreEqual(
-                diag,
-                measured.x,
-                1e-3f,
-                "Oriented unit box width = √2 (rotation, not doubling)."
-            );
-            Assert.AreEqual(
-                diag,
-                measured.y,
-                1e-3f,
-                "Oriented unit box height = √2 (rotation, not doubling)."
-            );
+            Assert.AreEqual(diag, measured.x, 1e-3f, "Oriented unit box width = √2 (rotation, not doubling).");
+            Assert.AreEqual(diag, measured.y, 1e-3f, "Oriented unit box height = √2 (rotation, not doubling).");
             yield return null;
         }
     }

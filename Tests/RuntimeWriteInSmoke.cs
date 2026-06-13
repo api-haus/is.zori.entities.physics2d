@@ -152,8 +152,7 @@ namespace Zori.Entities.Physics2D.Tests
                 {
                     bodyType = PhysicsBody.BodyType.Kinematic,
                     initialPosition = new float2(0f, 0f),
-                }
-                ,
+                },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Circle,
@@ -190,9 +189,7 @@ namespace Zori.Entities.Physics2D.Tests
                 $"LocalToWorld ({ltwPos.x:F3},{ltwPos.y:F3}) did not match the body pose ({landed})."
             );
 
-            Debug.Log(
-                $"[PHYSICS2D-WRITEIN] MovePosition target={target} → landed={landed} (LocalToWorld agrees)."
-            );
+            Debug.Log($"[PHYSICS2D-WRITEIN] MovePosition target={target} → landed={landed} (LocalToWorld agrees).");
 
             world.Dispose();
             yield break;

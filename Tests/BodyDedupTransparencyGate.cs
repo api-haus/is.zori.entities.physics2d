@@ -67,7 +67,11 @@ namespace Zori.Entities.Physics2D.Tests
         // Disposable-world plumbing (mirrors DirectAndBatchPathValidation / CompositeCustomColliderSmoke).
         // ------------------------------------------------------------------------------------------------
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group, bool? cacheEnabled = null, int threshold = 8)
+        static World MakePhysicsWorld(
+            out FixedStepSimulationSystemGroup group,
+            bool? cacheEnabled = null,
+            int threshold = 8
+        )
         {
             var world = new World("Physics2DDedupGateWorld");
             var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
@@ -127,13 +131,40 @@ namespace Zori.Entities.Physics2D.Tests
         // The shape fixtures, one per kind. Each carries a non-default surface/filter so BuildShapeDef has real
         // content to replay, and is a stable convex form (no decompose) so a cacheable kind reaches the template.
         static PhysicsShape2D CircleShape() =>
-            new PhysicsShape2D { kind = PhysicsShape2DKind.Circle, radius = 0.5f, offset = new float2(0.1f, -0.05f), density = 1f, friction = 0.4f, bounciness = 0.2f };
+            new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Circle,
+                radius = 0.5f,
+                offset = new float2(0.1f, -0.05f),
+                density = 1f,
+                friction = 0.4f,
+                bounciness = 0.2f,
+            };
 
         static PhysicsShape2D BoxShape() =>
-            new PhysicsShape2D { kind = PhysicsShape2DKind.Box, size = new float2(0.8f, 0.6f), radius = 0.02f, boxAngleRadians = 0.3f, offset = new float2(-0.1f, 0.05f), density = 1f, friction = 0.5f, bounciness = 0.1f };
+            new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Box,
+                size = new float2(0.8f, 0.6f),
+                radius = 0.02f,
+                boxAngleRadians = 0.3f,
+                offset = new float2(-0.1f, 0.05f),
+                density = 1f,
+                friction = 0.5f,
+                bounciness = 0.1f,
+            };
 
         static PhysicsShape2D CapsuleShape() =>
-            new PhysicsShape2D { kind = PhysicsShape2DKind.Capsule, capsuleCenter1 = new float2(0f, -0.3f), capsuleCenter2 = new float2(0f, 0.3f), radius = 0.25f, offset = new float2(0.05f, 0f), density = 1f, friction = 0.3f };
+            new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Capsule,
+                capsuleCenter1 = new float2(0f, -0.3f),
+                capsuleCenter2 = new float2(0f, 0.3f),
+                radius = 0.25f,
+                offset = new float2(0.05f, 0f),
+                density = 1f,
+                friction = 0.3f,
+            };
 
         static PhysicsShape2D PolygonShape() =>
             new PhysicsShape2D
@@ -144,7 +175,15 @@ namespace Zori.Entities.Physics2D.Tests
                 offset = new float2(0.0f, 0.0f),
                 density = 1f,
                 friction = 0.45f,
-                vertices = Blob(new[] { new float2(-0.4f, -0.3f), new float2(0.4f, -0.3f), new float2(0.4f, 0.3f), new float2(-0.4f, 0.3f) }),
+                vertices = Blob(
+                    new[]
+                    {
+                        new float2(-0.4f, -0.3f),
+                        new float2(0.4f, -0.3f),
+                        new float2(0.4f, 0.3f),
+                        new float2(-0.4f, 0.3f),
+                    }
+                ),
             };
 
         // A non-cacheable kind: a decompose Polygon (a multi-fragment CreateShapeBatch). Same outline as the simple
@@ -156,7 +195,15 @@ namespace Zori.Entities.Physics2D.Tests
                 polygonDecompose = true,
                 density = 1f,
                 friction = 0.4f,
-                vertices = Blob(new[] { new float2(-0.4f, -0.3f), new float2(0.4f, -0.3f), new float2(0.4f, 0.3f), new float2(-0.4f, 0.3f) }),
+                vertices = Blob(
+                    new[]
+                    {
+                        new float2(-0.4f, -0.3f),
+                        new float2(0.4f, -0.3f),
+                        new float2(0.4f, 0.3f),
+                        new float2(-0.4f, 0.3f),
+                    }
+                ),
             };
 
         // A non-cacheable kind: an Edge (chain geometry, NativeArray-backed) — a closed loop so a dynamic chain-only
@@ -167,7 +214,15 @@ namespace Zori.Entities.Physics2D.Tests
                 kind = PhysicsShape2DKind.Edge,
                 edgeIsLoop = true,
                 friction = 0.4f,
-                vertices = Blob(new[] { new float2(-0.5f, -0.5f), new float2(0.5f, -0.5f), new float2(0.5f, 0.5f), new float2(-0.5f, 0.5f) }),
+                vertices = Blob(
+                    new[]
+                    {
+                        new float2(-0.5f, -0.5f),
+                        new float2(0.5f, -0.5f),
+                        new float2(0.5f, 0.5f),
+                        new float2(-0.5f, 0.5f),
+                    }
+                ),
             };
 
         static Entity AuthorBody(EntityManager em, float2 pos, in PhysicsShape2D shape, bool stampForm = true)
@@ -185,7 +240,19 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var entity = AuthorBody(em, pos, CircleShape());
             var buffer = em.AddBuffer<PhysicsShape2DElement>(entity);
-            buffer.Add(new PhysicsShape2DElement { shape = new PhysicsShape2D { kind = PhysicsShape2DKind.Box, size = new float2(0.4f, 0.4f), offset = new float2(0.6f, 0f), density = 1f, friction = 0.4f } });
+            buffer.Add(
+                new PhysicsShape2DElement
+                {
+                    shape = new PhysicsShape2D
+                    {
+                        kind = PhysicsShape2DKind.Box,
+                        size = new float2(0.4f, 0.4f),
+                        offset = new float2(0.6f, 0f),
+                        density = 1f,
+                        friction = 0.4f,
+                    },
+                }
+            );
             return entity;
         }
 
@@ -200,10 +267,29 @@ namespace Zori.Entities.Physics2D.Tests
         // the donor). Both probes start at the identical pose; after equal stepping every read-back field must match.
         // ------------------------------------------------------------------------------------------------
 
-        [UnityTest] public IEnumerator CachedPathBitIdentical_Circle() { yield return RunCachedVsPerEntity(CircleShape()); }
-        [UnityTest] public IEnumerator CachedPathBitIdentical_Box() { yield return RunCachedVsPerEntity(BoxShape()); }
-        [UnityTest] public IEnumerator CachedPathBitIdentical_Capsule() { yield return RunCachedVsPerEntity(CapsuleShape()); }
-        [UnityTest] public IEnumerator CachedPathBitIdentical_Polygon() { yield return RunCachedVsPerEntity(PolygonShape()); }
+        [UnityTest]
+        public IEnumerator CachedPathBitIdentical_Circle()
+        {
+            yield return RunCachedVsPerEntity(CircleShape());
+        }
+
+        [UnityTest]
+        public IEnumerator CachedPathBitIdentical_Box()
+        {
+            yield return RunCachedVsPerEntity(BoxShape());
+        }
+
+        [UnityTest]
+        public IEnumerator CachedPathBitIdentical_Capsule()
+        {
+            yield return RunCachedVsPerEntity(CapsuleShape());
+        }
+
+        [UnityTest]
+        public IEnumerator CachedPathBitIdentical_Polygon()
+        {
+            yield return RunCachedVsPerEntity(PolygonShape());
+        }
 
         IEnumerator RunCachedVsPerEntity(PhysicsShape2D shape)
         {
@@ -239,7 +325,9 @@ namespace Zori.Entities.Physics2D.Tests
             }
 
             AssertMassIdentical(offBody, onBody, shape.kind, "after stepping");
-            Debug.Log($"[DEDUP-GATE-A] {shape.kind}: cached-template body == per-entity body, bit-identical for {Steps} steps (pos={(float2)(Vector2)onBody.position}).");
+            Debug.Log(
+                $"[DEDUP-GATE-A] {shape.kind}: cached-template body == per-entity body, bit-identical for {Steps} steps (pos={(float2)(Vector2)onBody.position})."
+            );
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -254,8 +342,17 @@ namespace Zori.Entities.Physics2D.Tests
         // unaffected by the optimisation.
         // ------------------------------------------------------------------------------------------------
 
-        [UnityTest] public IEnumerator NonCacheableUnaffected_Edge() { yield return RunNonCacheableOnOff(EdgeShape()); }
-        [UnityTest] public IEnumerator NonCacheableUnaffected_DecomposePolygon() { yield return RunNonCacheableOnOff(DecomposePolygonShape()); }
+        [UnityTest]
+        public IEnumerator NonCacheableUnaffected_Edge()
+        {
+            yield return RunNonCacheableOnOff(EdgeShape());
+        }
+
+        [UnityTest]
+        public IEnumerator NonCacheableUnaffected_DecomposePolygon()
+        {
+            yield return RunNonCacheableOnOff(DecomposePolygonShape());
+        }
 
         IEnumerator RunNonCacheableOnOff(PhysicsShape2D shape)
         {
@@ -287,7 +384,9 @@ namespace Zori.Entities.Physics2D.Tests
                 AssertPoseIdentical(offBody, onBody, shape.kind, s + 1);
             }
 
-            Debug.Log($"[DEDUP-GATE-A-NEG] {shape.kind} (non-cacheable): on==off, the cache never engaged (pos={(float2)(Vector2)onBody.position}).");
+            Debug.Log(
+                $"[DEDUP-GATE-A-NEG] {shape.kind} (non-cacheable): on==off, the cache never engaged (pos={(float2)(Vector2)onBody.position})."
+            );
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -325,7 +424,9 @@ namespace Zori.Entities.Physics2D.Tests
                 AssertPoseIdentical(offBody, onBody, PhysicsShape2DKind.Circle, s + 1);
             }
 
-            Debug.Log($"[DEDUP-GATE-A-NEG] multi-shape (non-cacheable): on==off, the cache never engaged (pos={(float2)(Vector2)onBody.position}).");
+            Debug.Log(
+                $"[DEDUP-GATE-A-NEG] multi-shape (non-cacheable): on==off, the cache never engaged (pos={(float2)(Vector2)onBody.position})."
+            );
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -390,7 +491,9 @@ namespace Zori.Entities.Physics2D.Tests
                     AssertPoseIdentical(offBodies[i], onBodies[i], PhysicsShape2DKind.Box, s + 1);
             }
 
-            Debug.Log($"[DEDUP-GATE-A] same-frame collapse of K={K} boxes bit-identical to per-entity for {Steps} steps.");
+            Debug.Log(
+                $"[DEDUP-GATE-A] same-frame collapse of K={K} boxes bit-identical to per-entity for {Steps} steps."
+            );
 
             offWorld.Dispose();
             onWorld.Dispose();
@@ -403,10 +506,29 @@ namespace Zori.Entities.Physics2D.Tests
         // identical final pose for the same authored spray.
         // ------------------------------------------------------------------------------------------------
 
-        [UnityTest] public IEnumerator ThresholdSweepTransparent_Circle() { yield return RunThresholdSweep(CircleShape); }
-        [UnityTest] public IEnumerator ThresholdSweepTransparent_Box() { yield return RunThresholdSweep(BoxShape); }
-        [UnityTest] public IEnumerator ThresholdSweepTransparent_Capsule() { yield return RunThresholdSweep(CapsuleShape); }
-        [UnityTest] public IEnumerator ThresholdSweepTransparent_Polygon() { yield return RunThresholdSweep(PolygonShape); }
+        [UnityTest]
+        public IEnumerator ThresholdSweepTransparent_Circle()
+        {
+            yield return RunThresholdSweep(CircleShape);
+        }
+
+        [UnityTest]
+        public IEnumerator ThresholdSweepTransparent_Box()
+        {
+            yield return RunThresholdSweep(BoxShape);
+        }
+
+        [UnityTest]
+        public IEnumerator ThresholdSweepTransparent_Capsule()
+        {
+            yield return RunThresholdSweep(CapsuleShape);
+        }
+
+        [UnityTest]
+        public IEnumerator ThresholdSweepTransparent_Polygon()
+        {
+            yield return RunThresholdSweep(PolygonShape);
+        }
 
         IEnumerator RunThresholdSweep(System.Func<PhysicsShape2D> shapeFactory)
         {
@@ -432,16 +554,32 @@ namespace Zori.Entities.Physics2D.Tests
                 var withCache = SpawnStepCollect(N, startPos, shapeFactory, cacheEnabled: true, threshold: thr);
                 for (var i = 0; i < N; i++)
                 {
-                    Assert.AreEqual(baseline[i].x, withCache[i].x, $"{shapeFactory().kind} body {i} X differs cache-off vs on(N={thr}): {baseline[i]} vs {withCache[i]}.");
-                    Assert.AreEqual(baseline[i].y, withCache[i].y, $"{shapeFactory().kind} body {i} Y differs cache-off vs on(N={thr}): {baseline[i]} vs {withCache[i]}.");
+                    Assert.AreEqual(
+                        baseline[i].x,
+                        withCache[i].x,
+                        $"{shapeFactory().kind} body {i} X differs cache-off vs on(N={thr}): {baseline[i]} vs {withCache[i]}."
+                    );
+                    Assert.AreEqual(
+                        baseline[i].y,
+                        withCache[i].y,
+                        $"{shapeFactory().kind} body {i} Y differs cache-off vs on(N={thr}): {baseline[i]} vs {withCache[i]}."
+                    );
                 }
             }
 
-            Debug.Log($"[DEDUP-GATE-A] {shapeFactory().kind}: {N} bodies identical across cache-off and N in {{1,2,8,64}}.");
+            Debug.Log(
+                $"[DEDUP-GATE-A] {shapeFactory().kind}: {N} bodies identical across cache-off and N in {{1,2,8,64}}."
+            );
             yield break;
         }
 
-        static float2[] SpawnStepCollect(int n, float2[] startPos, System.Func<PhysicsShape2D> shapeFactory, bool cacheEnabled, int threshold)
+        static float2[] SpawnStepCollect(
+            int n,
+            float2[] startPos,
+            System.Func<PhysicsShape2D> shapeFactory,
+            bool cacheEnabled,
+            int threshold
+        )
         {
             var world = MakePhysicsWorld(out var group, cacheEnabled: cacheEnabled, threshold: threshold);
             var em = world.EntityManager;
@@ -469,9 +607,23 @@ namespace Zori.Entities.Physics2D.Tests
         // cache must not drop, duplicate, or stall a body — across every cacheable kind.
         // ------------------------------------------------------------------------------------------------
 
-        [UnityTest] public IEnumerator CrossFrameSpray_Box() { yield return RunSpray(BoxShape); }
-        [UnityTest] public IEnumerator CrossFrameSpray_Capsule() { yield return RunSpray(CapsuleShape); }
-        [UnityTest] public IEnumerator CrossFrameSpray_Polygon() { yield return RunSpray(PolygonShape); }
+        [UnityTest]
+        public IEnumerator CrossFrameSpray_Box()
+        {
+            yield return RunSpray(BoxShape);
+        }
+
+        [UnityTest]
+        public IEnumerator CrossFrameSpray_Capsule()
+        {
+            yield return RunSpray(CapsuleShape);
+        }
+
+        [UnityTest]
+        public IEnumerator CrossFrameSpray_Polygon()
+        {
+            yield return RunSpray(PolygonShape);
+        }
 
         IEnumerator RunSpray(System.Func<PhysicsShape2D> shapeFactory)
         {
@@ -490,8 +642,14 @@ namespace Zori.Entities.Physics2D.Tests
                 startY.Add(y);
 
                 group.Update(); // body f created this frame (no step on a creation frame); all earlier bodies step
-                Assert.IsTrue(em.HasComponent<PhysicsBody2D>(e), $"{shapeFactory().kind} sprayed body {f} not physical on its spawn frame — the cross-frame cache dropped or stalled it.");
-                Assert.IsTrue(em.GetComponentData<PhysicsBody2D>(e).body.isValid, $"{shapeFactory().kind} sprayed body {f} has an invalid Box2D handle immediately after creation.");
+                Assert.IsTrue(
+                    em.HasComponent<PhysicsBody2D>(e),
+                    $"{shapeFactory().kind} sprayed body {f} not physical on its spawn frame — the cross-frame cache dropped or stalled it."
+                );
+                Assert.IsTrue(
+                    em.GetComponentData<PhysicsBody2D>(e).body.isValid,
+                    $"{shapeFactory().kind} sprayed body {f} has an invalid Box2D handle immediately after creation."
+                );
             }
             DisposeBlobs();
 
@@ -501,11 +659,20 @@ namespace Zori.Entities.Physics2D.Tests
             for (var i = 0; i < entities.Count; i++)
             {
                 var p = em.GetComponentData<LocalToWorld>(entities[i]).Position;
-                Assert.IsFalse(isnan(p.x) || isnan(p.y) || isinf(p.x) || isinf(p.y), $"{shapeFactory().kind} sprayed body {i} produced NaN/Inf: {p}.");
-                Assert.Less(p.y, startY[i] - 0.5f, $"{shapeFactory().kind} sprayed body {i} did not fall: startY={startY[i]}, y={p.y}.");
+                Assert.IsFalse(
+                    isnan(p.x) || isnan(p.y) || isinf(p.x) || isinf(p.y),
+                    $"{shapeFactory().kind} sprayed body {i} produced NaN/Inf: {p}."
+                );
+                Assert.Less(
+                    p.y,
+                    startY[i] - 0.5f,
+                    $"{shapeFactory().kind} sprayed body {i} did not fall: startY={startY[i]}, y={p.y}."
+                );
             }
 
-            Debug.Log($"[DEDUP-GATE-A] {shapeFactory().kind}: {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN.");
+            Debug.Log(
+                $"[DEDUP-GATE-A] {shapeFactory().kind}: {entities.Count} bodies sprayed 1/frame, each created + fell, no NaN."
+            );
 
             world.Dispose();
             yield break;
@@ -521,7 +688,12 @@ namespace Zori.Entities.Physics2D.Tests
         // runs the system once, and reads back the produced hash.
         // ================================================================================================
 
-        static uint4 BakeHash(World world, in PhysicsBody2DDefinition body, in PhysicsShape2D shape, PhysicsShape2D? extra = null)
+        static uint4 BakeHash(
+            World world,
+            in PhysicsBody2DDefinition body,
+            in PhysicsShape2D shape,
+            PhysicsShape2D? extra = null
+        )
         {
             var em = world.EntityManager;
             var e = em.CreateEntity();
@@ -536,7 +708,10 @@ namespace Zori.Entities.Physics2D.Tests
             var sys = world.GetOrCreateSystem<PhysicsBody2DFormHashBakingSystem>();
             sys.Update(world.Unmanaged);
 
-            Assert.IsTrue(em.HasComponent<PhysicsBody2DFormHash>(e), "PhysicsBody2DFormHashBakingSystem did not add the form hash — it did not match the baked entity.");
+            Assert.IsTrue(
+                em.HasComponent<PhysicsBody2DFormHash>(e),
+                "PhysicsBody2DFormHashBakingSystem did not add the form hash — it did not match the baked entity."
+            );
             var hash = em.GetComponentData<PhysicsBody2DFormHash>(e).value;
             em.DestroyEntity(e);
             return hash;
@@ -600,7 +775,10 @@ namespace Zori.Entities.Physics2D.Tests
             var hashA = BakeHash(world, bodyA, BaseShape());
             var hashB = BakeHash(world, bodyB, BaseShape());
 
-            Assert.IsTrue(all(hashA == hashB), $"Two bodies of one form with different POSE hashed DIFFERENT (A={hashA}, B={hashB}) — pose leaked into the form hash; a spray would split into singleton forms and the optimisation never engages.");
+            Assert.IsTrue(
+                all(hashA == hashB),
+                $"Two bodies of one form with different POSE hashed DIFFERENT (A={hashA}, B={hashB}) — pose leaked into the form hash; a spray would split into singleton forms and the optimisation never engages."
+            );
             Debug.Log($"[DEDUP-GATE-B] same form, different pose → identical hash {hashA}.");
 
             world.Dispose();
@@ -622,12 +800,27 @@ namespace Zori.Entities.Physics2D.Tests
             AssertBodyFieldChanges(world, baseHash, "gravityScale", b => b.gravityScale = 0.5f);
             AssertBodyFieldChanges(world, baseHash, "linearDamping", b => b.linearDamping = 0.9f);
             AssertBodyFieldChanges(world, baseHash, "angularDamping", b => b.angularDamping = 0.9f);
-            AssertBodyFieldChanges(world, baseHash, "constraints", b => b.constraints = PhysicsBody.BodyConstraints.Rotation);
+            AssertBodyFieldChanges(
+                world,
+                baseHash,
+                "constraints",
+                b => b.constraints = PhysicsBody.BodyConstraints.Rotation
+            );
             AssertBodyFieldChanges(world, baseHash, "mass", b => b.mass = 7.5f);
             AssertBodyFieldChanges(world, baseHash, "useAutoMass", b => b.useAutoMass = !b.useAutoMass);
             AssertBodyFieldChanges(world, baseHash, "fastCollisions", b => b.fastCollisions = !b.fastCollisions);
-            AssertBodyFieldChanges(world, baseHash, "interpolation", b => b.interpolation = PhysicsBody2DInterpolation.Interpolate);
-            AssertBodyFieldChanges(world, baseHash, "overrideMassDistribution", b => b.overrideMassDistribution = !b.overrideMassDistribution);
+            AssertBodyFieldChanges(
+                world,
+                baseHash,
+                "interpolation",
+                b => b.interpolation = PhysicsBody2DInterpolation.Interpolate
+            );
+            AssertBodyFieldChanges(
+                world,
+                baseHash,
+                "overrideMassDistribution",
+                b => b.overrideMassDistribution = !b.overrideMassDistribution
+            );
             AssertBodyFieldChanges(world, baseHash, "centerOfMass", b => b.centerOfMass = new float2(0.3f, -0.2f));
             AssertBodyFieldChanges(world, baseHash, "rotationalInertia", b => b.rotationalInertia = 2.7f);
 
@@ -644,13 +837,25 @@ namespace Zori.Entities.Physics2D.Tests
             AssertShapeFieldChanges(world, baseHash, "friction", s => s.friction = 0.8f);
             AssertShapeFieldChanges(world, baseHash, "bounciness", s => s.bounciness = 0.6f);
             AssertShapeFieldChanges(world, baseHash, "density", s => s.density = 2.3f);
-            AssertShapeFieldChanges(world, baseHash, "frictionMixing", s => s.frictionMixing = PhysicsSurfaceMixing2D.Minimum);
-            AssertShapeFieldChanges(world, baseHash, "bouncinessMixing", s => s.bouncinessMixing = PhysicsSurfaceMixing2D.Multiply);
+            AssertShapeFieldChanges(
+                world,
+                baseHash,
+                "frictionMixing",
+                s => s.frictionMixing = PhysicsSurfaceMixing2D.Minimum
+            );
+            AssertShapeFieldChanges(
+                world,
+                baseHash,
+                "bouncinessMixing",
+                s => s.bouncinessMixing = PhysicsSurfaceMixing2D.Multiply
+            );
             AssertShapeFieldChanges(world, baseHash, "categoryBits", s => s.categoryBits = 1ul << 5);
             AssertShapeFieldChanges(world, baseHash, "contactBits", s => s.contactBits = 0xF0F0ul);
             AssertShapeFieldChanges(world, baseHash, "isTrigger", s => s.isTrigger = !s.isTrigger);
 
-            Debug.Log("[DEDUP-GATE-B] every hashed body-side and shape-side field changes the form hash when varied alone.");
+            Debug.Log(
+                "[DEDUP-GATE-B] every hashed body-side and shape-side field changes the form hash when varied alone."
+            );
 
             world.Dispose();
             yield break;
@@ -662,7 +867,10 @@ namespace Zori.Entities.Physics2D.Tests
             var rb = new RefBody(ref b);
             mutate(rb);
             var h = BakeHash(world, rb.Value, BaseShape());
-            Assert.IsFalse(all(h == baseHash), $"Varying body field '{field}' did NOT change the form hash ({h}) — two forms differing only in {field} would share a template; the cache could serve a wrong definition.");
+            Assert.IsFalse(
+                all(h == baseHash),
+                $"Varying body field '{field}' did NOT change the form hash ({h}) — two forms differing only in {field} would share a template; the cache could serve a wrong definition."
+            );
         }
 
         void AssertShapeFieldChanges(World world, uint4 baseHash, string field, System.Action<RefShape> mutate)
@@ -671,13 +879,157 @@ namespace Zori.Entities.Physics2D.Tests
             var rs = new RefShape(ref s);
             mutate(rs);
             var h = BakeHash(world, BaseBody, rs.Value);
-            Assert.IsFalse(all(h == baseHash), $"Varying shape field '{field}' did NOT change the form hash ({h}) — two forms differing only in {field} would share a template; the cache could serve a wrong geometry/surface.");
+            Assert.IsFalse(
+                all(h == baseHash),
+                $"Varying shape field '{field}' did NOT change the form hash ({h}) — two forms differing only in {field} would share a template; the cache could serve a wrong geometry/surface."
+            );
         }
 
         // Tiny by-ref mutator shims so the per-field lambdas above read naturally (a struct passed to a lambda needs
         // a reference holder).
-        sealed class RefBody { public PhysicsBody2DDefinition Value; public RefBody(ref PhysicsBody2DDefinition v) { Value = v; } public PhysicsBody.BodyType bodyType { set => Value.bodyType = value; } public float gravityScale { set => Value.gravityScale = value; } public float linearDamping { set => Value.linearDamping = value; } public float angularDamping { set => Value.angularDamping = value; } public PhysicsBody.BodyConstraints constraints { set => Value.constraints = value; } public float mass { set => Value.mass = value; } public bool useAutoMass { get => Value.useAutoMass; set => Value.useAutoMass = value; } public bool fastCollisions { get => Value.fastCollisions; set => Value.fastCollisions = value; } public PhysicsBody2DInterpolation interpolation { set => Value.interpolation = value; } public bool overrideMassDistribution { get => Value.overrideMassDistribution; set => Value.overrideMassDistribution = value; } public float2 centerOfMass { set => Value.centerOfMass = value; } public float rotationalInertia { set => Value.rotationalInertia = value; } }
-        sealed class RefShape { public PhysicsShape2D Value; public RefShape(ref PhysicsShape2D v) { Value = v; } public PhysicsShape2DKind kind { set => Value.kind = value; } public float2 offset { set => Value.offset = value; } public float radius { set => Value.radius = value; } public float2 size { set => Value.size = value; } public float boxAngleRadians { set => Value.boxAngleRadians = value; } public float2 capsuleCenter1 { set => Value.capsuleCenter1 = value; } public float2 capsuleCenter2 { set => Value.capsuleCenter2 = value; } public bool edgeIsLoop { get => Value.edgeIsLoop; set => Value.edgeIsLoop = value; } public bool polygonDecompose { get => Value.polygonDecompose; set => Value.polygonDecompose = value; } public float friction { set => Value.friction = value; } public float bounciness { set => Value.bounciness = value; } public float density { set => Value.density = value; } public PhysicsSurfaceMixing2D frictionMixing { set => Value.frictionMixing = value; } public PhysicsSurfaceMixing2D bouncinessMixing { set => Value.bouncinessMixing = value; } public ulong categoryBits { set => Value.categoryBits = value; } public ulong contactBits { set => Value.contactBits = value; } public bool isTrigger { get => Value.isTrigger; set => Value.isTrigger = value; } }
+        sealed class RefBody
+        {
+            public PhysicsBody2DDefinition Value;
+
+            public RefBody(ref PhysicsBody2DDefinition v)
+            {
+                Value = v;
+            }
+
+            public PhysicsBody.BodyType bodyType
+            {
+                set => Value.bodyType = value;
+            }
+            public float gravityScale
+            {
+                set => Value.gravityScale = value;
+            }
+            public float linearDamping
+            {
+                set => Value.linearDamping = value;
+            }
+            public float angularDamping
+            {
+                set => Value.angularDamping = value;
+            }
+            public PhysicsBody.BodyConstraints constraints
+            {
+                set => Value.constraints = value;
+            }
+            public float mass
+            {
+                set => Value.mass = value;
+            }
+            public bool useAutoMass
+            {
+                get => Value.useAutoMass;
+                set => Value.useAutoMass = value;
+            }
+            public bool fastCollisions
+            {
+                get => Value.fastCollisions;
+                set => Value.fastCollisions = value;
+            }
+            public PhysicsBody2DInterpolation interpolation
+            {
+                set => Value.interpolation = value;
+            }
+            public bool overrideMassDistribution
+            {
+                get => Value.overrideMassDistribution;
+                set => Value.overrideMassDistribution = value;
+            }
+            public float2 centerOfMass
+            {
+                set => Value.centerOfMass = value;
+            }
+            public float rotationalInertia
+            {
+                set => Value.rotationalInertia = value;
+            }
+        }
+
+        sealed class RefShape
+        {
+            public PhysicsShape2D Value;
+
+            public RefShape(ref PhysicsShape2D v)
+            {
+                Value = v;
+            }
+
+            public PhysicsShape2DKind kind
+            {
+                set => Value.kind = value;
+            }
+            public float2 offset
+            {
+                set => Value.offset = value;
+            }
+            public float radius
+            {
+                set => Value.radius = value;
+            }
+            public float2 size
+            {
+                set => Value.size = value;
+            }
+            public float boxAngleRadians
+            {
+                set => Value.boxAngleRadians = value;
+            }
+            public float2 capsuleCenter1
+            {
+                set => Value.capsuleCenter1 = value;
+            }
+            public float2 capsuleCenter2
+            {
+                set => Value.capsuleCenter2 = value;
+            }
+            public bool edgeIsLoop
+            {
+                get => Value.edgeIsLoop;
+                set => Value.edgeIsLoop = value;
+            }
+            public bool polygonDecompose
+            {
+                get => Value.polygonDecompose;
+                set => Value.polygonDecompose = value;
+            }
+            public float friction
+            {
+                set => Value.friction = value;
+            }
+            public float bounciness
+            {
+                set => Value.bounciness = value;
+            }
+            public float density
+            {
+                set => Value.density = value;
+            }
+            public PhysicsSurfaceMixing2D frictionMixing
+            {
+                set => Value.frictionMixing = value;
+            }
+            public PhysicsSurfaceMixing2D bouncinessMixing
+            {
+                set => Value.bouncinessMixing = value;
+            }
+            public ulong categoryBits
+            {
+                set => Value.categoryBits = value;
+            }
+            public ulong contactBits
+            {
+                set => Value.contactBits = value;
+            }
+            public bool isTrigger
+            {
+                get => Value.isTrigger;
+                set => Value.isTrigger = value;
+            }
+        }
 
         // INVARIANT 3: determinism — the same form baked twice (in two entities, two system runs) hashes identical.
         [UnityTest]
@@ -690,7 +1042,10 @@ namespace Zori.Entities.Physics2D.Tests
             var h3 = BakeHash(world2, BaseBody, BaseShape());
 
             Assert.IsTrue(all(h1 == h2), $"The form hash is not deterministic within one world ({h1} vs {h2}).");
-            Assert.IsTrue(all(h1 == h3), $"The form hash is not deterministic across worlds ({h1} vs {h3}) — uninitialised struct padding may be leaking into the hash input.");
+            Assert.IsTrue(
+                all(h1 == h3),
+                $"The form hash is not deterministic across worlds ({h1} vs {h3}) — uninitialised struct padding may be leaking into the hash input."
+            );
             Debug.Log($"[DEDUP-GATE-B] form hash deterministic: {h1} thrice.");
 
             world.Dispose();
@@ -715,7 +1070,10 @@ namespace Zori.Entities.Physics2D.Tests
             boxB.boxAngleRadians = 0.001f;
             var ha = BakeHash(world, BaseBody, boxA);
             var hb = BakeHash(world, BaseBody, boxB);
-            Assert.IsFalse(all(ha == hb), $"Two boxes differing only by a 0.001 rad rotation COLLIDED ({ha}) — a hair-rotated box would be served an axis-aligned template.");
+            Assert.IsFalse(
+                all(ha == hb),
+                $"Two boxes differing only by a 0.001 rad rotation COLLIDED ({ha}) — a hair-rotated box would be served an axis-aligned template."
+            );
 
             // (b) Mixing mode only: identical friction/bounciness scalars, different bouncinessMixing enum. A pure-
             // scalar hash that forgot to fold the mixing enums would collide these.
@@ -725,29 +1083,83 @@ namespace Zori.Entities.Physics2D.Tests
             mixB.bouncinessMixing = PhysicsSurfaceMixing2D.Minimum;
             var hma = BakeHash(world, BaseBody, mixA);
             var hmb = BakeHash(world, BaseBody, mixB);
-            Assert.IsFalse(all(hma == hmb), $"Two surfaces differing only in bouncinessMixing COLLIDED ({hma}) — different contact-combine behaviour would share a template.");
+            Assert.IsFalse(
+                all(hma == hmb),
+                $"Two surfaces differing only in bouncinessMixing COLLIDED ({hma}) — different contact-combine behaviour would share a template."
+            );
 
             // (c) Polygon vertex: two convex quads identical but for one corner moved 0.01 m. The blob fold must make
             // them different forms.
-            var polyA = new PhysicsShape2D { kind = PhysicsShape2DKind.Polygon, density = 1f, friction = 0.4f, vertices = Blob(new[] { new float2(-0.5f, -0.5f), new float2(0.5f, -0.5f), new float2(0.5f, 0.5f), new float2(-0.5f, 0.5f) }) };
-            var polyB = new PhysicsShape2D { kind = PhysicsShape2DKind.Polygon, density = 1f, friction = 0.4f, vertices = Blob(new[] { new float2(-0.5f, -0.5f), new float2(0.5f, -0.5f), new float2(0.51f, 0.5f), new float2(-0.5f, 0.5f) }) };
+            var polyA = new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Polygon,
+                density = 1f,
+                friction = 0.4f,
+                vertices = Blob(
+                    new[]
+                    {
+                        new float2(-0.5f, -0.5f),
+                        new float2(0.5f, -0.5f),
+                        new float2(0.5f, 0.5f),
+                        new float2(-0.5f, 0.5f),
+                    }
+                ),
+            };
+            var polyB = new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Polygon,
+                density = 1f,
+                friction = 0.4f,
+                vertices = Blob(
+                    new[]
+                    {
+                        new float2(-0.5f, -0.5f),
+                        new float2(0.5f, -0.5f),
+                        new float2(0.51f, 0.5f),
+                        new float2(-0.5f, 0.5f),
+                    }
+                ),
+            };
             var hpa = BakeHash(world, BaseBody, polyA);
             var hpb = BakeHash(world, BaseBody, polyB);
-            Assert.IsFalse(all(hpa == hpb), $"Two polygons differing only in one vertex (0.01 m) COLLIDED ({hpa}) — a different outline would be served a stale template.");
+            Assert.IsFalse(
+                all(hpa == hpb),
+                $"Two polygons differing only in one vertex (0.01 m) COLLIDED ({hpa}) — a different outline would be served a stale template."
+            );
 
             // (d) Multi-shape order: a body whose extra (buffer) shape differs must hash different, proving the
             // buffer fold participates. Same primary, different extra-shape size.
-            var extraA = new PhysicsShape2D { kind = PhysicsShape2DKind.Box, size = new float2(0.4f, 0.4f), density = 1f, friction = 0.4f };
-            var extraB = new PhysicsShape2D { kind = PhysicsShape2DKind.Box, size = new float2(0.9f, 0.4f), density = 1f, friction = 0.4f };
+            var extraA = new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Box,
+                size = new float2(0.4f, 0.4f),
+                density = 1f,
+                friction = 0.4f,
+            };
+            var extraB = new PhysicsShape2D
+            {
+                kind = PhysicsShape2DKind.Box,
+                size = new float2(0.9f, 0.4f),
+                density = 1f,
+                friction = 0.4f,
+            };
             var hxa = BakeHash(world, BaseBody, BaseShape(), extraA);
             var hxb = BakeHash(world, BaseBody, BaseShape(), extraB);
-            Assert.IsFalse(all(hxa == hxb), $"Two multi-shape bodies differing only in the EXTRA shape COLLIDED ({hxa}) — the buffer fold did not participate in the hash.");
+            Assert.IsFalse(
+                all(hxa == hxb),
+                $"Two multi-shape bodies differing only in the EXTRA shape COLLIDED ({hxa}) — the buffer fold did not participate in the hash."
+            );
             // And the multi-shape body must differ from the single-shape primary alone (the extra shape adds form).
             var hSingle = BakeHash(world, BaseBody, BaseShape());
-            Assert.IsFalse(all(hxa == hSingle), $"A multi-shape body hashed the SAME as its primary-only single-shape form ({hxa}) — the extra shape was not folded in.");
+            Assert.IsFalse(
+                all(hxa == hSingle),
+                $"A multi-shape body hashed the SAME as its primary-only single-shape form ({hxa}) — the extra shape was not folded in."
+            );
 
             DisposeBlobs();
-            Debug.Log("[DEDUP-GATE-B] adversarial near-collisions all hash different (box angle, mixing mode, polygon vertex, multi-shape extra).");
+            Debug.Log(
+                "[DEDUP-GATE-B] adversarial near-collisions all hash different (box angle, mixing mode, polygon vertex, multi-shape extra)."
+            );
 
             world.Dispose();
             yield break;
@@ -762,8 +1174,16 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var pa = (float2)(Vector2)a.position;
             var pb = (float2)(Vector2)b.position;
-            Assert.AreEqual(pa.x, pb.x, $"{kind} step {step}: position X diverged per-entity={pa.x} vs cached={pb.x}. NOT transparent.");
-            Assert.AreEqual(pa.y, pb.y, $"{kind} step {step}: position Y diverged per-entity={pa.y} vs cached={pb.y}. NOT transparent.");
+            Assert.AreEqual(
+                pa.x,
+                pb.x,
+                $"{kind} step {step}: position X diverged per-entity={pa.x} vs cached={pb.x}. NOT transparent."
+            );
+            Assert.AreEqual(
+                pa.y,
+                pb.y,
+                $"{kind} step {step}: position Y diverged per-entity={pa.y} vs cached={pb.y}. NOT transparent."
+            );
             var ra = a.rotation;
             var rb = b.rotation;
             Assert.AreEqual(ra.cos, rb.cos, $"{kind} step {step}: rotation cos diverged {ra.cos} vs {rb.cos}.");
@@ -772,7 +1192,11 @@ namespace Zori.Entities.Physics2D.Tests
             var vb = (float2)(Vector2)b.linearVelocity;
             Assert.AreEqual(va.x, vb.x, $"{kind} step {step}: linear velocity X diverged {va.x} vs {vb.x}.");
             Assert.AreEqual(va.y, vb.y, $"{kind} step {step}: linear velocity Y diverged {va.y} vs {vb.y}.");
-            Assert.AreEqual(a.angularVelocity, b.angularVelocity, $"{kind} step {step}: angular velocity diverged {a.angularVelocity} vs {b.angularVelocity}.");
+            Assert.AreEqual(
+                a.angularVelocity,
+                b.angularVelocity,
+                $"{kind} step {step}: angular velocity diverged {a.angularVelocity} vs {b.angularVelocity}."
+            );
         }
 
         static void AssertMassIdentical(PhysicsBody a, PhysicsBody b, PhysicsShape2DKind kind, string when)
@@ -780,9 +1204,21 @@ namespace Zori.Entities.Physics2D.Tests
             var ma = a.massConfiguration;
             var mb = b.massConfiguration;
             Assert.AreEqual(ma.mass, mb.mass, $"{kind} mass differs {when}: per-entity {ma.mass} vs cached {mb.mass}.");
-            Assert.AreEqual(ma.rotationalInertia, mb.rotationalInertia, $"{kind} rotationalInertia differs {when}: {ma.rotationalInertia} vs {mb.rotationalInertia}.");
-            Assert.AreEqual(((float2)(Vector2)ma.center).x, ((float2)(Vector2)mb.center).x, $"{kind} center.x differs {when}.");
-            Assert.AreEqual(((float2)(Vector2)ma.center).y, ((float2)(Vector2)mb.center).y, $"{kind} center.y differs {when}.");
+            Assert.AreEqual(
+                ma.rotationalInertia,
+                mb.rotationalInertia,
+                $"{kind} rotationalInertia differs {when}: {ma.rotationalInertia} vs {mb.rotationalInertia}."
+            );
+            Assert.AreEqual(
+                ((float2)(Vector2)ma.center).x,
+                ((float2)(Vector2)mb.center).x,
+                $"{kind} center.x differs {when}."
+            );
+            Assert.AreEqual(
+                ((float2)(Vector2)ma.center).y,
+                ((float2)(Vector2)mb.center).y,
+                $"{kind} center.y differs {when}."
+            );
         }
     }
 }

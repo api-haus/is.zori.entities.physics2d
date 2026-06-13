@@ -72,12 +72,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             NonUniformScaleSize,
         }
 
-        static readonly Mode[] Modes =
-        {
-            Mode.UnitScaleUnitSize,
-            Mode.DoubleScaleHalfSize,
-            Mode.NonUniformScaleSize,
-        };
+        static readonly Mode[] Modes = { Mode.UnitScaleUnitSize, Mode.DoubleScaleHalfSize, Mode.NonUniformScaleSize };
 
         static float2 ScaleFor(Mode m) =>
             m switch

@@ -95,8 +95,7 @@ namespace Zori.Entities.Physics2D.Tests
             // row, read the same way ReadFilter reads it. (The matrix is the project default all-on here; the
             // assertion is exact against whatever it is, so a future non-default project matrix still passes
             // iff the baker tracked it.)
-            ulong PersistedRow(int layer) =>
-                unchecked((uint)UnityEngine.Physics2D.GetLayerCollisionMask(layer));
+            ulong PersistedRow(int layer) => unchecked((uint)UnityEngine.Physics2D.GetLayerCollisionMask(layer));
 
             var sawA = false;
             var sawB = false;
@@ -106,11 +105,28 @@ namespace Zori.Entities.Physics2D.Tests
             {
                 var y = defs[i].initialPosition.y;
                 int layer;
-                if (abs(y - YA) < 0.25f) { layer = LA; sawA = true; }
-                else if (abs(y - YB) < 0.25f) { layer = LB; sawB = true; }
-                else if (abs(y - YDefault) < 0.25f) { layer = LDefault; sawDefault = true; }
-                else if (abs(y - YX) < 0.25f) { layer = LX; sawX = true; }
-                else continue;
+                if (abs(y - YA) < 0.25f)
+                {
+                    layer = LA;
+                    sawA = true;
+                }
+                else if (abs(y - YB) < 0.25f)
+                {
+                    layer = LB;
+                    sawB = true;
+                }
+                else if (abs(y - YDefault) < 0.25f)
+                {
+                    layer = LDefault;
+                    sawDefault = true;
+                }
+                else if (abs(y - YX) < 0.25f)
+                {
+                    layer = LX;
+                    sawX = true;
+                }
+                else
+                    continue;
 
                 var expectedCat = 1ul << layer;
                 var expectedCon = PersistedRow(layer);

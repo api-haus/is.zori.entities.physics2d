@@ -58,8 +58,7 @@ namespace Zori.Entities.Physics2D.Tests
         const float Dt = 1f / 60f;
         const int LoadTimeoutFrames = 600;
         const int StepCount = 150;
-        const string ParentScenePath =
-            "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
+        const string ParentScenePath = "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
         const int ExpectedJointOwners = 18; // 9 kinds × (custom + built-in)
 
         // Mirror of CustomJointConvergenceFixtureBuilder X-keys for the span this gate witnesses. The span is
@@ -123,10 +122,7 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.Enabled = false;
 
             var framesWaited = 0;
-            while (
-                ownerQuery.CalculateEntityCount() < ExpectedJointOwners
-                && framesWaited < LoadTimeoutFrames
-            )
+            while (ownerQuery.CalculateEntityCount() < ExpectedJointOwners && framesWaited < LoadTimeoutFrames)
             {
                 framesWaited++;
                 yield return null;
@@ -186,14 +182,7 @@ namespace Zori.Entities.Physics2D.Tests
             // identical Box2D joint → identical simulation by construction) and not re-driven here against a
             // tight behavioral band a chaotic transient cannot meet. See the negative-space note in 08-phaseF.
             AssertPairParity("Hinge", XHingeCustom, XHingeBuiltIn, AngleCapSpin, entityByKey, traj);
-            AssertPairParity(
-                "Slider",
-                XSliderCustom,
-                XSliderBuiltIn,
-                AngleCapHeld,
-                entityByKey,
-                traj
-            );
+            AssertPairParity("Slider", XSliderCustom, XSliderBuiltIn, AngleCapHeld, entityByKey, traj);
             AssertPairParity("Wheel", XWheelCustom, XWheelBuiltIn, AngleCapSpin, entityByKey, traj);
 
             yield break;
@@ -204,9 +193,7 @@ namespace Zori.Entities.Physics2D.Tests
         static Dictionary<float, Entity> MapOwnerEntitiesByInitialX(EntityQuery ownerQuery)
         {
             using var entities = ownerQuery.ToEntityArray(Allocator.Temp);
-            using var defs = ownerQuery.ToComponentDataArray<PhysicsBody2DDefinition>(
-                Allocator.Temp
-            );
+            using var defs = ownerQuery.ToComponentDataArray<PhysicsBody2DDefinition>(Allocator.Temp);
             var map = new Dictionary<float, Entity>();
             for (var i = 0; i < entities.Length; i++)
             {
@@ -243,10 +230,7 @@ namespace Zori.Entities.Physics2D.Tests
             var customKey = (float)System.Math.Round(xCustom / 2.0) * 2f;
             var builtInKey = (float)System.Math.Round(xBuiltIn / 2.0) * 2f;
 
-            Assert.IsTrue(
-                entityByKey.ContainsKey(customKey),
-                $"{label}: no custom joint owner at X-key {customKey}."
-            );
+            Assert.IsTrue(entityByKey.ContainsKey(customKey), $"{label}: no custom joint owner at X-key {customKey}.");
             Assert.IsTrue(
                 entityByKey.ContainsKey(builtInKey),
                 $"{label}: no built-in joint owner at X-key {builtInKey}."

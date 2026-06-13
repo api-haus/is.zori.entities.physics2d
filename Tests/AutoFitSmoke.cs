@@ -30,12 +30,7 @@ namespace Zori.Entities.Physics2D.Tests
         [Test]
         public void Square_FitsBoxOfThatSize()
         {
-            var cloud = Cloud(
-                new float2(-1f, -1f),
-                new float2(1f, -1f),
-                new float2(1f, 1f),
-                new float2(-1f, 1f)
-            );
+            var cloud = Cloud(new float2(-1f, -1f), new float2(1f, -1f), new float2(1f, 1f), new float2(-1f, 1f));
             var fit = PhysicsShape2DAutoFit.FitBox(cloud, oriented: false);
             Assert.AreEqual(0f, fit.center.x, 1e-5f, "box centred on the square");
             Assert.AreEqual(0f, fit.center.y, 1e-5f);
@@ -63,12 +58,7 @@ namespace Zori.Entities.Physics2D.Tests
             var hi = max(fit.size.x, fit.size.y);
             Assert.AreEqual(4f, hi, 1e-3f, "oriented box recovers the long extent");
             Assert.AreEqual(1f, lo, 1e-3f, "oriented box recovers the short extent");
-            Assert.AreEqual(
-                45f,
-                abs(fit.angleDeg),
-                1f,
-                "oriented box recovers the ~45° principal angle"
-            );
+            Assert.AreEqual(45f, abs(fit.angleDeg), 1f, "oriented box recovers the ~45° principal angle");
         }
 
         // A ring of points fits the minimum-enclosing circle (Welzl): centre at origin, radius = the ring radius.
@@ -93,12 +83,7 @@ namespace Zori.Entities.Physics2D.Tests
         [Test]
         public void Square_EnclosingCircle_IsCircumscribed()
         {
-            var cloud = Cloud(
-                new float2(-1f, -1f),
-                new float2(1f, -1f),
-                new float2(1f, 1f),
-                new float2(-1f, 1f)
-            );
+            var cloud = Cloud(new float2(-1f, -1f), new float2(1f, -1f), new float2(1f, 1f), new float2(-1f, 1f));
             var fit = PhysicsShape2DAutoFit.FitCircle(cloud);
             Assert.AreEqual(sqrt(2f), fit.radius, 1e-3f, "MEC radius = half the square diagonal");
             Assert.IsTrue(AllInside(cloud, fit.center, fit.radius));
@@ -121,11 +106,7 @@ namespace Zori.Entities.Physics2D.Tests
             var fit = PhysicsShape2DAutoFit.FitCapsule(cloud);
             // long axis is horizontal -> not vertical, size width >= height
             Assert.IsFalse(fit.vertical, "the major axis is horizontal");
-            Assert.GreaterOrEqual(
-                max(fit.size.x, fit.size.y),
-                5.9f,
-                "capsule long extent spans the elongation"
-            );
+            Assert.GreaterOrEqual(max(fit.size.x, fit.size.y), 5.9f, "capsule long extent spans the elongation");
             // reconstruct the capsule (centres + radius) and confirm every point is within radius of the segment
             var auth = new UnityEngine.GameObject("cap").AddComponent<PhysicsShape2DAuthoring>();
             try
@@ -185,12 +166,7 @@ namespace Zori.Entities.Physics2D.Tests
                     small.Add(new float2(co, s) * 2f);
                 }
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        auth,
-                        small,
-                        PhysicsShape2DKind.Polygon,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(auth, small, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero)
                 );
                 Assert.AreEqual(PhysicsShape2DKind.Polygon, auth.Kind);
                 Assert.IsFalse(auth.PolygonDecompose, "a <=8-vertex convex hull stays single-hull");
@@ -205,17 +181,9 @@ namespace Zori.Entities.Physics2D.Tests
                     big.Add(new float2(co, s) * 2f);
                 }
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        auth,
-                        big,
-                        PhysicsShape2DKind.Polygon,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(auth, big, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero)
                 );
-                Assert.IsTrue(
-                    auth.PolygonDecompose,
-                    "a >8-vertex outline takes the decompose path"
-                );
+                Assert.IsTrue(auth.PolygonDecompose, "a >8-vertex outline takes the decompose path");
             }
             finally
             {
@@ -230,16 +198,9 @@ namespace Zori.Entities.Physics2D.Tests
             var auth = new UnityEngine.GameObject("circ").AddComponent<PhysicsShape2DAuthoring>();
             try
             {
-                var cloud = Cloud(
-                    new float2(-2f, 0f),
-                    new float2(2f, 0f),
-                    new float2(0f, 2f),
-                    new float2(0f, -2f)
-                );
+                var cloud = Cloud(new float2(-2f, 0f), new float2(2f, 0f), new float2(0f, 2f), new float2(0f, -2f));
                 var srcOffset = new float2(10f, 5f);
-                Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Circle, srcOffset)
-                );
+                Assert.IsTrue(PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Circle, srcOffset));
                 Assert.AreEqual(PhysicsShape2DKind.Circle, auth.Kind);
                 Assert.AreEqual(2f, auth.Radius, 1e-3f, "radius encloses the diamond");
                 Assert.AreEqual(10f, auth.Offset.x, 1e-3f, "offset = source offset + fit centre");

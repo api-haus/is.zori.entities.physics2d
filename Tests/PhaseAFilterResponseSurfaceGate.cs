@@ -83,8 +83,7 @@ namespace Zori.Entities.Physics2D.Tests
         static Entity SingletonEntity(EntityManager em) =>
             em.CreateEntityQuery(typeof(PhysicsWorldSingleton2D)).GetSingletonEntity();
 
-        static float EcsY(EntityManager em, Entity e) =>
-            em.GetComponentData<LocalToWorld>(e).Value.c3.y;
+        static float EcsY(EntityManager em, Entity e) => em.GetComponentData<LocalToWorld>(e).Value.c3.y;
 
         // =====================================================================================================
         // INVARIANT — explicit filter bitsets gate collision exactly like the layer path. A static floor and a

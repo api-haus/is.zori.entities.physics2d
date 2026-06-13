@@ -77,11 +77,7 @@ namespace Zori.Entities.Physics2D.Samples
         {
             // Clamp the total limit to the supported on-screen stress ceiling; keep the rate / per-frame ceiling
             // non-negative. The fields are freely editable up to MaxTotalLimit (~1M) — no slider, just a typed int.
-            m_SpawnedTotalLimit = math.clamp(
-                m_SpawnedTotalLimit,
-                1,
-                BoxColliderBenchmarkConfig.MaxTotalLimit
-            );
+            m_SpawnedTotalLimit = math.clamp(m_SpawnedTotalLimit, 1, BoxColliderBenchmarkConfig.MaxTotalLimit);
             m_SpawnedPerSecondTarget = math.max(0f, m_SpawnedPerSecondTarget);
             m_SpawnedPerFrameMax = math.max(1, m_SpawnedPerFrameMax);
         }

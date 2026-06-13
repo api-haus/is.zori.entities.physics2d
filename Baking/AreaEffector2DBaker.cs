@@ -33,9 +33,7 @@ namespace Zori.Entities.Physics2D.Baking
                     angularDamping = authoring.angularDamping,
                     forceAngleRadians = radians(authoring.forceAngle),
                     useGlobalAngle = (byte)(authoring.useGlobalAngle ? 1 : 0),
-                    forceTargetIsRigidbody = (byte)(
-                        authoring.forceTarget == EffectorSelection2D.Rigidbody ? 1 : 0
-                    ),
+                    forceTargetIsRigidbody = (byte)(authoring.forceTarget == EffectorSelection2D.Rigidbody ? 1 : 0),
                 }
             );
         }

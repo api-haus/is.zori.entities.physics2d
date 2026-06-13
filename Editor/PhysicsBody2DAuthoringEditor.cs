@@ -87,10 +87,7 @@ namespace Zori.Entities.Physics2D.Editor
                 // A non-Dynamic body has infinite mass — show a disabled ∞ field (the 3D inspector's touch).
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    var rect = EditorGUILayout.GetControlRect(
-                        true,
-                        EditorGUIUtility.singleLineHeight
-                    );
+                    var rect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
                     EditorGUI.BeginProperty(rect, k_MassLabel, m_Mass);
                     EditorGUI.FloatField(rect, k_MassLabel, float.PositiveInfinity);
                     EditorGUI.EndProperty();

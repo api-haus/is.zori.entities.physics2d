@@ -42,21 +42,13 @@ namespace Zori.Entities.Physics2D.Samples.Tests
             fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>()
-            );
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<BodyCreationTimingBeginSystem>()
-            );
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<BodyCreationTimingEndSystem>()
-            );
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<BodyCreationTimingBeginSystem>());
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<BodyCreationTimingEndSystem>());
             fixedGroup.SortSystems();
 
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
-            initGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystemManaged<BoxColliderBenchmarkSpawnerSystem>()
-            );
+            initGroup.AddSystemToUpdateList(world.GetOrCreateSystemManaged<BoxColliderBenchmarkSpawnerSystem>());
             initGroup.SortSystems();
             initGroupHandle = initGroup.SystemHandle;
 
@@ -143,19 +135,11 @@ namespace Zori.Entities.Physics2D.Samples.Tests
                 ComponentType.ReadOnly<MaterialMeshInfo>(),
                 ComponentType.ReadOnly<RenderMeshArray>()
             );
-            Assert.AreEqual(
-                Count,
-                sharedRMA.CalculateEntityCount(),
-                "every instance should share the RenderMeshArray"
-            );
+            Assert.AreEqual(Count, sharedRMA.CalculateEntityCount(), "every instance should share the RenderMeshArray");
 
             // The LocalToWorld the renderer reads is the physics pose — finite, and moved by gravity from the spawn
             // band (bodies have fallen), confirming the write-back drives the transform the renderer consumes.
-            using (
-                var l2ws = renderableQuery.ToComponentDataArray<LocalToWorld>(
-                    Unity.Collections.Allocator.Temp
-                )
-            )
+            using (var l2ws = renderableQuery.ToComponentDataArray<LocalToWorld>(Unity.Collections.Allocator.Temp))
             {
                 for (var i = 0; i < l2ws.Length; i++)
                 {

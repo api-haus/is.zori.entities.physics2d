@@ -81,24 +81,7 @@ namespace Zori.Entities.Physics2D
             var p = body.initialPosition;
             return new LocalToWorld
             {
-                Value = new float4x4(
-                    c,
-                    -s,
-                    0f,
-                    p.x,
-                    s,
-                    c,
-                    0f,
-                    p.y,
-                    0f,
-                    0f,
-                    1f,
-                    0f,
-                    0f,
-                    0f,
-                    0f,
-                    1f
-                ),
+                Value = new float4x4(c, -s, 0f, p.x, s, c, 0f, p.y, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f),
             };
         }
     }

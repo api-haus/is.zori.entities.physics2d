@@ -69,11 +69,9 @@ namespace Zori.Entities.Physics2D.Tests
             return world;
         }
 
-        static float BodyX(EntityManager em, Entity e) =>
-            em.GetComponentData<LocalToWorld>(e).Position.x;
+        static float BodyX(EntityManager em, Entity e) => em.GetComponentData<LocalToWorld>(e).Position.x;
 
-        static PhysicsBody BodyOf(EntityManager em, Entity e) =>
-            em.GetComponentData<PhysicsBody2D>(e).body;
+        static PhysicsBody BodyOf(EntityManager em, Entity e) => em.GetComponentData<PhysicsBody2D>(e).body;
 
         static Entity SpawnBullet(EntityManager em, float2 pos, float vx, bool continuous)
         {
@@ -95,10 +93,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                 }
             );
-            em.AddComponentData(
-                entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = new float2(vx, 0f) }
-            );
+            em.AddComponentData(entity, new PhysicsBody2DInitialVelocity { linearVelocity = new float2(vx, 0f) });
             return entity;
         }
 
@@ -106,11 +101,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -489,8 +480,11 @@ namespace Zori.Entities.Physics2D.Tests
             {
                 foreach (var P in pulls)
                 {
-                    var (disc, em, group, world) = MakeHungDisc(B, float.PositiveInfinity,
-                        PhysicsJointBreakAction2D.Destroy);
+                    var (disc, em, group, world) = MakeHungDisc(
+                        B,
+                        float.PositiveInfinity,
+                        PhysicsJointBreakAction2D.Destroy
+                    );
                     group.Update(); // create body (no step)
                     var broke = false;
                     for (var f = 0; f < 60; f++)
@@ -629,8 +623,11 @@ namespace Zori.Entities.Physics2D.Tests
 
             bool PackageBreaksUnderPull(float P, int steps)
             {
-                var (disc, em, group, world) = MakeHungDisc(B, float.PositiveInfinity,
-                    PhysicsJointBreakAction2D.Destroy);
+                var (disc, em, group, world) = MakeHungDisc(
+                    B,
+                    float.PositiveInfinity,
+                    PhysicsJointBreakAction2D.Destroy
+                );
                 group.Update();
                 var broke = false;
                 for (var f = 0; f < steps; f++)
@@ -887,20 +884,14 @@ namespace Zori.Entities.Physics2D.Tests
         // Drive the smoothing system once at a chosen sub-step fraction over a body carrying a given smoothing
         // component, and return the written LocalToWorld (pos, angle). Standalone smoothing system + a hand-set
         // PhysicsFixedStepTime2D + world clock, exactly as the smoke seeds it.
-        static (float2 pos, float angle) SmoothOnce(
-            PhysicsBody2DSmoothing smoothing,
-            float fractionOfStep
-        )
+        static (float2 pos, float angle) SmoothOnce(PhysicsBody2DSmoothing smoothing, float fractionOfStep)
         {
             var world = new World("P8InterpSmoothWorld");
             var em = world.EntityManager;
             var sys = world.GetOrCreateSystem<PhysicsBody2DSmoothingSystem>();
 
             var timeSingleton = em.CreateEntity(typeof(PhysicsFixedStepTime2D));
-            em.SetComponentData(
-                timeSingleton,
-                new PhysicsFixedStepTime2D { elapsedTime = 1.0, deltaTime = Dt }
-            );
+            em.SetComponentData(timeSingleton, new PhysicsFixedStepTime2D { elapsedTime = 1.0, deltaTime = Dt });
             world.SetTime(new Unity.Core.TimeData(elapsedTime: 1.0 + fractionOfStep * Dt, deltaTime: Dt));
 
             var body = em.CreateEntity(typeof(PhysicsBody2DSmoothing), typeof(LocalToWorld));
@@ -1052,10 +1043,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                 }
             );
-            em.AddComponentData(
-                entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) }
-            );
+            em.AddComponentData(entity, new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) });
 
             group.Update(); // create the body + the smoothing component (no step)
             Assert.IsTrue(
@@ -1085,8 +1073,7 @@ namespace Zori.Entities.Physics2D.Tests
 
             // Drive the smoothing system at a half-step: render time = lastFixed + 0.5·dt. The fixed-step time
             // singleton lives on the world singleton entity and was written by PhysicsWorld2DSystem.
-            var fixedTimeEntity = em.CreateEntityQuery(typeof(PhysicsFixedStepTime2D))
-                .GetSingletonEntity();
+            var fixedTimeEntity = em.CreateEntityQuery(typeof(PhysicsFixedStepTime2D)).GetSingletonEntity();
             var ft = em.GetComponentData<PhysicsFixedStepTime2D>(fixedTimeEntity);
             world.SetTime(new Unity.Core.TimeData(elapsedTime: ft.elapsedTime + 0.5 * Dt, deltaTime: Dt));
 
@@ -1142,10 +1129,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                 }
             );
-            em.AddComponentData(
-                entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) }
-            );
+            em.AddComponentData(entity, new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) });
 
             group.Update();
             // A None body must NOT carry a smoothing component (the gate on the smoothing system).
@@ -1216,10 +1200,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                 }
             );
-            em.AddComponentData(
-                entity,
-                new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) }
-            );
+            em.AddComponentData(entity, new PhysicsBody2DInitialVelocity { linearVelocity = new float2(3f, 0f) });
 
             group.Update();
             group.Update();

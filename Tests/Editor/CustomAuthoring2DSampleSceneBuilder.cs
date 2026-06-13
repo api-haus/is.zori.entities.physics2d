@@ -86,12 +86,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             var edge = MakeShape("EdgeWall", new Vector3(12f, 1f, 0f));
             edge.Kind = PhysicsShape2DKind.Edge;
             edge.EdgeIsLoop = false;
-            edge.Vertices = new[]
-            {
-                new Vector2(-2f, 0f),
-                new Vector2(0f, 1.5f),
-                new Vector2(2f, 0f),
-            };
+            edge.Vertices = new[] { new Vector2(-2f, 0f), new Vector2(0f, 1.5f), new Vector2(2f, 0f) };
 
             // A body driven by a PhysicsMaterial2D template (bounciness inherited) WITH a per-field override
             // (friction overridden inline) — the Phase-B inheritance + override model.
@@ -135,11 +130,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             shape.ContactBits = 1 << FilterCategory;
         }
 
-        static PhysicsBody2DAuthoring MakeBody(
-            string name,
-            Vector3 position,
-            out PhysicsShape2DAuthoring shape
-        )
+        static PhysicsBody2DAuthoring MakeBody(string name, Vector3 position, out PhysicsShape2DAuthoring shape)
         {
             var go = new GameObject(name);
             go.transform.position = position;

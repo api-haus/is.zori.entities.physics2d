@@ -47,12 +47,7 @@ namespace Zori.Entities.Physics2D.Tests
 
         // A static effector entity with a SOLID (non-trigger) collider — bodies rest ON it (the Phase-10b
         // inversion from the sensor force-field effectors). Carries a PhysicsEffector2D definition.
-        static Entity SpawnSolidEffector(
-            EntityManager em,
-            float2 pos,
-            PhysicsShape2D region,
-            PhysicsEffector2D eff
-        )
+        static Entity SpawnSolidEffector(EntityManager em, float2 pos, PhysicsShape2D region, PhysicsEffector2D eff)
         {
             region.isTrigger = false; // SOLID: a body rests on / rides the platform/belt
             var entity = DirectPhysics2DAuthoring.Create(
@@ -94,8 +89,7 @@ namespace Zori.Entities.Physics2D.Tests
             return entity;
         }
 
-        static PhysicsBody BodyOf(EntityManager em, Entity e) =>
-            em.GetComponentData<PhysicsBody2D>(e).body;
+        static PhysicsBody BodyOf(EntityManager em, Entity e) => em.GetComponentData<PhysicsBody2D>(e).body;
 
         [UnityTest]
         public IEnumerator Platform_RestsFromAbove_PassesFromBelow()
@@ -119,7 +113,13 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             // (1) A body dropped from ABOVE should COME TO REST on the platform (top surface near y = +0.2).
-            var above = SpawnBox(em, new float2(-1.5f, 3f), new float2(0.5f, 0.5f), gravityScale: 1f, Unity.Mathematics.float2.zero);
+            var above = SpawnBox(
+                em,
+                new float2(-1.5f, 3f),
+                new float2(0.5f, 0.5f),
+                gravityScale: 1f,
+                Unity.Mathematics.float2.zero
+            );
 
             group.Update(); // create (no step)
             var aboveBody = BodyOf(em, above);
@@ -213,7 +213,13 @@ namespace Zori.Entities.Physics2D.Tests
                 }
             );
             // A box dropped onto the belt (top surface ~ y=0.2), gravity on so it lands and stays in contact.
-            var box = SpawnBox(em, new float2(0f, 1f), new float2(0.5f, 0.5f), gravityScale: 1f, Unity.Mathematics.float2.zero);
+            var box = SpawnBox(
+                em,
+                new float2(0f, 1f),
+                new float2(0.5f, 0.5f),
+                gravityScale: 1f,
+                Unity.Mathematics.float2.zero
+            );
 
             group.Update(); // create (no step)
             var b = BodyOf(em, box);

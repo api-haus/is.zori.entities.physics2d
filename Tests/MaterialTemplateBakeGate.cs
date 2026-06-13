@@ -140,10 +140,7 @@ namespace Zori.Entities.Physics2D.Tests
             }
 
             Assert.IsTrue(
-                haveTemplateCustom
-                    && haveTemplateBuiltIn
-                    && haveOverrideCustom
-                    && haveDefaultCustom,
+                haveTemplateCustom && haveTemplateBuiltIn && haveOverrideCustom && haveDefaultCustom,
                 $"Missing one of the four baked bodies (templateCustom={haveTemplateCustom}, "
                     + $"templateBuiltIn={haveTemplateBuiltIn}, overrideCustom={haveOverrideCustom}, "
                     + $"defaultCustom={haveDefaultCustom})."

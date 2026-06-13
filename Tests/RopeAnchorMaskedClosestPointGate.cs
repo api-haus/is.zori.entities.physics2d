@@ -51,8 +51,7 @@ namespace Zori.Entities.Physics2D.Tests
         // The mask the grab passes, constructed through the SAME path the baker uses (PlatformerCharacterBaker:55):
         // a UnityEngine.LayerMask of the anchor layer, widened (ulong)(uint).value. Asserting it equals 1<<layer
         // pins the conversion itself.
-        static readonly ulong RopeAnchorLayerMask =
-            (ulong)(uint)((LayerMask)(1 << AnchorLayer)).value;
+        static readonly ulong RopeAnchorLayerMask = (ulong)(uint)((LayerMask)(1 << AnchorLayer)).value;
 
         // The off-layer distractor sits on a different layer (a stand-in for a floor/wall on the Default layer 0).
         const int DistractorLayer = 0;
@@ -87,11 +86,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = pos,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = pos },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Circle,
@@ -130,8 +125,20 @@ namespace Zori.Entities.Physics2D.Tests
             //   distractor at X=1.5 (NEARER), off the anchor layer, contacts=all (a normal collidable body)
             //   anchor     at X=3.0 (FARTHER), on the anchor layer, contacts=0 (a dedicated all-unchecked layer)
             var grabPoint = new float2(0f, 0f);
-            var distractor = SpawnCircle(em, new float2(1.5f, 0f), radius: 0.3f, categoryBits: DistractorCategory, contactBits: 0xFFFFFFFFul);
-            var anchor = SpawnCircle(em, new float2(3.0f, 0f), radius: 0.3f, categoryBits: AnchorCategory, contactBits: 0ul);
+            var distractor = SpawnCircle(
+                em,
+                new float2(1.5f, 0f),
+                radius: 0.3f,
+                categoryBits: DistractorCategory,
+                contactBits: 0xFFFFFFFFul
+            );
+            var anchor = SpawnCircle(
+                em,
+                new float2(3.0f, 0f),
+                radius: 0.3f,
+                categoryBits: AnchorCategory,
+                contactBits: 0ul
+            );
 
             group.Update(); // create the Box2D bodies (a static-world query needs no step)
 
@@ -146,7 +153,14 @@ namespace Zori.Entities.Physics2D.Tests
 
             // (b)+(c) MASKED to the rope-anchor layer: the on-layer anchor is INCLUDED and the nearer off-layer
             //     distractor is EXCLUDED, so the single nearest survivor is the anchor (the farther body).
-            var foundMasked = PhysicsQueries2D.ClosestPoint(pw, grabPoint, ropeLength, RopeAnchorLayerMask, scratch, out var masked);
+            var foundMasked = PhysicsQueries2D.ClosestPoint(
+                pw,
+                grabPoint,
+                ropeLength,
+                RopeAnchorLayerMask,
+                scratch,
+                out var masked
+            );
 
             // (c, isolated) A DISJOINT mask (a layer neither body carries) finds nothing — the mask really filters;
             //     the fix decouples visibility from contacts, it does not make every body unconditionally visible.
@@ -164,7 +178,10 @@ namespace Zori.Entities.Physics2D.Tests
 
             // (a) The mechanism finds a body, and unmasked the NEAREST is the distractor — the geometry is set up
             //     so the mask has real work to do (the wrong body is closer).
-            Assert.IsTrue(foundAny, "Unmasked ClosestPoint found NOTHING within rope length — the broad-phase or the closest-point mechanism itself is broken.");
+            Assert.IsTrue(
+                foundAny,
+                "Unmasked ClosestPoint found NOTHING within rope length — the broad-phase or the closest-point mechanism itself is broken."
+            );
             Assert.AreEqual(
                 distractor,
                 anyClosest.entity,

@@ -61,15 +61,25 @@ namespace Zori.Entities.Physics2D
 
             // Re-apply the entity's graphics scale (absent → (1, 1)). The rotation columns are scaled, so the
             // composed matrix is T·R·S — the Box2D body stays unit-scale, the rendered transform keeps scale.
-            var scale = RenderScaleLookup.HasComponent(entity)
-                ? RenderScaleLookup[entity].value
-                : new float2(1f, 1f);
+            var scale = RenderScaleLookup.HasComponent(entity) ? RenderScaleLookup[entity].value : new float2(1f, 1f);
 
             float4x4 m = float4x4(
-                c * scale.x, -s * scale.y, 0f, p.x,
-                s * scale.x, c * scale.y, 0f, p.y,
-                0f, 0f, 1f, 0f,
-                0f, 0f, 0f, 1f
+                c * scale.x,
+                -s * scale.y,
+                0f,
+                p.x,
+                s * scale.x,
+                c * scale.y,
+                0f,
+                p.y,
+                0f,
+                0f,
+                1f,
+                0f,
+                0f,
+                0f,
+                0f,
+                1f
             );
 
             LocalToWorldLookup[entity] = new LocalToWorld { Value = m };

@@ -71,8 +71,7 @@ namespace Zori.Entities.Physics2D.Tests
             return world;
         }
 
-        static float EcsY(EntityManager em, Entity e) =>
-            em.GetComponentData<LocalToWorld>(e).Value.c3.y;
+        static float EcsY(EntityManager em, Entity e) => em.GetComponentData<LocalToWorld>(e).Value.c3.y;
 
         // =====================================================================================================
         // INVARIANT — a free-rotated box collides at its rotated extent. A 1×1 box authored with boxAngleRadians

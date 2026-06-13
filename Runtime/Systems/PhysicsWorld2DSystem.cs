@@ -404,11 +404,7 @@ namespace Zori.Entities.Physics2D
                 }
 
                 var rot = PhysicsRotate.FromRadians(p.rotationRadians);
-                transforms[i] = new PhysicsBody.BatchTransform(body)
-                {
-                    position = (Vector2)p.position,
-                    rotation = rot,
-                };
+                transforms[i] = new PhysicsBody.BatchTransform(body) { position = (Vector2)p.position, rotation = rot };
                 AddPhysicalBodyComponentsFromTemplate(ref ecb, in t, p, body);
             }
 
@@ -549,11 +545,7 @@ namespace Zori.Entities.Physics2D
                             allocator: Allocator.Temp
                         );
                         if (fragments.Length > 0)
-                            body.CreateShapeBatch(
-                                fragments.AsReadOnlySpan(),
-                                shapeDef,
-                                Allocator.Temp
-                            );
+                            body.CreateShapeBatch(fragments.AsReadOnlySpan(), shapeDef, Allocator.Temp);
                         if (fragments.IsCreated)
                             fragments.Dispose();
                     }
@@ -667,10 +659,7 @@ namespace Zori.Entities.Physics2D
             PolygonGeometry.CreateBox(
                 size: (Vector2)sh.size,
                 radius: sh.radius,
-                transform: new PhysicsTransform(
-                    (Vector2)sh.offset,
-                    PhysicsRotate.FromRadians(sh.boxAngleRadians)
-                ),
+                transform: new PhysicsTransform((Vector2)sh.offset, PhysicsRotate.FromRadians(sh.boxAngleRadians)),
                 inscribe: false
             );
 
@@ -687,10 +676,7 @@ namespace Zori.Entities.Physics2D
         // via a PhysicsTransform. The PolygonGeometry has a fixed maximum vertex count, so the returned value is
         // self-contained (no NativeArray) and is the cached value. The caller owns the span; CreateShape copies the
         // vertices into the geometry's inline storage.
-        static PolygonGeometry BuildPolygonGeometry(
-            in PhysicsShape2D sh,
-            NativeArray<Vector2> span
-        ) =>
+        static PolygonGeometry BuildPolygonGeometry(in PhysicsShape2D sh, NativeArray<Vector2> span) =>
             PolygonGeometry.Create(
                 vertices: span.AsReadOnlySpan(),
                 radius: sh.radius,
@@ -824,17 +810,11 @@ namespace Zori.Entities.Physics2D
             // Resolved fresh here (not cached) so a world recreated after a physics-module reset re-reads the
             // current config. TryGetSingleton throws on more than one config, surfacing the single-world
             // "one PhysicsStep2D per world" rule loudly rather than silently picking one.
-            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(
-                out var cfg
-            )
-                ? cfg
-                : null;
+            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(out var cfg) ? cfg : null;
 
             if (!SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton))
             {
-                state.EntityManager.CreateSingleton(
-                    new PhysicsWorldSingleton2D { world = CreateWorld(config) }
-                );
+                state.EntityManager.CreateSingleton(new PhysicsWorldSingleton2D { world = CreateWorld(config) });
                 // The per-frame event streams ride the singleton entity: two DynamicBuffers cleared and refilled
                 // each step from the post-Simulate event spans (below). Added once at creation; they survive a
                 // world recreate (only the PhysicsWorld handle is reset on a module reset, not the entity).
@@ -883,10 +863,7 @@ namespace Zori.Entities.Physics2D
                     : PhysicsWorld2DConfig.Default.identicalBodyThreshold
             );
             if (cacheEnabled && !m_Templates.IsCreated)
-                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(
-                    16,
-                    Allocator.Persistent
-                );
+                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(16, Allocator.Persistent);
 
             // The per-frame event buffers on the singleton entity. Cleared every frame and refilled below from the
             // post-Simulate spans, so they always reflect exactly this step's events.
@@ -928,9 +905,7 @@ namespace Zori.Entities.Physics2D
                 // smoothing system) — a per-entity component the body handle alone cannot reach. The lookup is
                 // grabbed once here and indexed per command, so a body with no smoothing component (interpolation
                 // None) is a cheap HasComponent miss and the command is a no-op for it.
-                var smoothingLookup = SystemAPI.GetComponentLookup<PhysicsBody2DSmoothing>(
-                    isReadOnly: false
-                );
+                var smoothingLookup = SystemAPI.GetComponentLookup<PhysicsBody2DSmoothing>(isReadOnly: false);
                 foreach (
                     var (bodyRO, commands, entity) in SystemAPI
                         .Query<RefRO<PhysicsBody2D>, DynamicBuffer<PhysicsBody2DCommand>>()
@@ -967,11 +942,7 @@ namespace Zori.Entities.Physics2D
                 var bodyLookup = SystemAPI.GetComponentLookup<PhysicsBody2D>(isReadOnly: true);
                 foreach (
                     var (effBodyRO, effRO, effShapeRO, effEntity) in SystemAPI
-                        .Query<
-                            RefRO<PhysicsBody2D>,
-                            RefRO<PhysicsEffector2D>,
-                            RefRO<PhysicsShape2D>
-                        >()
+                        .Query<RefRO<PhysicsBody2D>, RefRO<PhysicsEffector2D>, RefRO<PhysicsShape2D>>()
                         .WithEntityAccess()
                 )
                 {
@@ -1003,20 +974,14 @@ namespace Zori.Entities.Physics2D
                 CollectEvents(world, contactEvents, triggerEvents);
                 // Resolve each break's owner entity and its baked action. The definition lookup only READS ECS
                 // data (it does not mutate the Box2D world), so it is safe inside the volatile-span loop.
-                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(
-                    isReadOnly: true
-                );
+                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(isReadOnly: true);
                 CollectJointBreaks(world, jointBreakEvents, jointDefLookup);
 
                 // Record this step's time so PhysicsBody2DSmoothingSystem (render rate) can compute how far the
                 // render time is ahead of the last physics step. ElapsedTime/DeltaTime here are the fixed
                 // group's clock (this system runs in FixedStepSimulationSystemGroup).
                 SystemAPI.SetSingleton(
-                    new PhysicsFixedStepTime2D
-                    {
-                        elapsedTime = SystemAPI.Time.ElapsedTime,
-                        deltaTime = dt,
-                    }
+                    new PhysicsFixedStepTime2D { elapsedTime = SystemAPI.Time.ElapsedTime, deltaTime = dt }
                 );
             }
 
@@ -1053,13 +1018,9 @@ namespace Zori.Entities.Physics2D
                 var sh = shapeRO.ValueRO;
 
                 var hasVelocity = SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity);
-                var velocity = hasVelocity
-                    ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity)
-                    : default;
+                var velocity = hasVelocity ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity) : default;
                 var hasExtraShapes = SystemAPI.HasBuffer<PhysicsShape2DElement>(entity);
-                var extra = hasExtraShapes
-                    ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity)
-                    : default;
+                var extra = hasExtraShapes ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity) : default;
 
                 // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
                 // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
@@ -1074,15 +1035,7 @@ namespace Zori.Entities.Physics2D
 
                 if (!eligible)
                 {
-                    var bodyA = CreatePerEntityBody(
-                        world,
-                        entity,
-                        in d,
-                        in sh,
-                        hasVelocity,
-                        in velocity,
-                        extra
-                    );
+                    var bodyA = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
                     AddPhysicalBodyComponents(ref ecb, entity, in d, bodyA);
                     continue;
                 }
@@ -1098,10 +1051,7 @@ namespace Zori.Entities.Physics2D
                     // K == 1). The template stays in the map; only the counter advanced.
                     m_Templates[hash] = tmpl;
                     if (!collapse.IsCreated)
-                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(
-                            64,
-                            Allocator.Temp
-                        );
+                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(64, Allocator.Temp);
                     collapse.Add(
                         hash,
                         new PendingInit
@@ -1118,15 +1068,7 @@ namespace Zori.Entities.Physics2D
 
                 // Below or crossing the threshold. Create this body through the unchanged per-entity path (its
                 // result is the donor for the template), and on the crossing build the template from it.
-                var body = CreatePerEntityBody(
-                    world,
-                    entity,
-                    in d,
-                    in sh,
-                    hasVelocity,
-                    in velocity,
-                    extra
-                );
+                var body = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
                 AddPhysicalBodyComponents(ref ecb, entity, in d, body);
 
                 if (tmpl.seenCount >= threshold)
@@ -1193,10 +1135,7 @@ namespace Zori.Entities.Physics2D
                     body.awake = true;
                     break;
                 case PhysicsBody2DCommandKind.MovePosition:
-                    body.SetTransformTarget(
-                        new PhysicsTransform((Vector2)cmd.linear, body.rotation),
-                        dt
-                    );
+                    body.SetTransformTarget(new PhysicsTransform((Vector2)cmd.linear, body.rotation), dt);
                     break;
                 case PhysicsBody2DCommandKind.MoveRotation:
                     body.SetTransformTarget(
@@ -1206,10 +1145,7 @@ namespace Zori.Entities.Physics2D
                     break;
                 case PhysicsBody2DCommandKind.MovePositionAndRotation:
                     body.SetTransformTarget(
-                        new PhysicsTransform(
-                            (Vector2)cmd.linear,
-                            PhysicsRotate.FromRadians(cmd.angular)
-                        ),
+                        new PhysicsTransform((Vector2)cmd.linear, PhysicsRotate.FromRadians(cmd.angular)),
                         dt
                     );
                     break;
@@ -1324,26 +1260,13 @@ namespace Zori.Entities.Physics2D
                 case PhysicsShape2DKind.Circle:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapCircle(
-                        world,
-                        center,
-                        effShape.radius,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapCircle(world, center, effShape.radius, eff.colliderMask, hits);
                     break;
                 }
                 case PhysicsShape2DKind.Box:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        center,
-                        effShape.size,
-                        bodyAngle,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, center, effShape.size, bodyAngle, eff.colliderMask, hits);
                     break;
                 }
                 default:
@@ -1351,14 +1274,7 @@ namespace Zori.Entities.Physics2D
                     var aabb = effectorBody.GetAABB();
                     var lo = (float2)(Vector2)aabb.lowerBound;
                     var hi = (float2)(Vector2)aabb.upperBound;
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        (lo + hi) * 0.5f,
-                        hi - lo,
-                        0f,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, (lo + hi) * 0.5f, hi - lo, 0f, eff.colliderMask, hits);
                     break;
                 }
             }
@@ -1403,10 +1319,7 @@ namespace Zori.Entities.Physics2D
         // body, may add torque off-centre). Applied as a continuous force the upcoming Simulate integrates.
         static void ApplyAreaForce(PhysicsBody body, in PhysicsEffector2D eff, float effectorAngle)
         {
-            var angle =
-                eff.useGlobalAngle != 0
-                    ? eff.forceAngleRadians
-                    : eff.forceAngleRadians + effectorAngle;
+            var angle = eff.useGlobalAngle != 0 ? eff.forceAngleRadians : eff.forceAngleRadians + effectorAngle;
             sincos(angle, out var s, out var c);
             var f = new float2(c, s) * (eff.forceMagnitude + Variation(eff.forceVariation));
             if (eff.forceTargetIsRigidbody != 0)
@@ -1440,8 +1353,7 @@ namespace Zori.Entities.Physics2D
             if (eff.flowMagnitude != 0f || eff.flowVariation != 0f)
             {
                 sincos(eff.flowAngleRadians, out var fs, out var fc);
-                var flow =
-                    new float2(fc, fs) * ((eff.flowMagnitude + Variation(eff.flowVariation)) * f);
+                var flow = new float2(fc, fs) * ((eff.flowMagnitude + Variation(eff.flowVariation)) * f);
                 body.ApplyForceToCenter((Vector2)flow, true);
             }
 
@@ -1467,9 +1379,7 @@ namespace Zori.Entities.Physics2D
             else
             {
                 var rot = effectorBody.rotation;
-                source =
-                    (float2)(Vector2)effectorBody.position
-                    + Rotate(effShape.offset, rot.cos, rot.sin);
+                source = (float2)(Vector2)effectorBody.position + Rotate(effShape.offset, rot.cos, rot.sin);
             }
 
             var targetPos = (float2)(Vector2)body.worldCenterOfMass;
@@ -1534,9 +1444,7 @@ namespace Zori.Entities.Physics2D
             {
                 case PhysicsShape2DKind.Circle:
                 {
-                    var center =
-                        platformPos
-                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapCircle(
                         world,
                         center,
@@ -1548,9 +1456,7 @@ namespace Zori.Entities.Physics2D
                 }
                 case PhysicsShape2DKind.Box:
                 {
-                    var center =
-                        platformPos
-                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapBox(
                         world,
                         center,
@@ -1566,14 +1472,7 @@ namespace Zori.Entities.Physics2D
                     var aabb = platformBody.GetAABB();
                     var lo = (float2)(Vector2)aabb.lowerBound - PlatformOneWayMargin;
                     var hi = (float2)(Vector2)aabb.upperBound + PlatformOneWayMargin;
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        (lo + hi) * 0.5f,
-                        hi - lo,
-                        0f,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, (lo + hi) * 0.5f, hi - lo, 0f, eff.colliderMask, hits);
                     break;
                 }
             }

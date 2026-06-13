@@ -107,7 +107,9 @@ namespace Zori.Entities.Physics2D.Tests
                     + "(½·9.81·t²). The defaultDefinition fallback is not intact."
             );
 
-            Debug.Log($"[PHYSICS2D-STEPCFG] no-config fall over {t:F2}s = {fell:F4} m (expected≈{expected:F3} at g=-9.81).");
+            Debug.Log(
+                $"[PHYSICS2D-STEPCFG] no-config fall over {t:F2}s = {fell:F4} m (expected≈{expected:F3} at g=-9.81)."
+            );
 
             world.Dispose();
             yield break;
@@ -145,7 +147,9 @@ namespace Zori.Entities.Physics2D.Tests
                     + "The config gravity did not override the Box2D default."
             );
 
-            Debug.Log($"[PHYSICS2D-STEPCFG] config g={ConfigG} fall over {t:F2}s = {fell:F4} m (expected≈{expectedConfig:F3}, default would be {expectedDefault:F3}).");
+            Debug.Log(
+                $"[PHYSICS2D-STEPCFG] config g={ConfigG} fall over {t:F2}s = {fell:F4} m (expected≈{expectedConfig:F3}, default would be {expectedDefault:F3})."
+            );
 
             world.Dispose();
             yield break;
@@ -179,7 +183,9 @@ namespace Zori.Entities.Physics2D.Tests
                     + $"ratio={ratio:F2} (expected ≈4). The two configs are not each in force."
             );
 
-            Debug.Log($"[PHYSICS2D-STEPCFG] scaling: g={Ga}→{fellA:F4} m, g={Gb}→{fellB:F4} m, ratio={ratio:F2} (expected≈4).");
+            Debug.Log(
+                $"[PHYSICS2D-STEPCFG] scaling: g={Ga}→{fellA:F4} m, g={Gb}→{fellB:F4} m, ratio={ratio:F2} (expected≈4)."
+            );
 
             worldA.Dispose();
             worldB.Dispose();

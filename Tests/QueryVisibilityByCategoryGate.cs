@@ -60,11 +60,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = pos,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = pos },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Circle,
@@ -86,7 +82,13 @@ namespace Zori.Entities.Physics2D.Tests
             // The shape under test: a marker on a dedicated category whose 2D collision-matrix row is fully
             // unchecked — contactBits = 0. It physically collides with nothing, exactly like a rope anchor on a
             // dedicated, all-unchecked layer.
-            var marker = SpawnCircle(em, new float2(0f, 0f), radius: 0.3f, categoryBits: CategoryMask, contactBits: 0ul);
+            var marker = SpawnCircle(
+                em,
+                new float2(0f, 0f),
+                radius: 0.3f,
+                categoryBits: CategoryMask,
+                contactBits: 0ul
+            );
 
             group.Update(); // create the Box2D body
 

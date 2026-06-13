@@ -58,16 +58,13 @@ namespace Zori.Entities.Physics2D.Tests.Editor
         // inheriting body bakes a number the default path never would.
         public const float TemplateFriction = 0.123f;
         public const float TemplateBounciness = 0.456f;
-        public const PhysicsMaterialCombine2D TemplateFrictionCombine =
-            PhysicsMaterialCombine2D.Maximum;
-        public const PhysicsMaterialCombine2D TemplateBounceCombine =
-            PhysicsMaterialCombine2D.Minimum;
+        public const PhysicsMaterialCombine2D TemplateFrictionCombine = PhysicsMaterialCombine2D.Maximum;
+        public const PhysicsMaterialCombine2D TemplateBounceCombine = PhysicsMaterialCombine2D.Minimum;
 
         // The OverrideCustom body's inline override values — distinct from BOTH the template and the default, so
         // observing them at bake proves the override won (not the template, not the default).
         public const float OverrideFriction = 0.777f;
-        public const PhysicsSurfaceMixing2D OverrideBouncinessCombine =
-            PhysicsSurfaceMixing2D.Multiply;
+        public const PhysicsSurfaceMixing2D OverrideBouncinessCombine = PhysicsSurfaceMixing2D.Multiply;
 
         // The inline defaults the DefaultCustom (no-template) body must bake — the pre-Phase-B values.
         public const float DefaultFriction = 0.4f;

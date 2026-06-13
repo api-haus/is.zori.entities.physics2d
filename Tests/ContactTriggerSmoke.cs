@@ -72,11 +72,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -90,12 +86,7 @@ namespace Zori.Entities.Physics2D.Tests
         }
 
         // True if either ordering of (a,b) appears as the pair in a contact event of the given phase.
-        static bool HasContact(
-            DynamicBuffer<PhysicsContactEvent2D> buf,
-            Entity a,
-            Entity b,
-            PhysicsEventPhase2D phase
-        )
+        static bool HasContact(DynamicBuffer<PhysicsContactEvent2D> buf, Entity a, Entity b, PhysicsEventPhase2D phase)
         {
             for (var i = 0; i < buf.Length; i++)
             {

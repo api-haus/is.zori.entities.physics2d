@@ -83,16 +83,14 @@ namespace Zori.Entities.Physics2D.Baking
         /// become an ellipse, so the LARGER absolute axis scale is used (the circle gizmo grows to the larger
         /// axis). The 2D analogue of <c>com.unity.physics</c>'s <c>cmax(abs(lossyScale))</c> sphere rule.
         /// </summary>
-        public static float ScaleCircleRadius(float radius, float2 scale) =>
-            radius * max(abs(scale.x), abs(scale.y));
+        public static float ScaleCircleRadius(float radius, float2 scale) => radius * max(abs(scale.x), abs(scale.y));
 
         /// <summary>
         /// Scale a corner-rounding radius (box <c>edgeRadius</c>, polygon corner radius). A rounding radius is
         /// a circle of curvature, so the isotropic circle rule applies; under non-uniform scale this is an
         /// approximation (a true scaled rounded box has elliptical corners Box2D cannot express).
         /// </summary>
-        public static float ScaleRoundingRadius(float radius, float2 scale) =>
-            ScaleCircleRadius(radius, scale);
+        public static float ScaleRoundingRadius(float radius, float2 scale) => ScaleCircleRadius(radius, scale);
 
         /// <summary>
         /// Scale a collider's local <c>offset</c> per-axis, SIGNED — a flip moves the offset to the mirrored
@@ -165,10 +163,7 @@ namespace Zori.Entities.Physics2D.Baking
         /// does NOT change the from-scratch baked surface — only whether a later material edit re-bakes — so the
         /// dual-surface convergence (which bakes from scratch) is unaffected.
         /// </summary>
-        public static void DependsOnSharedMaterial<TAuthoring>(
-            Baker<TAuthoring> baker,
-            Collider2D collider
-        )
+        public static void DependsOnSharedMaterial<TAuthoring>(Baker<TAuthoring> baker, Collider2D collider)
             where TAuthoring : Component
         {
             baker.DependsOn(collider.sharedMaterial);
@@ -211,11 +206,7 @@ namespace Zori.Entities.Physics2D.Baking
         /// bakes <c>categoryBits = 1</c> / <c>contactBits = 0xFFFFFFFF</c> — collides with everything, matching
         /// the pre-filtering behaviour so existing fixtures are unperturbed.
         /// </summary>
-        public static void ReadFilter(
-            Component authoring,
-            out ulong categoryBits,
-            out ulong contactBits
-        )
+        public static void ReadFilter(Component authoring, out ulong categoryBits, out ulong contactBits)
         {
             var layer = authoring.gameObject.layer;
             categoryBits = 1ul << layer;
@@ -401,9 +392,7 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Length - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Unity.Collections.Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Unity.Collections.Allocator.Persistent);
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 
@@ -474,9 +463,7 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Length - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Unity.Collections.Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Unity.Collections.Allocator.Persistent);
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
 

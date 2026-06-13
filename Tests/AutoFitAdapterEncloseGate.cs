@@ -62,10 +62,7 @@ namespace Zori.Entities.Physics2D.Tests
             {
                 var pi = poly[i];
                 var pj = poly[j];
-                if (
-                    (pi.y > p.y) != (pj.y > p.y)
-                    && p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y) + pi.x
-                )
+                if ((pi.y > p.y) != (pj.y > p.y) && p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y) + pi.x)
                     inside = !inside;
             }
             return inside;
@@ -93,13 +90,7 @@ namespace Zori.Entities.Physics2D.Tests
         // ===================================================================================================
 
         static List<float2> SquareCloud() =>
-            new()
-            {
-                new float2(-1f, -1f),
-                new float2(1f, -1f),
-                new float2(1f, 1f),
-                new float2(-1f, 1f),
-            };
+            new() { new float2(-1f, -1f), new float2(1f, -1f), new float2(1f, 1f), new float2(-1f, 1f) };
 
         static List<float2> RectCloud() =>
             new()
@@ -353,12 +344,7 @@ namespace Zori.Entities.Physics2D.Tests
             try
             {
                 var col = go.AddComponent<PolygonCollider2D>();
-                var path = new[]
-                {
-                    new Vector2(-1f, -1f),
-                    new Vector2(3f, -1f),
-                    new Vector2(1f, 2f),
-                };
+                var path = new[] { new Vector2(-1f, -1f), new Vector2(3f, -1f), new Vector2(1f, 2f) };
                 col.pathCount = 1;
                 col.SetPath(0, path);
                 col.offset = new Vector2(10f, -5f);
@@ -367,12 +353,7 @@ namespace Zori.Entities.Physics2D.Tests
                 var ok = PhysicsShape2DAutoFit.TryGatherPolygonCollider(col, cloud, out var offset);
                 Assert.IsTrue(ok, "TryGatherPolygonCollider returned false for a real collider with a path.");
                 Assert.AreEqual(3, cloud.Count, "gathered cloud must hold the 3 path vertices.");
-                Assert.AreEqual(
-                    10f,
-                    offset.x,
-                    Eps,
-                    "reported offset.x must be the collider's own offset."
-                );
+                Assert.AreEqual(10f, offset.x, Eps, "reported offset.x must be the collider's own offset.");
                 Assert.AreEqual(-5f, offset.y, Eps, "reported offset.y must be the collider's own offset.");
 
                 // The gathered cloud must equal the path (collider-local, NOT pre-offset). Match as a set.
@@ -388,11 +369,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // Fit a box through the real apply path and assert the FITTED shape (placed at sourceOffset +
                 // fit.center) encloses the source outline in WORLD space (path + collider.offset).
                 var auth = go.AddComponent<PhysicsShape2DAuthoring>();
-                var fitOk = PhysicsShape2DAutoFit.FitToPolygonCollider2D(
-                    auth,
-                    col,
-                    PhysicsShape2DKind.Box
-                );
+                var fitOk = PhysicsShape2DAutoFit.FitToPolygonCollider2D(auth, col, PhysicsShape2DKind.Box);
                 Assert.IsTrue(fitOk, "FitToPolygonCollider2D returned false.");
                 Assert.AreEqual(PhysicsShape2DKind.Box, auth.Kind);
                 // World source outline = path + offset; the fitted box is at auth.Offset with auth.BoxSize/Angle,
@@ -433,13 +410,7 @@ namespace Zori.Entities.Physics2D.Tests
                 col.offset = Vector2.zero;
 
                 var auth = go.AddComponent<PhysicsShape2DAuthoring>();
-                Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitToPolygonCollider2D(
-                        auth,
-                        col,
-                        PhysicsShape2DKind.Circle
-                    )
-                );
+                Assert.IsTrue(PhysicsShape2DAutoFit.FitToPolygonCollider2D(auth, col, PhysicsShape2DKind.Circle));
                 Assert.AreEqual(PhysicsShape2DKind.Circle, auth.Kind);
                 Assert.AreEqual(2f, auth.Radius, 1e-2f, "a circle-ish source must fit a circle of ~r=2.");
                 Assert.AreEqual(0f, auth.Offset.x, 1e-2f, "circle centred on origin.");
@@ -465,12 +436,7 @@ namespace Zori.Entities.Physics2D.Tests
             {
                 // A 64×32 px sprite at 32 px/unit → a 2×1 unit local bounds centred on the pivot (0.5,0.5).
                 tex = new Texture2D(64, 32);
-                sprite = Sprite.Create(
-                    tex,
-                    new Rect(0, 0, 64, 32),
-                    new Vector2(0.5f, 0.5f),
-                    32f
-                );
+                sprite = Sprite.Create(tex, new Rect(0, 0, 64, 32), new Vector2(0.5f, 0.5f), 32f);
                 var sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = sprite;
 
@@ -489,17 +455,10 @@ namespace Zori.Entities.Physics2D.Tests
                 // The box fit of a rectangle source must match the bounds exactly (axis-aligned, since the
                 // rectangle's principal axes are the world axes).
                 var auth = go.AddComponent<PhysicsShape2DAuthoring>();
-                Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitToSpriteRenderer(auth, sr, PhysicsShape2DKind.Box)
-                );
+                Assert.IsTrue(PhysicsShape2DAutoFit.FitToSpriteRenderer(auth, sr, PhysicsShape2DKind.Box));
                 Assert.AreEqual(b.size.x, auth.BoxSize.x, 1e-3f, "fitted box width = bounds width.");
                 Assert.AreEqual(b.size.y, auth.BoxSize.y, 1e-3f, "fitted box height = bounds height.");
-                Assert.AreEqual(
-                    b.center.x,
-                    auth.Offset.x,
-                    1e-3f,
-                    "fitted box centre = bounds centre x."
-                );
+                Assert.AreEqual(b.center.x, auth.Offset.x, 1e-3f, "fitted box centre = bounds centre x.");
                 Assert.AreEqual(b.center.y, auth.Offset.y, 1e-3f);
             }
             finally
@@ -528,22 +487,12 @@ namespace Zori.Entities.Physics2D.Tests
                 // 100×100 px at 100 px/unit, pivot at centre → sprite-local space is centred at origin,
                 // a [-0.5,0.5]² unit square. OverridePhysicsShape takes points in sprite.rect (pixel) space,
                 // but GetPhysicsShape returns them in sprite-LOCAL units (the same space the fit expects).
-                sprite = Sprite.Create(
-                    tex,
-                    new Rect(0, 0, 100, 100),
-                    new Vector2(0.5f, 0.5f),
-                    100f
-                );
+                sprite = Sprite.Create(tex, new Rect(0, 0, 100, 100), new Vector2(0.5f, 0.5f), 100f);
 
                 // A triangle physics outline (pixel space): corners at (10,10),(90,10),(50,90).
                 var outline = new List<Vector2[]>
                 {
-                    new[]
-                    {
-                        new Vector2(10f, 10f),
-                        new Vector2(90f, 10f),
-                        new Vector2(50f, 90f),
-                    },
+                    new[] { new Vector2(10f, 10f), new Vector2(90f, 10f), new Vector2(50f, 90f) },
                 };
                 sprite.OverridePhysicsShape(outline);
 
@@ -579,9 +528,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // Fit a polygon and assert the fitted hull encloses the real outline (in sprite-local space,
                 // offset 0 for a sprite).
                 var auth = go.AddComponent<PhysicsShape2DAuthoring>();
-                Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitToSprite(auth, sprite, PhysicsShape2DKind.Box)
-                );
+                Assert.IsTrue(PhysicsShape2DAutoFit.FitToSprite(auth, sprite, PhysicsShape2DKind.Box));
                 Assert.AreEqual(PhysicsShape2DKind.Box, auth.Kind);
                 for (var i = 0; i < oracleCloud.Count; i++)
                     Assert.IsTrue(
@@ -668,12 +615,7 @@ namespace Zori.Entities.Physics2D.Tests
                     hex.Add(new float2(co, s) * 2f);
                 }
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        auth,
-                        hex,
-                        PhysicsShape2DKind.Polygon,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(auth, hex, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero)
                 );
                 Assert.IsFalse(auth.PolygonDecompose, "a 6-vertex convex hull stays single-hull.");
                 Assert.LessOrEqual(
@@ -698,12 +640,7 @@ namespace Zori.Entities.Physics2D.Tests
             {
                 var blob = BlobCloud(); // 14-gon, ordered CCW
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        auth,
-                        blob,
-                        PhysicsShape2DKind.Polygon,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(auth, blob, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero)
                 );
                 Assert.IsTrue(auth.PolygonDecompose, "a >8-vertex hull takes the decompose path.");
                 // FitTo emits ToVector2(cloud) on the decompose branch — for a single ordered input cloud this
@@ -746,12 +683,7 @@ namespace Zori.Entities.Physics2D.Tests
                 );
 
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        auth,
-                        l,
-                        PhysicsShape2DKind.Polygon,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(auth, l, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero)
                 );
 
                 // ACTUAL behaviour: single hull, decompose OFF — the concavity is discarded.
@@ -810,12 +742,7 @@ namespace Zori.Entities.Physics2D.Tests
                     new float2(-2f, 1f),
                 };
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        fitted,
-                        cloud,
-                        PhysicsShape2DKind.Box,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(fitted, cloud, PhysicsShape2DKind.Box, Unity.Mathematics.float2.zero)
                 );
 
                 // What a hand-author would set for the same local geometry.
@@ -867,12 +794,7 @@ namespace Zori.Entities.Physics2D.Tests
                     new float2(1f, 4f),
                 };
                 Assert.IsTrue(
-                    PhysicsShape2DAutoFit.FitTo(
-                        fitted,
-                        cloud,
-                        PhysicsShape2DKind.Circle,
-                        Unity.Mathematics.float2.zero
-                    )
+                    PhysicsShape2DAutoFit.FitTo(fitted, cloud, PhysicsShape2DKind.Circle, Unity.Mathematics.float2.zero)
                 );
 
                 hand.Kind = PhysicsShape2DKind.Circle;

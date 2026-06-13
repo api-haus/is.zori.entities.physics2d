@@ -34,35 +34,18 @@ namespace Zori.Entities.Physics2D.Editor
                     DrawClosed(PhysicsShape2DGizmos.CircleOutline(shape.Offset, shape.Radius), true);
                     break;
                 case PhysicsShape2DKind.Box:
-                    DrawClosed(
-                        PhysicsShape2DGizmos.BoxOutline(shape.Offset, shape.BoxSize, shape.BoxAngle),
-                        true
-                    );
+                    DrawClosed(PhysicsShape2DGizmos.BoxOutline(shape.Offset, shape.BoxSize, shape.BoxAngle), true);
                     break;
                 case PhysicsShape2DKind.Capsule:
                     shape.GetCapsuleCenters(out var r, out var c1, out var c2);
-                    DrawClosed(
-                        PhysicsShape2DGizmos.CapsuleOutline(
-                            c1 + shape.Offset,
-                            c2 + shape.Offset,
-                            r
-                        ),
-                        true
-                    );
+                    DrawClosed(PhysicsShape2DGizmos.CapsuleOutline(c1 + shape.Offset, c2 + shape.Offset, r), true);
                     break;
                 case PhysicsShape2DKind.Polygon:
-                    DrawClosed(
-                        PhysicsShape2DGizmos.PolygonOutline(ToFloat2(shape.Vertices), shape.Offset),
-                        true
-                    );
+                    DrawClosed(PhysicsShape2DGizmos.PolygonOutline(ToFloat2(shape.Vertices), shape.Offset), true);
                     break;
                 case PhysicsShape2DKind.Edge:
                     DrawClosed(
-                        PhysicsShape2DGizmos.EdgeOutline(
-                            ToFloat2(shape.Vertices),
-                            shape.Offset,
-                            shape.EdgeIsLoop
-                        ),
+                        PhysicsShape2DGizmos.EdgeOutline(ToFloat2(shape.Vertices), shape.Offset, shape.EdgeIsLoop),
                         shape.EdgeIsLoop
                     );
                     break;

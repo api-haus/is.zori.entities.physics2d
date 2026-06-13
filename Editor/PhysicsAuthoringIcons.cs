@@ -35,11 +35,7 @@ namespace Zori.Entities.Physics2D.Editor
         static readonly IconAssignment[] k_Assignments =
         {
             // Body mirrors Rigidbody2D.
-            new IconAssignment(
-                typeof(Authoring.PhysicsBody2DAuthoring),
-                "Rigidbody2D Icon",
-                "d_Rigidbody2D Icon"
-            ),
+            new IconAssignment(typeof(Authoring.PhysicsBody2DAuthoring), "Rigidbody2D Icon", "d_Rigidbody2D Icon"),
             // Shape mirrors a 2D collider — prefer the generic Collider2D glyph, fall back to a concrete one.
             new IconAssignment(
                 typeof(Authoring.PhysicsShape2DAuthoring),
@@ -106,9 +102,7 @@ namespace Zori.Entities.Physics2D.Editor
 
                 importer.SetIcon(icon);
                 AssetDatabase.ImportAsset(scriptPath, ImportAssetOptions.ForceUpdate);
-                Debug.Log(
-                    $"[PhysicsAuthoringIcons] {assignment.AuthoringType.Name} <- '{iconName}' ({scriptPath})"
-                );
+                Debug.Log($"[PhysicsAuthoringIcons] {assignment.AuthoringType.Name} <- '{iconName}' ({scriptPath})");
                 assigned++;
             }
 

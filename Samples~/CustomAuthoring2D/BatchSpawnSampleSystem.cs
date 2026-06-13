@@ -110,15 +110,7 @@ namespace Zori.Entities.Physics2D.Samples
         }
 
         static LocalToWorld LocalToWorldAt(float2 p) =>
-            new LocalToWorld
-            {
-                Value = new float4x4(
-                    1f, 0f, 0f, p.x,
-                    0f, 1f, 0f, p.y,
-                    0f, 0f, 1f, 0f,
-                    0f, 0f, 0f, 1f
-                ),
-            };
+            new LocalToWorld { Value = new float4x4(1f, 0f, 0f, p.x, 0f, 1f, 0f, p.y, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f) };
     }
 
     /// <summary>

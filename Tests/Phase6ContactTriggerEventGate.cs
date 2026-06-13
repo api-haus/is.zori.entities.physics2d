@@ -166,11 +166,7 @@ namespace Zori.Entities.Physics2D.Tests
         // last step the pair was still touching the PREVIOUS step (GameObject Stay stops the frame Exit fires),
         // so the touching interval is [beginStep, endStep) — but to stay robust to the v2/v3 one-frame edge we
         // record every step strictly between begin and end as touching and let the envelope cover the edges.
-        static void DrainContacts(
-            DynamicBuffer<PhysicsContactEvent2D> buf,
-            int step,
-            Dictionary<long, PkgPairLog> logs
-        )
+        static void DrainContacts(DynamicBuffer<PhysicsContactEvent2D> buf, int step, Dictionary<long, PkgPairLog> logs)
         {
             for (var i = 0; i < buf.Length; i++)
             {
@@ -194,11 +190,7 @@ namespace Zori.Entities.Physics2D.Tests
             }
         }
 
-        static void DrainTriggers(
-            DynamicBuffer<PhysicsTriggerEvent2D> buf,
-            int step,
-            Dictionary<long, PkgPairLog> logs
-        )
+        static void DrainTriggers(DynamicBuffer<PhysicsTriggerEvent2D> buf, int step, Dictionary<long, PkgPairLog> logs)
         {
             for (var i = 0; i < buf.Length; i++)
             {
@@ -516,11 +508,7 @@ namespace Zori.Entities.Physics2D.Tests
             // Author both shapes with bounciness 1 so the package contact is elastic too.
             var floor = DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = floorCenter,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = floorCenter },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -956,7 +944,11 @@ namespace Zori.Entities.Physics2D.Tests
             // Full set: every one of the N bodies fired exactly one floor-contact begin on BOTH backends.
             Assert.AreEqual(N, bodiesWithFloorBegin, "Package dropped a body↔floor begin event under volume.");
             Assert.AreEqual(0, duplicateBegins, "Package duplicated a body↔floor begin event (one body, >1 begin).");
-            Assert.AreEqual(0, nullResolutions, "A contact event under volume resolved an Entity.Null — pair→entity failed.");
+            Assert.AreEqual(
+                0,
+                nullResolutions,
+                "A contact event under volume resolved an Entity.Null — pair→entity failed."
+            );
             Assert.AreEqual(N, goBodiesWithEnter, "GameObject oracle: not every body landed (geometry/setup off).");
             yield break;
         }
@@ -986,9 +978,13 @@ namespace Zori.Entities.Physics2D.Tests
                 var se = SingletonEntity(em);
                 var buf = em.GetBuffer<PhysicsContactEvent2D>(se, isReadOnly: true);
                 for (var i = 0; i < buf.Length; i++)
-                    if (buf[i].phase == PhysicsEventPhase2D.Begin
-                        && ((buf[i].entityA == body && buf[i].entityB == floor)
-                            || (buf[i].entityA == floor && buf[i].entityB == body)))
+                    if (
+                        buf[i].phase == PhysicsEventPhase2D.Begin
+                        && (
+                            (buf[i].entityA == body && buf[i].entityB == floor)
+                            || (buf[i].entityA == floor && buf[i].entityB == body)
+                        )
+                    )
                         landed = true;
             }
             Assert.IsTrue(landed, "Setup: the body never landed on the floor before the destroy step.");
@@ -1022,9 +1018,11 @@ namespace Zori.Entities.Physics2D.Tests
                             continue; // a stale-but-correct index is acceptable; the guard is "not garbage"
                         sawGarbage = true;
                     }
-                    if (e.phase == PhysicsEventPhase2D.End
+                    if (
+                        e.phase == PhysicsEventPhase2D.End
                         && (e.entityA == floor || e.entityB == floor)
-                        && (e.entityA == Entity.Null || e.entityB == Entity.Null))
+                        && (e.entityA == Entity.Null || e.entityB == Entity.Null)
+                    )
                         endResolvedFloorOnly = true;
                 }
                 // Keep stepping a while: the world must stay sane (no crash on subsequent drains).
@@ -1045,7 +1043,10 @@ namespace Zori.Entities.Physics2D.Tests
 
             world.Dispose();
 
-            Assert.IsFalse(crashed, "The event drain crashed when an entity was destroyed the step it ended a contact.");
+            Assert.IsFalse(
+                crashed,
+                "The event drain crashed when an entity was destroyed the step it ended a contact."
+            );
             Assert.IsFalse(
                 sawGarbage,
                 "An event after a destroyed-shape step resolved to a garbage entity (neither floor, body, nor Null) "
@@ -1122,9 +1123,13 @@ namespace Zori.Entities.Physics2D.Tests
                 var se = SingletonEntity(em);
                 var buf = em.GetBuffer<PhysicsContactEvent2D>(se, isReadOnly: true);
                 for (var i = 0; i < buf.Length; i++)
-                    if (buf[i].phase == PhysicsEventPhase2D.Begin
-                        && ((buf[i].entityA == bodyB && buf[i].entityB == floorB)
-                            || (buf[i].entityA == floorB && buf[i].entityB == bodyB)))
+                    if (
+                        buf[i].phase == PhysicsEventPhase2D.Begin
+                        && (
+                            (buf[i].entityA == bodyB && buf[i].entityB == floorB)
+                            || (buf[i].entityA == floorB && buf[i].entityB == bodyB)
+                        )
+                    )
                     {
                         beginsAfter++;
                         if (firstBeginStep < 0)
