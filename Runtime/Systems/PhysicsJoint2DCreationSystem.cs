@@ -32,7 +32,7 @@ namespace Zori.Entities.Physics2D
     ///
     /// <b>Teardown.</b> Destroying the <see cref="PhysicsWorld"/> already frees every joint it owns (a joint
     /// is owned by the world like a body/shape), so the <c>DestroyJointBatch</c> call here is the explicit,
-    /// world-still-valid path for an orderly shutdown and the seam a Phase-2B per-joint break/despawn extends;
+    /// world-still-valid path for an orderly shutdown and the seam per-joint break/despawn extends;
     /// it is a no-op leak-safety belt when the world is torn down first.
     /// </remarks>
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]

@@ -5,8 +5,8 @@ namespace Zori.Entities.Physics2D
 {
     /// <summary>
     /// Which built-in 2D joint a <see cref="PhysicsJoint2DDefinition"/> carries, mapped onto a Box2D joint
-    /// definition at creation. Phase 2A shipped Hinge / Slider / Wheel; Phase 2B adds the rest, each one
-    /// enum value plus one creation-switch arm and one baker — the same negative-space property the
+    /// definition at creation. Each kind is one enum value plus one creation-switch arm and one baker — the
+    /// same negative-space property the
     /// <see cref="PhysicsShape2DKind"/> union has. Several built-in joints share a Box2D kind: a rigid
     /// <see cref="Distance"/> and an oscillating <see cref="Spring"/> are both the Box2D
     /// <c>PhysicsDistanceJoint</c> (the spring enable flag distinguishes them); <see cref="Relative"/>,
@@ -56,7 +56,7 @@ namespace Zori.Entities.Physics2D
 
     /// <summary>
     /// The baked joint authoring, consumed exactly once when the joint-creation system creates the Box2D
-    /// joint. A single tagged-union component carries every built-in 2D joint parameter Phase 2A maps —
+    /// joint. A single tagged-union component carries every built-in 2D joint parameter —
     /// anchors, the slide/suspension axis, the motor, the limits, the spring — discriminated by
     /// <see cref="kind"/>, plus an <see cref="Entity"/> reference to the connected body the baker resolves
     /// from <c>Joint2D.connectedBody</c> via <c>GetEntity</c>. The connected entity is the second body
@@ -70,8 +70,8 @@ namespace Zori.Entities.Physics2D
     /// Box2D <c>localAnchorA</c>/<c>localAnchorB</c> frames at creation; the slide/suspension axis is stored
     /// as <see cref="axisAngleRadians"/> and folded into <c>localAnchorA</c>'s rotation (the frame whose
     /// local X is the slide/suspension direction). Motor/limit/spring enables are bools; their parameters
-    /// keep meaningful values even when disabled so toggling on at runtime needs no re-bake (Phase 2A does
-    /// not expose that, but the component is shaped for it).
+    /// keep meaningful values even when disabled so toggling on at runtime needs no re-bake (no runtime
+    /// surface exposes that toggle yet, but the component is shaped for it).
     ///
     /// <para>A joint references a <em>second</em> body, so unlike a body/shape it cannot be created until the
     /// owner entity (and, for a concrete connected body, that entity) carries a live
@@ -80,7 +80,7 @@ namespace Zori.Entities.Physics2D
     /// which built-in 2D physics treats as a joint to a point in space (a static world anchor); the creation
     /// system supplies a shared static anchor body at the origin for that case, and
     /// <see cref="connectedAnchor"/> is then a WORLD-space point. This is the pendulum-pinned-to-the-world
-    /// fixture form Phase 2A uses, and it keeps the parity harness body counts symmetric (no extra
+    /// fixture form, and it keeps the parity harness body counts symmetric (no extra
     /// <c>Rigidbody2D</c> on the anchor side).</para>
     /// </remarks>
     public struct PhysicsJoint2DDefinition : IComponentData
@@ -91,7 +91,7 @@ namespace Zori.Entities.Physics2D
         /// <summary>
         /// The connected body (built-in <c>Joint2D.connectedBody</c>) → Box2D <c>bodyA</c>. The entity
         /// carrying this component is <c>bodyB</c>. <see cref="Entity.Null"/> means the built-in joint had
-        /// no connected body (an implicit static world anchor) — not exercised in Phase 2A.
+        /// no connected body (an implicit static world anchor).
         /// </summary>
         public Entity connectedBody;
 
@@ -114,8 +114,8 @@ namespace Zori.Entities.Physics2D
         /// <c>localAnchorA</c>'s rotation at creation (via <c>PhysicsRotate.FromDegrees</c>) so the frame's
         /// local X is the slide/suspension direction. Stored in the source unit (degrees) and converted at
         /// the single creation call. Unused for Hinge (a hinge has no translation axis). The built-in angle
-        /// is a WORLD angle; against a static, unrotated <c>bodyA</c> (the Phase 2A fixtures) the world and
-        /// body-A-relative axis coincide — a rotated connected body is a Phase-2B refinement.
+        /// is a WORLD angle; against a static, unrotated <c>bodyA</c> the world and body-A-relative axis
+        /// coincide, so the conversion is exact in that case — a rotated connected body would diverge.
         /// </summary>
         public float axisAngleDegrees;
 

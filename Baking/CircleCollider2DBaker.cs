@@ -13,7 +13,7 @@ namespace Zori.Entities.Physics2D.Baking
     /// Targets the same entity as <see cref="Rigidbody2DBaker"/> via the same
     /// <c>GetEntity(TransformUsageFlags.Dynamic)</c>, so a body+collider GameObject produces one entity
     /// with both components. A collider-only GameObject (no <see cref="Rigidbody2D"/>) is a static body, so —
-    /// like every collider baker since Phase 1A — it emits a default static
+    /// like every collider baker — it emits a default static
     /// <see cref="PhysicsBody2DDefinition"/> via <see cref="Collider2DBaking.AddStaticBodyIfNoRigidbody"/>
     /// (a no-op when a <see cref="Rigidbody2D"/> is present). Surface friction/bounciness/density are read
     /// from the collider's <c>sharedMaterial</c>/<c>density</c> like the other shapes.

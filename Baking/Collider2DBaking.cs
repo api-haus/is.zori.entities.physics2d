@@ -101,9 +101,9 @@ namespace Zori.Entities.Physics2D.Baking
 
         /// <summary>
         /// Whether the scale mirrors the plane (an ODD number of negative axes), which reverses polygon/edge
-        /// winding. Box2D wants CCW convex hulls and a chain's solid side is its winding (the Phase-1A/9
-        /// winding sensitivity), so a baker that scales vertices signed must REVERSE the vertex order when
-        /// this is true to restore the authored winding.
+        /// winding. Box2D wants CCW convex hulls and a chain's solid side is its winding, so a baker that
+        /// scales vertices signed must REVERSE the vertex order when this is true to restore the authored
+        /// winding.
         /// </summary>
         public static bool FlipsWinding(float2 scale) => scale.x * scale.y < 0f;
 
@@ -366,7 +366,7 @@ namespace Zori.Entities.Physics2D.Baking
     /// <see cref="PhysicsShape2DVertices"/> blob; <c>Collider2D.offset</c> is folded at creation via a
     /// <c>PhysicsTransform</c>. Box2D's <c>PolygonGeometry.Create</c> requires a convex hull of 3..8 vertices,
     /// so a parity fixture must author a convex polygon (a non-convex built-in polygon would need a
-    /// composite/decomposed path, which is later-phase work).
+    /// composite/decomposed path, which this baker does not provide).
     /// </summary>
     public sealed class PolygonCollider2DBaker : Baker<PolygonCollider2D>
     {
@@ -449,7 +449,7 @@ namespace Zori.Entities.Physics2D.Baking
             var entity = GetEntity(TransformUsageFlags.Dynamic);
 
             // Scale each chain point signed and reverse the order on a winding-flipping (mirror) scale: a
-            // chain's solid side IS its winding (Phase-1A edge fixture), so a mirror that did not reverse the
+            // chain's solid side IS its winding, so a mirror that did not reverse the
             // order would flip the solid side and let bodies fall through. The offset is scaled signed (the
             // creation system folds it per-vertex at runtime).
             var scale = Collider2DBaking.ReadScale(authoring.transform);

@@ -9,7 +9,7 @@ namespace Zori.Entities.Physics2D.Baking
     /// fields and call <see cref="ResolveConnectedBody"/> to turn the built-in <c>Joint2D.connectedBody</c>
     /// into the <see cref="Entity"/> the runtime joint definition references. Factored out so the
     /// connected-body resolution and its bake-dependency registration live in exactly one place across the
-    /// three (and, in Phase 2B, more) joint bakers.
+    /// joint bakers.
     /// </summary>
     public static class Joint2DBaking
     {
@@ -17,7 +17,7 @@ namespace Zori.Entities.Physics2D.Baking
         /// Resolve a built-in joint's <c>connectedBody</c> (a <c>Rigidbody2D</c>) to the entity the package
         /// bakes it to, registering the bake dependency so a change to the connected body re-bakes the joint.
         /// Returns <see cref="Entity.Null"/> when the built-in joint has no connected body (an implicit
-        /// static world anchor) — a case Phase 2A's fixtures never author and the creation system skips.
+        /// static world anchor), which the creation system resolves to its shared static anchor body.
         /// </summary>
         /// <remarks>
         /// The baker's <c>this</c> is passed in because <c>GetEntity</c>/<c>DependsOn</c> are instance

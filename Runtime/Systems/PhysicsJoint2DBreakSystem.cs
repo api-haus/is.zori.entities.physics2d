@@ -17,7 +17,7 @@ namespace Zori.Entities.Physics2D
     /// <b>Why a separate system, after the world system.</b> The break events are read from Box2D's volatile
     /// post-step joint-threshold span inside <c>PhysicsWorld2DSystem</c>, where a destroy (a world mutation)
     /// and a <c>RemoveComponent</c> (a structural change) are both illegal mid-span-read. The collect/apply
-    /// split mirrors the contact/trigger event collection and the Phase-4 body cleanup: collect from the
+    /// split mirrors the contact/trigger event collection and the body cleanup: collect from the
     /// volatile span in the world system, do the structural change in a sibling system. Running
     /// <c>[UpdateAfter(PhysicsWorld2DSystem)]</c> in the same <see cref="FixedStepSimulationSystemGroup"/> tick
     /// means a joint loaded past its threshold this step is gone before the next step integrates the (now free)

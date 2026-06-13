@@ -63,9 +63,8 @@ namespace Zori.Entities.Physics2D.Baking
             //      pair the built-in collider bakers bake. The "named categories" ARE the project's Unity layer
             //      names (2D reuses the layer system; no bespoke category-names asset).
             //   3. else Layer == -1 (default) → both masks 0, so the creation system applies the everything-default
-            //      (collide with everything) — the unfiltered default and the custom surface's historical
-            //      behaviour. Lowest precedence.
-            // This matches the Phase-5 runtime semantics: PhysicsShape2D.categoryBits == 0 means "no layer
+            //      (collide with everything) — the unfiltered default. Lowest precedence.
+            // This matches the runtime semantics: PhysicsShape2D.categoryBits == 0 means "no layer
             // resolved → everything-default filter" at creation (PhysicsShape2D.cs / CreateShapeForBody).
             ulong categoryBits = 0ul;
             ulong contactBits = 0ul;

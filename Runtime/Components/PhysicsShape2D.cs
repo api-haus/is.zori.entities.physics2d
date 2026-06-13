@@ -178,8 +178,8 @@ namespace Zori.Entities.Physics2D
 
     /// <summary>
     /// An EXTRA shape on a multi-shape body, beyond the primary <see cref="PhysicsShape2D"/> component. A body
-    /// with one collider carries only the primary component and NO buffer — the historical, unchanged
-    /// single-shape archetype. A body that merges several colliders into one collision surface (a
+    /// with one collider carries only the primary component and NO buffer — the single-shape archetype. A body
+    /// that merges several colliders into one collision surface (a
     /// <c>CompositeCollider2D</c>) or carries an explicit set of low-level shapes (a <c>CustomCollider2D</c>)
     /// carries the primary component as shape 0 and this buffer as shapes 1..K-1; the creation system attaches
     /// the primary first, then every buffer element, to the SAME Box2D body via the same

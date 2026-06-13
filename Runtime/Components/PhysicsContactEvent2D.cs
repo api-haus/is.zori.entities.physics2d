@@ -8,7 +8,7 @@ namespace Zori.Entities.Physics2D
     /// (<see cref="End"/>) as two distinct event lists; there is no per-frame "still touching" event. The
     /// GameObject <c>OnCollisionStay2D</c>/<c>OnTriggerStay2D</c> "currently touching" set is the begin..end
     /// interval a consumer derives by applying <see cref="Begin"/> (insert the pair) and <see cref="End"/>
-    /// (remove the pair) — the package does not synthesise a Stay element per frame (see the Phase-6 design).
+    /// (remove the pair) — the package does not synthesise a Stay element per frame.
     /// </summary>
     public enum PhysicsEventPhase2D : byte
     {
@@ -37,11 +37,11 @@ namespace Zori.Entities.Physics2D
     ///
     /// <b>What is and is not here.</b> Box2D-v3's contact begin/end events carry only the shape pair (and a
     /// volatile contact id), NOT the contact point / normal / relative velocity — that geometry lives on a
-    /// separate threshold-gated hit-event channel (<c>PhysicsEvents.ContactHitEvent</c>), out of scope for this
-    /// phase. So this is a touch signal: which pair of entities, beginning or ending, this step.
+    /// separate threshold-gated hit-event channel (<c>PhysicsEvents.ContactHitEvent</c>), not bound here. So
+    /// this is a touch signal: which pair of entities, beginning or ending, this step.
     ///
     /// <b>Entities vs shapes.</b> <see cref="entityA"/>/<see cref="entityB"/> are the stable owning entities
-    /// (resolved via the body's packed userData, the Phase-5 association) and are safe to keep. The raw
+    /// (resolved via the body's packed userData) and are safe to keep. The raw
     /// <see cref="shapeA"/>/<see cref="shapeB"/> handles are a same-frame convenience (read <c>shapeType</c>
     /// etc.) and are volatile beyond this frame — a shape may be destroyed next step. An entity that could not
     /// be resolved (a shape destroyed since the step, or a body the package did not pack) is
