@@ -191,17 +191,10 @@ namespace Zori.Entities.Physics2D.Tests
 
         sealed class GameObjectMedium : System.IDisposable
         {
-            readonly SimulationMode2D _prevMode;
-            readonly Vector2 _prevGravity;
+            readonly Physics2DStateFence _fence;
             readonly List<GameObject> _spawned = new();
 
-            public GameObjectMedium(Vector2 gravity)
-            {
-                _prevMode = UnityEngine.Physics2D.simulationMode;
-                _prevGravity = UnityEngine.Physics2D.gravity;
-                UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-                UnityEngine.Physics2D.gravity = gravity;
-            }
+            public GameObjectMedium(Vector2 gravity) => _fence = Physics2DStateFence.EnterScriptMode(gravity);
 
             // Author a force-field effector on a GameObject carrying a trigger collider used by the effector.
             // `configure` sets the effector's typed fields. The region collider is a sensor (isTrigger + usedBy
@@ -280,8 +273,7 @@ namespace Zori.Entities.Physics2D.Tests
                 foreach (var go in _spawned)
                     if (go != null)
                         Object.Destroy(go);
-                UnityEngine.Physics2D.gravity = _prevGravity;
-                UnityEngine.Physics2D.simulationMode = _prevMode;
+                _fence.Restore();
             }
         }
 

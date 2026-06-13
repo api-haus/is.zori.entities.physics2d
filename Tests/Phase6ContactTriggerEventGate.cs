@@ -45,26 +45,13 @@ namespace Zori.Entities.Physics2D.Tests
         const float Dt = 1f / 60f;
         static readonly Vector2 Gravity = new(0f, -9.81f);
 
-        // --- global Physics2D state save/restore (the package namespace shadows Physics2D, so qualify) -------
-
-        SimulationMode2D _prevMode;
-        Vector2 _prevGravity;
+        Physics2DStateFence _fence;
 
         [SetUp]
-        public void SetUp()
-        {
-            _prevMode = UnityEngine.Physics2D.simulationMode;
-            _prevGravity = UnityEngine.Physics2D.gravity;
-            UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-            UnityEngine.Physics2D.gravity = Gravity;
-        }
+        public void SetUp() => _fence = Physics2DStateFence.EnterScriptMode(Gravity);
 
         [TearDown]
-        public void TearDown()
-        {
-            UnityEngine.Physics2D.gravity = _prevGravity;
-            UnityEngine.Physics2D.simulationMode = _prevMode;
-        }
+        public void TearDown() => _fence.Restore();
 
         // =====================================================================================================
         // PACKAGE SIDE — disposable world + event-buffer drain.

@@ -62,9 +62,10 @@ namespace Zori.Entities.Physics2D.Tests
         const int LX = 11; // the layer paired against Default in the layer-0-ignores-X config
 
         // --- global Physics2D state save/restore -----------------------------------------------------------
+        // The simulationMode + gravity pair rides the shared fence; the query flags and the layer-collision
+        // matrix are this gate's own extra global state, snapshotted alongside it.
 
-        SimulationMode2D _prevMode;
-        Vector2 _prevGravity;
+        Physics2DStateFence _fence;
         bool _prevQueriesStartInColliders;
         bool _prevQueriesHitTriggers;
         readonly List<(int a, int b, bool ignored)> _savedPairs = new();
@@ -89,8 +90,6 @@ namespace Zori.Entities.Physics2D.Tests
         [SetUp]
         public void SetUp()
         {
-            _prevMode = UnityEngine.Physics2D.simulationMode;
-            _prevGravity = UnityEngine.Physics2D.gravity;
             _prevQueriesStartInColliders = UnityEngine.Physics2D.queriesStartInColliders;
             _prevQueriesHitTriggers = UnityEngine.Physics2D.queriesHitTriggers;
 
@@ -98,8 +97,7 @@ namespace Zori.Entities.Physics2D.Tests
             foreach (var (a, b) in TouchedPairs)
                 _savedPairs.Add((a, b, UnityEngine.Physics2D.GetIgnoreLayerCollision(a, b)));
 
-            UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-            UnityEngine.Physics2D.gravity = Gravity;
+            _fence = Physics2DStateFence.EnterScriptMode(Gravity);
             // A query that starts inside a collider should still report it (the package query has no
             // "skip start-overlapped" notion), and triggers are irrelevant here (no triggers authored).
             UnityEngine.Physics2D.queriesStartInColliders = true;
@@ -113,8 +111,7 @@ namespace Zori.Entities.Physics2D.Tests
                 UnityEngine.Physics2D.IgnoreLayerCollision(a, b, ignored);
             UnityEngine.Physics2D.queriesHitTriggers = _prevQueriesHitTriggers;
             UnityEngine.Physics2D.queriesStartInColliders = _prevQueriesStartInColliders;
-            UnityEngine.Physics2D.gravity = _prevGravity;
-            UnityEngine.Physics2D.simulationMode = _prevMode;
+            _fence.Restore();
         }
 
         // --- package world ---------------------------------------------------------------------------------
