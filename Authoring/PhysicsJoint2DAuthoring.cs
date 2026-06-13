@@ -43,29 +43,39 @@ namespace Zori.Entities.Physics2D.Authoring
     public sealed class PhysicsJoint2DAuthoring : MonoBehaviour
     {
         [SerializeField]
-        [Tooltip("Which joint this authors. Decides which per-type sub-surface (motor / limit / spring / "
-            + "offset) is meaningful; the others are inert.")]
+        [Tooltip(
+            "Which joint this authors. Decides which per-type sub-surface (motor / limit / spring / "
+                + "offset) is meaningful; the others are inert."
+        )]
         PhysicsJoint2DKind m_Kind = PhysicsJoint2DKind.Hinge;
 
         [SerializeField]
-        [Tooltip("The connected body (the joint's second body, Box2D bodyA). The GameObject carrying THIS "
-            + "component is the joint owner (bodyB). Leave null for a joint to a point in the world (a static "
-            + "world anchor) — the path the Target joint always takes.")]
+        [Tooltip(
+            "The connected body (the joint's second body, Box2D bodyA). The GameObject carrying THIS "
+                + "component is the joint owner (bodyB). Leave null for a joint to a point in the world (a static "
+                + "world anchor) — the path the Target joint always takes."
+        )]
         PhysicsBody2DAuthoring m_ConnectedBody;
 
         [SerializeField]
-        [Tooltip("Anchor on the joint-owner body (this GameObject, bodyB), in that body's local space "
-            + "(AnchoredJoint2D.anchor).")]
+        [Tooltip(
+            "Anchor on the joint-owner body (this GameObject, bodyB), in that body's local space "
+                + "(AnchoredJoint2D.anchor)."
+        )]
         float2 m_Anchor = float2.zero;
 
         [SerializeField]
-        [Tooltip("Anchor on the connected body (bodyA), in that body's local space "
-            + "(AnchoredJoint2D.connectedAnchor). For a Target joint this is the WORLD-space target point.")]
+        [Tooltip(
+            "Anchor on the connected body (bodyA), in that body's local space "
+                + "(AnchoredJoint2D.connectedAnchor). For a Target joint this is the WORLD-space target point."
+        )]
         float2 m_ConnectedAnchor = float2.zero;
 
         [SerializeField]
-        [Tooltip("Slider / Wheel: the slide / suspension axis angle in DEGREES (SliderJoint2D.angle / "
-            + "WheelJoint2D.suspension.angle). Unused for the other kinds.")]
+        [Tooltip(
+            "Slider / Wheel: the slide / suspension axis angle in DEGREES (SliderJoint2D.angle / "
+                + "WheelJoint2D.suspension.angle). Unused for the other kinds."
+        )]
         float m_AxisAngle;
 
         [SerializeField]
@@ -73,23 +83,31 @@ namespace Zori.Entities.Physics2D.Authoring
         bool m_UseMotor;
 
         [SerializeField]
-        [Tooltip("Motor target speed. Hinge / Wheel: degrees per second. Slider: metres per second "
-            + "(JointMotor2D.motorSpeed).")]
+        [Tooltip(
+            "Motor target speed. Hinge / Wheel: degrees per second. Slider: metres per second "
+                + "(JointMotor2D.motorSpeed)."
+        )]
         float m_MotorSpeed;
 
         [SerializeField]
-        [Tooltip("Motor maximum effort: torque (N·m) for a Hinge / Wheel, force (N) for a Slider "
-            + "(JointMotor2D.maxMotorTorque / maxMotorForce).")]
+        [Tooltip(
+            "Motor maximum effort: torque (N·m) for a Hinge / Wheel, force (N) for a Slider "
+                + "(JointMotor2D.maxMotorTorque / maxMotorForce)."
+        )]
         float m_MaxMotorEffort;
 
         [SerializeField]
-        [Tooltip("Hinge / Slider: enable the joint limit (useLimits). A Wheel has no built-in translation "
-            + "limit, so the toggle is inert for it.")]
+        [Tooltip(
+            "Hinge / Slider: enable the joint limit (useLimits). A Wheel has no built-in translation "
+                + "limit, so the toggle is inert for it."
+        )]
         bool m_UseLimits;
 
         [SerializeField]
-        [Tooltip("Lower limit. Hinge: angle in DEGREES (JointAngleLimits2D.min). Slider: translation in "
-            + "metres (JointTranslationLimits2D.min).")]
+        [Tooltip(
+            "Lower limit. Hinge: angle in DEGREES (JointAngleLimits2D.min). Slider: translation in "
+                + "metres (JointTranslationLimits2D.min)."
+        )]
         float m_LowerLimit;
 
         [SerializeField]
@@ -97,60 +115,80 @@ namespace Zori.Entities.Physics2D.Authoring
         float m_UpperLimit;
 
         [SerializeField]
-        [Tooltip("Spring / Wheel / Target / Fixed: spring frequency in Hz (the suspension / spring "
-            + "stiffness). A Distance joint is rigid (no spring); a Fixed joint of frequency 0 is a rigid weld.")]
+        [Tooltip(
+            "Spring / Wheel / Target / Fixed: spring frequency in Hz (the suspension / spring "
+                + "stiffness). A Distance joint is rigid (no spring); a Fixed joint of frequency 0 is a rigid weld."
+        )]
         float m_Frequency = 1f;
 
         [SerializeField]
-        [Tooltip("Spring / Wheel / Target / Fixed: spring damping ratio (non-dimensional). 1 is critically "
-            + "damped.")]
+        [Tooltip(
+            "Spring / Wheel / Target / Fixed: spring damping ratio (non-dimensional). 1 is critically " + "damped."
+        )]
         float m_DampingRatio = 1f;
 
         [SerializeField]
-        [Tooltip("Distance / Spring: the rest length the constraint holds between the two anchors "
-            + "(DistanceJoint2D.distance / SpringJoint2D.distance).")]
+        [Tooltip(
+            "Distance / Spring: the rest length the constraint holds between the two anchors "
+                + "(DistanceJoint2D.distance / SpringJoint2D.distance)."
+        )]
         float m_RestLength = 1f;
 
         [SerializeField]
-        [Tooltip("Relative: the maintained linear offset of bodyB relative to bodyA "
-            + "(RelativeJoint2D.linearOffset), in metres. Zero for Friction / Target.")]
+        [Tooltip(
+            "Relative: the maintained linear offset of bodyB relative to bodyA "
+                + "(RelativeJoint2D.linearOffset), in metres. Zero for Friction / Target."
+        )]
         float2 m_LinearOffset = float2.zero;
 
         [SerializeField]
-        [Tooltip("Relative: the maintained angular offset of bodyB relative to bodyA "
-            + "(RelativeJoint2D.angularOffset), in DEGREES. Zero for Friction / Target.")]
+        [Tooltip(
+            "Relative: the maintained angular offset of bodyB relative to bodyA "
+                + "(RelativeJoint2D.angularOffset), in DEGREES. Zero for Friction / Target."
+        )]
         float m_AngularOffset;
 
         [SerializeField]
-        [Tooltip("Relative / Friction / Target: the maximum linear correction force (N). Zero turns the "
-            + "force cap off (Box2D special case).")]
+        [Tooltip(
+            "Relative / Friction / Target: the maximum linear correction force (N). Zero turns the "
+                + "force cap off (Box2D special case)."
+        )]
         float m_MaxForce;
 
         [SerializeField]
-        [Tooltip("Relative / Friction: the maximum angular correction torque (N·m). Zero turns the torque "
-            + "cap off. Target has no torque cap (a point constraint).")]
+        [Tooltip(
+            "Relative / Friction: the maximum angular correction torque (N·m). Zero turns the torque "
+                + "cap off. Target has no torque cap (a point constraint)."
+        )]
         float m_MaxTorque;
 
         [SerializeField]
-        [Tooltip("Whether the two jointed bodies' shapes collide with each other (Joint2D.enableCollision → "
-            + "Box2D collideConnected). Default false: jointed bodies pass through each other.")]
+        [Tooltip(
+            "Whether the two jointed bodies' shapes collide with each other (Joint2D.enableCollision → "
+                + "Box2D collideConnected). Default false: jointed bodies pass through each other."
+        )]
         bool m_CollideConnected;
 
         [SerializeField]
-        [Tooltip("What happens when the joint's reaction force / torque exceeds the break threshold. Default "
-            + "Destroy matches the built-in Joint2D.breakAction default; with the Infinity break thresholds "
-            + "(also the built-in default) the threshold is never reached, so a default joint never breaks "
-            + "regardless of the action — the action only matters once a finite break force / torque is set.")]
+        [Tooltip(
+            "What happens when the joint's reaction force / torque exceeds the break threshold. Default "
+                + "Destroy matches the built-in Joint2D.breakAction default; with the Infinity break thresholds "
+                + "(also the built-in default) the threshold is never reached, so a default joint never breaks "
+                + "regardless of the action — the action only matters once a finite break force / torque is set."
+        )]
         PhysicsJointBreakAction2D m_BreakAction = PhysicsJointBreakAction2D.Destroy;
 
         [SerializeField]
-        [Tooltip("Reaction force that breaks the joint (Joint2D.breakForce). Infinity (the default) never "
-            + "breaks. Armed only when finite AND the break action is not Ignore.")]
+        [Tooltip(
+            "Reaction force that breaks the joint (Joint2D.breakForce). Infinity (the default) never "
+                + "breaks. Armed only when finite AND the break action is not Ignore."
+        )]
         float m_BreakForce = float.PositiveInfinity;
 
         [SerializeField]
-        [Tooltip("Reaction torque that breaks the joint (Joint2D.breakTorque). Infinity (the default) never "
-            + "breaks.")]
+        [Tooltip(
+            "Reaction torque that breaks the joint (Joint2D.breakTorque). Infinity (the default) never " + "breaks."
+        )]
         float m_BreakTorque = float.PositiveInfinity;
 
         /// <summary>Which joint this authors. Decides the per-type sub-surface; the others are inert.</summary>

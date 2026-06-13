@@ -63,9 +63,8 @@ namespace Zori.Entities.Physics2D.Baking
             //      pair the built-in collider bakers bake. The "named categories" ARE the project's Unity layer
             //      names (2D reuses the layer system; no bespoke category-names asset).
             //   3. else Layer == -1 (default) → both masks 0, so the creation system applies the everything-default
-            //      (collide with everything) — the unfiltered default and the custom surface's historical
-            //      behaviour. Lowest precedence.
-            // This matches the Phase-5 runtime semantics: PhysicsShape2D.categoryBits == 0 means "no layer
+            //      (collide with everything) — the unfiltered default. Lowest precedence.
+            // This matches the runtime semantics: PhysicsShape2D.categoryBits == 0 means "no layer
             // resolved → everything-default filter" at creation (PhysicsShape2D.cs / CreateShapeForBody).
             ulong categoryBits = 0ul;
             ulong contactBits = 0ul;
@@ -78,9 +77,7 @@ namespace Zori.Entities.Physics2D.Baking
             {
                 categoryBits = 1ul << authoring.Layer;
                 // Fully qualified: the package root namespace shadows the bare "Physics2D" token.
-                contactBits = unchecked(
-                    (uint)UnityEngine.Physics2D.GetLayerCollisionMask(authoring.Layer)
-                );
+                contactBits = unchecked((uint)UnityEngine.Physics2D.GetLayerCollisionMask(authoring.Layer));
             }
 
             var shape = new PhysicsShape2D
@@ -114,9 +111,7 @@ namespace Zori.Entities.Physics2D.Baking
                     // The free box z-rotation (degrees → radians, the package convention), folded into the box
                     // geometry at creation. A mirror scale (odd negative-axis count) reverses the apparent sense
                     // of rotation, so negate the angle to keep the box's authored orientation under a flip.
-                    shape.boxAngleRadians = radians(
-                        flip ? -authoring.BoxAngle : authoring.BoxAngle
-                    );
+                    shape.boxAngleRadians = radians(flip ? -authoring.BoxAngle : authoring.BoxAngle);
                     break;
 
                 case PhysicsShape2DKind.Capsule:
@@ -172,12 +167,8 @@ namespace Zori.Entities.Physics2D.Baking
         )
         {
             var hasTemplate = template != null;
-            friction =
-                authoring.OverrideFriction || !hasTemplate ? authoring.Friction : template.friction;
-            bounciness =
-                authoring.OverrideBounciness || !hasTemplate
-                    ? authoring.Bounciness
-                    : template.bounciness;
+            friction = authoring.OverrideFriction || !hasTemplate ? authoring.Friction : template.friction;
+            bounciness = authoring.OverrideBounciness || !hasTemplate ? authoring.Bounciness : template.bounciness;
             frictionMixing =
                 authoring.OverrideFrictionCombine || !hasTemplate
                     ? authoring.FrictionCombine
@@ -193,11 +184,7 @@ namespace Zori.Entities.Physics2D.Baking
         /// built-in <c>PolygonCollider2DBaker</c>/<c>EdgeCollider2DBaker</c> produce so the creation system's
         /// Polygon/Edge arms read it identically.
         /// </summary>
-        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(
-            Vector2[] points,
-            float2 scale,
-            bool flip
-        )
+        BlobAssetReference<PhysicsShape2DVertices> BuildVertexBlob(Vector2[] points, float2 scale, bool flip)
         {
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsShape2DVertices>();
@@ -207,9 +194,7 @@ namespace Zori.Entities.Physics2D.Baking
                 var src = flip ? points.Length - 1 - i : i;
                 array[i] = (float2)points[src] * scale;
             }
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Allocator.Persistent);
             builder.Dispose();
             AddBlobAsset(ref blob, out _);
             return blob;

@@ -33,9 +33,7 @@ namespace Zori.Entities.Physics2D.Baking
                     angularDamping = authoring.angularDamping,
                     distanceScale = authoring.distanceScale,
                     forceMode = (byte)authoring.forceMode,
-                    forceSourceIsRigidbody = (byte)(
-                        authoring.forceSource == EffectorSelection2D.Rigidbody ? 1 : 0
-                    ),
+                    forceSourceIsRigidbody = (byte)(authoring.forceSource == EffectorSelection2D.Rigidbody ? 1 : 0),
                 }
             );
         }

@@ -33,20 +33,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DWriteInSmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DWriteInSmokeWorld", out group, Dt);
 
         // A dynamic circle authored directly, with the runtime command buffer added so the user can drive it.
         // gravityScale 0 so gravity does not contaminate the measured velocity delta.
@@ -152,8 +140,7 @@ namespace Zori.Entities.Physics2D.Tests
                 {
                     bodyType = PhysicsBody.BodyType.Kinematic,
                     initialPosition = new float2(0f, 0f),
-                }
-                ,
+                },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Circle,
@@ -190,9 +177,7 @@ namespace Zori.Entities.Physics2D.Tests
                 $"LocalToWorld ({ltwPos.x:F3},{ltwPos.y:F3}) did not match the body pose ({landed})."
             );
 
-            Debug.Log(
-                $"[PHYSICS2D-WRITEIN] MovePosition target={target} → landed={landed} (LocalToWorld agrees)."
-            );
+            Debug.Log($"[PHYSICS2D-WRITEIN] MovePosition target={target} → landed={landed} (LocalToWorld agrees).");
 
             world.Dispose();
             yield break;

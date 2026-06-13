@@ -43,12 +43,7 @@ namespace Zori.Entities.Physics2D.Samples
     {
         // The fixed form hash for this sample's one box prefab. Any value works — it only needs to be shared by
         // every instance (replicated for free by Instantiate) and not collide with another authored form.
-        static readonly uint4 BoxFormHash = new uint4(
-            0xB0_C0_11_DEu,
-            0x2D_BE_4C_11u,
-            0x7A_55_19_33u,
-            0x4F_88_0C_22u
-        );
+        static readonly uint4 BoxFormHash = new uint4(0xB0_C0_11_DEu, 0x2D_BE_4C_11u, 0x7A_55_19_33u, 0x4F_88_0C_22u);
 
         Entity m_Prefab;
         Mesh m_QuadMesh;
@@ -87,9 +82,7 @@ namespace Zori.Entities.Physics2D.Samples
 
             if (m_Prefab == Entity.Null)
             {
-                var size = all(config.boxSize > 0f)
-                    ? config.boxSize
-                    : BoxColliderBenchmarkConfig.DefaultBoxSize;
+                var size = all(config.boxSize > 0f) ? config.boxSize : BoxColliderBenchmarkConfig.DefaultBoxSize;
                 m_Prefab = BuildRenderPrefab(em, size);
                 m_TotalLimit =
                     config.spawnedTotalLimit > 0
@@ -176,10 +169,7 @@ namespace Zori.Entities.Physics2D.Samples
             m_QuadMesh = BuildQuadMesh(size);
             m_Material = BuildUnlitMaterial();
             var renderMeshArray = new RenderMeshArray(new[] { m_Material }, new[] { m_QuadMesh });
-            var renderDesc = new RenderMeshDescription(
-                ShadowCastingMode.Off,
-                receiveShadows: false
-            );
+            var renderDesc = new RenderMeshDescription(ShadowCastingMode.Off, receiveShadows: false);
             RenderMeshUtility.AddComponents(
                 prefab,
                 em,
@@ -210,13 +200,7 @@ namespace Zori.Entities.Physics2D.Samples
             );
             mesh.SetUVs(
                 0,
-                new[]
-                {
-                    new Vector2(0f, 0f),
-                    new Vector2(1f, 0f),
-                    new Vector2(1f, 1f),
-                    new Vector2(0f, 1f),
-                }
+                new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) }
             );
             mesh.SetTriangles(new[] { 0, 2, 1, 0, 3, 2 }, 0);
             mesh.RecalculateNormals();
@@ -228,8 +212,7 @@ namespace Zori.Entities.Physics2D.Samples
         {
             // The URP unlit shader is present in mara (URP project); fall back to the built-in unlit color if a
             // non-URP project imports the sample. A solid colour is all the benchmark needs.
-            var shader =
-                Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             var material = new Material(shader) { name = "BoxColliderBenchmarkMaterial" };
             if (material.HasProperty("_BaseColor"))
                 material.SetColor("_BaseColor", new Color(0.85f, 0.45f, 0.2f, 1f));
@@ -239,26 +222,6 @@ namespace Zori.Entities.Physics2D.Samples
         }
 
         static LocalToWorld LocalToWorldAt(float2 p) =>
-            new LocalToWorld
-            {
-                Value = new float4x4(
-                    1f,
-                    0f,
-                    0f,
-                    p.x,
-                    0f,
-                    1f,
-                    0f,
-                    p.y,
-                    0f,
-                    0f,
-                    1f,
-                    0f,
-                    0f,
-                    0f,
-                    0f,
-                    1f
-                ),
-            };
+            new LocalToWorld { Value = new float4x4(1f, 0f, 0f, p.x, 0f, 1f, 0f, p.y, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1f) };
     }
 }

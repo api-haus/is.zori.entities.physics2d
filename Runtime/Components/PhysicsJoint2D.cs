@@ -12,7 +12,7 @@ namespace Zori.Entities.Physics2D
     /// <remarks>
     /// <see cref="PhysicsJoint"/> is a 64-bit-ID struct — blittable and storable in an
     /// <see cref="IComponentData"/>. The handle is what the creation system collects into the
-    /// <c>DestroyJointBatch</c> span at world teardown, and what a Phase-2B break/runtime-tune feature reads
+    /// <c>DestroyJointBatch</c> span at world teardown, and what per-joint break/runtime-tune reads
     /// to mutate or destroy a single joint.
     /// </remarks>
     public struct PhysicsJoint2D : IComponentData

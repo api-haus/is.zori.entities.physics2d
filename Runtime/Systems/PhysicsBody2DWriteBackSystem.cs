@@ -11,7 +11,7 @@ namespace Zori.Entities.Physics2D
     /// <summary>
     /// Reads every live body's pose in one bulk native call and a Burst job writes each into
     /// <see cref="LocalToWorld"/>. Ordered after <see cref="PhysicsWorld2DSystem"/> in
-    /// <see cref="FixedStepSimulationSystemGroup"/> so it runs on the just-stepped poses.
+    /// <see cref="Physics2DSimulationSystemGroup"/> so it runs on the just-stepped poses.
     /// </summary>
     /// <remarks>
     /// Write-back addressing (the slice's simplest reliable form): one pass over the
@@ -27,7 +27,7 @@ namespace Zori.Entities.Physics2D
     /// query carries <c>WithAll&lt;LocalToWorld&gt;</c> so the lookup write always finds the component
     /// (the baker requests <c>TransformUsageFlags.Dynamic</c>, which adds it).
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     [UpdateAfter(typeof(PhysicsWorld2DSystem))]
     public partial struct PhysicsBody2DWriteBackSystem : ISystem
     {

@@ -48,43 +48,21 @@ namespace Zori.Entities.Physics2D.Tests
         const float Dt = 1f / 60f;
         static readonly Vector2 Gravity = new(0f, -9.81f);
 
-        SimulationMode2D _prevMode;
-        Vector2 _prevGravity;
+        Physics2DStateFence _fence;
 
         [SetUp]
-        public void SetUp()
-        {
-            _prevMode = UnityEngine.Physics2D.simulationMode;
-            _prevGravity = UnityEngine.Physics2D.gravity;
-            UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-            UnityEngine.Physics2D.gravity = Gravity;
-        }
+        public void SetUp() => _fence = Physics2DStateFence.EnterScriptMode(Gravity);
 
         [TearDown]
-        public void TearDown()
-        {
-            UnityEngine.Physics2D.gravity = _prevGravity;
-            UnityEngine.Physics2D.simulationMode = _prevMode;
-        }
+        public void TearDown() => _fence.Restore();
 
-        static World MakePackageWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("PhaseAFilterGateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePackageWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("PhaseAFilterGateWorld", out group, Dt);
 
         static Entity SingletonEntity(EntityManager em) =>
             em.CreateEntityQuery(typeof(PhysicsWorldSingleton2D)).GetSingletonEntity();
 
-        static float EcsY(EntityManager em, Entity e) =>
-            em.GetComponentData<LocalToWorld>(e).Value.c3.y;
+        static float EcsY(EntityManager em, Entity e) => em.GetComponentData<LocalToWorld>(e).Value.c3.y;
 
         // =====================================================================================================
         // INVARIANT — explicit filter bitsets gate collision exactly like the layer path. A static floor and a

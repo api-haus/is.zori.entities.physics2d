@@ -76,18 +76,10 @@ namespace Zori.Entities.Physics2D.Samples
 
         void OnGUI()
         {
-            m_Style ??= new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16,
-                normal = { textColor = Color.white },
-            };
+            m_Style ??= new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = Color.white } };
 
             // Top-left: the spawned-box counter.
-            GUI.Label(
-                new Rect(12f, 10f, 360f, 28f),
-                $"Spawned: {SpawnedCount()}",
-                m_Style
-            );
+            GUI.Label(new Rect(12f, 10f, 360f, 28f), $"Spawned: {SpawnedCount()}", m_Style);
 
             // Top-right: the rolling-window FPS distribution.
             if (m_Filled == 0)

@@ -80,13 +80,8 @@ namespace Zori.Entities.Physics2D.Tests
 
             public PackageMedium()
             {
-                _world = new World("Physics2DEffectorGateWorld");
-                _group = _world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-                _group.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-                _group.SortSystems();
+                _world = PhysicsTestWorld.Create("Physics2DEffectorGateWorld", out var group, Dt);
+                _group = group;
             }
 
             public EntityManager Em => _world.EntityManager;
@@ -139,7 +134,13 @@ namespace Zori.Entities.Physics2D.Tests
 
             // A dynamic affected circle. density 1 → a unit-density body; gravityScale caller-chosen.
             // categoryBits sets the body's layer bit for the colliderMask exclusion pin (0 = default everything).
-            public Entity SpawnBody(float2 pos, float radius, float gravityScale, ulong categoryBits = 0ul, ulong contactBits = 0ul)
+            public Entity SpawnBody(
+                float2 pos,
+                float radius,
+                float gravityScale,
+                ulong categoryBits = 0ul,
+                ulong contactBits = 0ul
+            )
             {
                 return DirectPhysics2DAuthoring.Create(
                     Em,
@@ -190,23 +191,20 @@ namespace Zori.Entities.Physics2D.Tests
 
         sealed class GameObjectMedium : System.IDisposable
         {
-            readonly SimulationMode2D _prevMode;
-            readonly Vector2 _prevGravity;
+            readonly Physics2DStateFence _fence;
             readonly List<GameObject> _spawned = new();
 
-            public GameObjectMedium(Vector2 gravity)
-            {
-                _prevMode = UnityEngine.Physics2D.simulationMode;
-                _prevGravity = UnityEngine.Physics2D.gravity;
-                UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-                UnityEngine.Physics2D.gravity = gravity;
-            }
+            public GameObjectMedium(Vector2 gravity) => _fence = Physics2DStateFence.EnterScriptMode(gravity);
 
             // Author a force-field effector on a GameObject carrying a trigger collider used by the effector.
             // `configure` sets the effector's typed fields. The region collider is a sensor (isTrigger + usedBy
             // Effector), so a body overlaps without a collision response (it floats / falls through), exactly as
             // the example effector scenes author it.
-            GameObject SpawnEffectorBoxRegion<TEffector>(Vector2 pos, Vector2 boxSize, System.Action<TEffector> configure)
+            GameObject SpawnEffectorBoxRegion<TEffector>(
+                Vector2 pos,
+                Vector2 boxSize,
+                System.Action<TEffector> configure
+            )
                 where TEffector : Effector2D
             {
                 var go = new GameObject(typeof(TEffector).Name + "Region");
@@ -221,7 +219,11 @@ namespace Zori.Entities.Physics2D.Tests
                 return go;
             }
 
-            GameObject SpawnEffectorCircleRegion<TEffector>(Vector2 pos, float radius, System.Action<TEffector> configure)
+            GameObject SpawnEffectorCircleRegion<TEffector>(
+                Vector2 pos,
+                float radius,
+                System.Action<TEffector> configure
+            )
                 where TEffector : Effector2D
             {
                 var go = new GameObject(typeof(TEffector).Name + "Region");
@@ -271,8 +273,7 @@ namespace Zori.Entities.Physics2D.Tests
                 foreach (var go in _spawned)
                     if (go != null)
                         Object.Destroy(go);
-                UnityEngine.Physics2D.gravity = _prevGravity;
-                UnityEngine.Physics2D.simulationMode = _prevMode;
+                _fence.Restore();
             }
         }
 
@@ -303,7 +304,11 @@ namespace Zori.Entities.Physics2D.Tests
             );
             // The default-def gravity must be a real downward gravity (not zero), or buoyancy has nothing to
             // balance and the equilibrium test is vacuous.
-            Assert.Greater(s_PackageGravityMag, 1f, "Package world gravity is ~zero — buoyancy has nothing to balance.");
+            Assert.Greater(
+                s_PackageGravityMag,
+                1f,
+                "Package world gravity is ~zero — buoyancy has nothing to balance."
+            );
         }
 
         // ====================================================================================================
@@ -318,7 +323,8 @@ namespace Zori.Entities.Physics2D.Tests
             const int steps = 20;
             const float mag = 50f;
 
-            float2 pkgV, pkgP;
+            float2 pkgV,
+                pkgP;
             using (var pkg = new PackageMedium())
             {
                 pkg.SpawnEffector(
@@ -342,7 +348,8 @@ namespace Zori.Entities.Physics2D.Tests
                 pkgP = pkg.Position(body);
             }
 
-            Vector2 goV, goP;
+            Vector2 goV,
+                goP;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
                 go.SpawnAreaBox(
@@ -368,8 +375,7 @@ namespace Zori.Entities.Physics2D.Tests
             }
 
             Debug.Log(
-                $"[P10A-GATE-AREA-ACCEL] mag={mag} steps={steps}: pkg v={pkgV} p={pkgP} | "
-                    + $"GO v={goV} p={goP}"
+                $"[P10A-GATE-AREA-ACCEL] mag={mag} steps={steps}: pkg v={pkgV} p={pkgP} | " + $"GO v={goV} p={goP}"
             );
 
             // Both must accelerate in +X with negligible Y drift.
@@ -401,7 +407,8 @@ namespace Zori.Entities.Physics2D.Tests
             const float mag = 50f;
             const float drag = 4f;
 
-            float2 pkgVPrev, pkgV;
+            float2 pkgVPrev,
+                pkgV;
             using (var pkg = new PackageMedium())
             {
                 pkg.SpawnEffector(
@@ -427,7 +434,8 @@ namespace Zori.Entities.Physics2D.Tests
                 pkgV = pkg.Velocity(body);
             }
 
-            Vector2 goVPrev, goV;
+            Vector2 goVPrev,
+                goV;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
                 go.SpawnAreaBox(
@@ -566,11 +574,17 @@ namespace Zori.Entities.Physics2D.Tests
                 var pkgAccel = MeasurePackagePointAccel(mode, baseMag, distances);
                 var goAccel = MeasureGameObjectPointAccel(mode, baseMag, distances);
 
-                var modeName = mode == 0 ? "Constant" : mode == 1 ? "InverseLinear" : "InverseSquared";
+                var modeName =
+                    mode == 0 ? "Constant"
+                    : mode == 1 ? "InverseLinear"
+                    : "InverseSquared";
                 // Ratio of accel at the nearest to the farthest distance (d=2 vs d=8, a 4x distance span).
                 var pkgRatio = pkgAccel[0] / max(pkgAccel[2], 1e-4f);
                 var goRatio = goAccel[0] / max(goAccel[2], 1e-4f);
-                var expectedRatio = mode == 0 ? 1f : mode == 1 ? 4f : 16f;
+                var expectedRatio =
+                    mode == 0 ? 1f
+                    : mode == 1 ? 4f
+                    : 16f;
 
                 Debug.Log(
                     $"[P10A-GATE-POINT-{modeName}] accel@d2={pkgAccel[0]:F3} d4={pkgAccel[1]:F3} d8={pkgAccel[2]:F3} (pkg) | "
@@ -718,12 +732,16 @@ namespace Zori.Entities.Physics2D.Tests
 
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                go.SpawnPointCircle(new Vector2(0f, 0f), 50f, p =>
-                {
-                    p.forceMagnitude = -200f;
-                    p.distanceScale = 1f;
-                    p.forceMode = EffectorForceMode2D.Constant;
-                });
+                go.SpawnPointCircle(
+                    new Vector2(0f, 0f),
+                    50f,
+                    p =>
+                    {
+                        p.forceMagnitude = -200f;
+                        p.distanceScale = 1f;
+                        p.forceMode = EffectorForceMode2D.Constant;
+                    }
+                );
                 var attract = go.SpawnBody(new Vector2(5f, 0f), 0.5f, gravityScale: 0f);
                 for (var i = 0; i < steps; i++)
                     go.Step();
@@ -732,12 +750,16 @@ namespace Zori.Entities.Physics2D.Tests
             }
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                go.SpawnPointCircle(new Vector2(0f, 0f), 50f, p =>
-                {
-                    p.forceMagnitude = 200f;
-                    p.distanceScale = 1f;
-                    p.forceMode = EffectorForceMode2D.Constant;
-                });
+                go.SpawnPointCircle(
+                    new Vector2(0f, 0f),
+                    50f,
+                    p =>
+                    {
+                        p.forceMagnitude = 200f;
+                        p.distanceScale = 1f;
+                        p.forceMode = EffectorForceMode2D.Constant;
+                    }
+                );
                 var repel = go.SpawnBody(new Vector2(5f, 0f), 0.5f, gravityScale: 0f);
                 for (var i = 0; i < steps; i++)
                     go.Step();
@@ -1001,11 +1023,16 @@ namespace Zori.Entities.Physics2D.Tests
                 );
                 var body = pkg.SpawnBody(new float2(0f, 3f), 0.5f, gravityScale: 1f);
                 pkg.Create();
-                pkgFirstPlunge = MeasureSettle(() =>
-                {
-                    pkg.Step();
-                    return pkg.Position(body).y;
-                }, steps, surface, out pkgLateAmplitude);
+                pkgFirstPlunge = MeasureSettle(
+                    () =>
+                    {
+                        pkg.Step();
+                        return pkg.Position(body).y;
+                    },
+                    steps,
+                    surface,
+                    out pkgLateAmplitude
+                );
             }
 
             float goFirstPlunge,
@@ -1025,11 +1052,16 @@ namespace Zori.Entities.Physics2D.Tests
                     }
                 );
                 var rb = go.SpawnBody(new Vector2(0f, 3f), 0.5f, gravityScale: 1f);
-                goFirstPlunge = MeasureSettle(() =>
-                {
-                    go.Step();
-                    return rb.position.y;
-                }, steps, surface, out goLateAmplitude);
+                goFirstPlunge = MeasureSettle(
+                    () =>
+                    {
+                        go.Step();
+                        return rb.position.y;
+                    },
+                    steps,
+                    surface,
+                    out goLateAmplitude
+                );
                 yield return null;
             }
 
@@ -1120,9 +1152,21 @@ namespace Zori.Entities.Physics2D.Tests
                     }
                 );
                 // On-mask body: categoryBits has the on-layer bit, contacts everything.
-                var onBody = pkg.SpawnBody(new float2(-2f, 0f), 0.5f, gravityScale: 0f, categoryBits: onMaskBit, contactBits: ~0ul);
+                var onBody = pkg.SpawnBody(
+                    new float2(-2f, 0f),
+                    0.5f,
+                    gravityScale: 0f,
+                    categoryBits: onMaskBit,
+                    contactBits: ~0ul
+                );
                 // Off-mask body: categoryBits has a DIFFERENT layer bit, so the masked query never returns it.
-                var offBody = pkg.SpawnBody(new float2(2f, 0f), 0.5f, gravityScale: 0f, categoryBits: 1ul << offLayer, contactBits: ~0ul);
+                var offBody = pkg.SpawnBody(
+                    new float2(2f, 0f),
+                    0.5f,
+                    gravityScale: 0f,
+                    categoryBits: 1ul << offLayer,
+                    contactBits: ~0ul
+                );
                 pkg.Create();
                 for (var i = 0; i < steps; i++)
                     pkg.Step();
@@ -1168,7 +1212,11 @@ namespace Zori.Entities.Physics2D.Tests
             // Off-mask body got EXACTLY zero force (the binary exclusion). The query never returned it, so no force
             // was ever applied — its velocity is bit-zero. A small epsilon allows for nothing but float noise.
             Assert.Less(length(pkgOffV), 1e-4f, $"Package off-mask body was affected despite the mask (v={pkgOffV}).");
-            Assert.Less(length((float2)goOffV), 1e-4f, $"GameObject off-mask body was affected despite the mask (v={goOffV}).");
+            Assert.Less(
+                length((float2)goOffV),
+                1e-4f,
+                $"GameObject off-mask body was affected despite the mask (v={goOffV})."
+            );
         }
     }
 }

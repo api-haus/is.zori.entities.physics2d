@@ -14,8 +14,8 @@ namespace Zori.Entities.Physics2D
     /// of both surface values), <see cref="Maximum"/>, <see cref="Mean"/> (the geometric mean), <see
     /// cref="Minimum"/>, <see cref="Multiply"/> (the product). The mixing actually used at a contact is decided
     /// by the higher-priority shape's mixing, or the higher enumeration value when priorities tie (XML
-    /// <c>P:…PhysicsShape.SurfaceMaterial.frictionPriority</c>); priorities are not authored in this phase, so a
-    /// pair's effective mixing is the higher of the two shapes' modes.
+    /// <c>P:…PhysicsShape.SurfaceMaterial.frictionPriority</c>); priorities are not authored (no authoring
+    /// surface exposes them), so a pair's effective mixing is the higher of the two shapes' modes.
     /// </remarks>
     public enum PhysicsSurfaceMixing2D : byte
     {
@@ -59,7 +59,7 @@ namespace Zori.Entities.Physics2D
     /// trigger shape that overlaps without a collision response, <c>Collider2D.isTrigger</c>). Contact and
     /// trigger events are always enabled on every package shape (the always-on Enter/Stay/Exit posture), so the
     /// 3D <c>None</c> (no-event sensor) and an explicit per-shape contact-event opt-in are not expressible here
-    /// without new runtime surface — they are 2D negative space for this phase (<c>bake-contract.md</c>).
+    /// without new runtime surface — they are deliberately absent in 2D (<c>bake-contract.md</c>).
     /// </summary>
     public enum PhysicsCollisionResponse2D : byte
     {

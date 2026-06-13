@@ -59,20 +59,8 @@ namespace Zori.Entities.Physics2D.Tests
         // simulation mode so the GameObject oracle steps only when we call Simulate.
         // -----------------------------------------------------------------------------------------------
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DPhase7GateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DPhase7GateWorld", out group, Dt);
 
         // A package-side drivable dynamic circle with the command buffer attached. gravityScale chosen by the
         // caller (0 to isolate a write-in's velocity delta, 1 to compare a free-fall + write-in trajectory).
@@ -143,8 +131,7 @@ namespace Zori.Entities.Physics2D.Tests
 
         static float2 EcsPosition(PhysicsBody b) => (float2)(Vector2)b.position;
 
-        static float2 RefVelocity(Rigidbody2D rb) =>
-            new float2(rb.linearVelocity.x, rb.linearVelocity.y);
+        static float2 RefVelocity(Rigidbody2D rb) => new float2(rb.linearVelocity.x, rb.linearVelocity.y);
 
         static float2 RefPosition(Rigidbody2D rb) => new float2(rb.position.x, rb.position.y);
 
@@ -212,11 +199,7 @@ namespace Zori.Entities.Physics2D.Tests
             var impulse = new float2(7.5f, 3f);
 
             // Issue the equivalent impulse on the SAME pre-step on both backends.
-            PhysicsBody2DCommands.AddForce(
-                CommandsOf(em, entity),
-                impulse,
-                PhysicsForceMode2D.Impulse
-            );
+            PhysicsBody2DCommands.AddForce(CommandsOf(em, entity), impulse, PhysicsForceMode2D.Impulse);
             rb.AddForce(new Vector2(impulse.x, impulse.y), ForceMode2D.Impulse);
 
             // Step once on each.
@@ -285,11 +268,7 @@ namespace Zori.Entities.Physics2D.Tests
                 // Re-apply the same continuous force EVERY step (force commands are one-shot — cleared after
                 // each step — so a steady push must be re-issued, exactly as a GameObject AddForce(_, Force)
                 // is re-issued every FixedUpdate). Issue on the matching pre-step on both backends.
-                PhysicsBody2DCommands.AddForce(
-                    CommandsOf(em, entity),
-                    force,
-                    PhysicsForceMode2D.Force
-                );
+                PhysicsBody2DCommands.AddForce(CommandsOf(em, entity), force, PhysicsForceMode2D.Force);
                 rb.AddForce(new Vector2(force.x, force.y), ForceMode2D.Force);
 
                 group.Update();
@@ -465,11 +444,7 @@ namespace Zori.Entities.Physics2D.Tests
             const int Steps = 20;
             for (var s = 0; s < Steps; s++)
             {
-                PhysicsBody2DCommands.AddTorque(
-                    CommandsOf(em, entity),
-                    torque,
-                    PhysicsForceMode2D.Force
-                );
+                PhysicsBody2DCommands.AddTorque(CommandsOf(em, entity), torque, PhysicsForceMode2D.Force);
                 rb.AddTorque(torque, ForceMode2D.Force);
                 group.Update();
                 UnityEngine.Physics2D.Simulate(Dt, UnityEngine.Physics2D.AllLayers);
@@ -631,9 +606,7 @@ namespace Zori.Entities.Physics2D.Tests
             AssertClose(landedRef, target, 0f, 0.05f, "GameObject MovePosition did not reach target (oracle)");
             AssertClose(landedEcs, landedRef, 0f, 0.05f, "MovePosition landed pose package-vs-GameObject");
 
-            Debug.Log(
-                $"[PHYSICS2D-P7GATE] MOVEPOS target={target} → landed(ecs={landedEcs},ref={landedRef})."
-            );
+            Debug.Log($"[PHYSICS2D-P7GATE] MOVEPOS target={target} → landed(ecs={landedEcs},ref={landedRef}).");
 
             Object.Destroy(refGo);
             UnityEngine.Physics2D.simulationMode = prevMode;
@@ -809,18 +782,14 @@ namespace Zori.Entities.Physics2D.Tests
             // is its own and the document records the package's). The binary pin: the body is NOT permanently
             // frozen at the origin if the move is sustained — either it reaches the (tiny) target, or the drop
             // is per-step and documented. We assert the body did not BLOW UP and record what actually happened.
-            Assert.IsFalse(
-                isnan(endX) || isinf(endX),
-                $"Sub-threshold MovePosition produced NaN/Inf: endX={endX}."
-            );
+            Assert.IsFalse(isnan(endX) || isinf(endX), $"Sub-threshold MovePosition produced NaN/Inf: endX={endX}.");
 
             var verdict =
-                moved >= targetDist * 0.5f
-                    ? "REACHED (sub-threshold move converged over sustained re-issue)"
-                    : moved <= 1e-6f
-                        ? "DROPPED-TERMINAL (body never moved — the documented threshold drop is terminal "
-                            + "for a target below threshold*dt; a user must move at least threshold*dt/step)"
-                        : "PARTIAL";
+                moved >= targetDist * 0.5f ? "REACHED (sub-threshold move converged over sustained re-issue)"
+                : moved <= 1e-6f
+                    ? "DROPPED-TERMINAL (body never moved — the documented threshold drop is terminal "
+                        + "for a target below threshold*dt; a user must move at least threshold*dt/step)"
+                : "PARTIAL";
 
             Debug.Log(
                 $"[PHYSICS2D-P7GATE] TINY-MOVE threshold={threshold:F4} m/s, target.x={target.x:E4} "
@@ -873,11 +842,7 @@ namespace Zori.Entities.Physics2D.Tests
             var body = BodyOf(em, entity);
 
             var impulse = new float2(8f, 4f);
-            PhysicsBody2DCommands.AddForce(
-                CommandsOf(em, entity),
-                impulse,
-                PhysicsForceMode2D.Impulse
-            );
+            PhysicsBody2DCommands.AddForce(CommandsOf(em, entity), impulse, PhysicsForceMode2D.Impulse);
             rb.AddForce(new Vector2(impulse.x, impulse.y), ForceMode2D.Impulse);
 
             group.Update();

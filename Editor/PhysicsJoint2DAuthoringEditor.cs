@@ -76,19 +76,18 @@ namespace Zori.Entities.Physics2D.Editor
 
         static bool UsesAnchors(PhysicsJoint2DKind k) =>
             // Relative / Friction zero both anchors at bake — showing them would mislead.
-            k != PhysicsJoint2DKind.Relative && k != PhysicsJoint2DKind.Friction;
+            k != PhysicsJoint2DKind.Relative
+            && k != PhysicsJoint2DKind.Friction;
 
-        static bool UsesAxis(PhysicsJoint2DKind k) =>
-            k == PhysicsJoint2DKind.Slider || k == PhysicsJoint2DKind.Wheel;
+        static bool UsesAxis(PhysicsJoint2DKind k) => k == PhysicsJoint2DKind.Slider || k == PhysicsJoint2DKind.Wheel;
 
         static bool UsesMotor(PhysicsJoint2DKind k) =>
-            k == PhysicsJoint2DKind.Hinge
-            || k == PhysicsJoint2DKind.Slider
-            || k == PhysicsJoint2DKind.Wheel;
+            k == PhysicsJoint2DKind.Hinge || k == PhysicsJoint2DKind.Slider || k == PhysicsJoint2DKind.Wheel;
 
         static bool UsesLimit(PhysicsJoint2DKind k) =>
             // Wheel's m_UseLimits is inert (the baker forces enableLimit=false) — only Hinge + Slider have a limit.
-            k == PhysicsJoint2DKind.Hinge || k == PhysicsJoint2DKind.Slider;
+            k == PhysicsJoint2DKind.Hinge
+            || k == PhysicsJoint2DKind.Slider;
 
         static bool UsesSpring(PhysicsJoint2DKind k) =>
             k == PhysicsJoint2DKind.Wheel
@@ -104,9 +103,7 @@ namespace Zori.Entities.Physics2D.Editor
             k == PhysicsJoint2DKind.Relative;
 
         static bool UsesForceCaps(PhysicsJoint2DKind k) =>
-            k == PhysicsJoint2DKind.Relative
-            || k == PhysicsJoint2DKind.Friction
-            || k == PhysicsJoint2DKind.Target;
+            k == PhysicsJoint2DKind.Relative || k == PhysicsJoint2DKind.Friction || k == PhysicsJoint2DKind.Target;
 
         public override void OnInspectorGUI()
         {
@@ -127,10 +124,7 @@ namespace Zori.Entities.Physics2D.Editor
                 EditorGUILayout.PropertyField(
                     m_ConnectedAnchor,
                     target
-                        ? new GUIContent(
-                            "World Target",
-                            "The world-space point this body is pulled toward."
-                        )
+                        ? new GUIContent("World Target", "The world-space point this body is pulled toward.")
                         : new GUIContent("Connected Anchor")
                 );
             }
@@ -149,10 +143,7 @@ namespace Zori.Entities.Physics2D.Editor
                     using (new EditorGUI.IndentLevelScope())
                     {
                         var speedUnit = kind == PhysicsJoint2DKind.Slider ? "m/s" : "deg/s";
-                        EditorGUILayout.PropertyField(
-                            m_MotorSpeed,
-                            new GUIContent($"Motor Speed ({speedUnit})")
-                        );
+                        EditorGUILayout.PropertyField(m_MotorSpeed, new GUIContent($"Motor Speed ({speedUnit})"));
                         var effortUnit = kind == PhysicsJoint2DKind.Slider ? "N" : "N·m";
                         EditorGUILayout.PropertyField(
                             m_MaxMotorEffort,
@@ -168,14 +159,8 @@ namespace Zori.Entities.Physics2D.Editor
                     using (new EditorGUI.IndentLevelScope())
                     {
                         var limitUnit = kind == PhysicsJoint2DKind.Hinge ? "deg" : "m";
-                        EditorGUILayout.PropertyField(
-                            m_LowerLimit,
-                            new GUIContent($"Lower Limit ({limitUnit})")
-                        );
-                        EditorGUILayout.PropertyField(
-                            m_UpperLimit,
-                            new GUIContent($"Upper Limit ({limitUnit})")
-                        );
+                        EditorGUILayout.PropertyField(m_LowerLimit, new GUIContent($"Lower Limit ({limitUnit})"));
+                        EditorGUILayout.PropertyField(m_UpperLimit, new GUIContent($"Upper Limit ({limitUnit})"));
                     }
             }
 
@@ -191,10 +176,7 @@ namespace Zori.Entities.Physics2D.Editor
                             : "The spring / suspension stiffness in Hz."
                     )
                 );
-                EditorGUILayout.PropertyField(
-                    m_DampingRatio,
-                    new GUIContent(weld ? "Weld Damping" : "Spring Damping")
-                );
+                EditorGUILayout.PropertyField(m_DampingRatio, new GUIContent(weld ? "Weld Damping" : "Spring Damping"));
             }
 
             if (UsesRestLength(kind))
@@ -205,14 +187,8 @@ namespace Zori.Entities.Physics2D.Editor
 
             if (UsesOffset(kind))
             {
-                EditorGUILayout.PropertyField(
-                    m_LinearOffset,
-                    new GUIContent("Linear Offset (m)")
-                );
-                EditorGUILayout.PropertyField(
-                    m_AngularOffset,
-                    new GUIContent("Angular Offset (deg)")
-                );
+                EditorGUILayout.PropertyField(m_LinearOffset, new GUIContent("Linear Offset (m)"));
+                EditorGUILayout.PropertyField(m_AngularOffset, new GUIContent("Angular Offset (deg)"));
             }
 
             if (UsesForceCaps(kind))
@@ -253,10 +229,7 @@ namespace Zori.Entities.Physics2D.Editor
                     MessageType.Info
                 );
             }
-            else if (
-                m_ConnectedBody.objectReferenceValue == null
-                && !m_ConnectedBody.hasMultipleDifferentValues
-            )
+            else if (m_ConnectedBody.objectReferenceValue == null && !m_ConnectedBody.hasMultipleDifferentValues)
             {
                 EditorGUILayout.HelpBox(
                     "No connected body — this joint anchors to a static point at the world origin (the "
@@ -283,9 +256,11 @@ namespace Zori.Entities.Physics2D.Editor
             // The genuinely-sprung kinds (Wheel / Spring / Target) want a positive frequency; Fixed's 0 Hz is a
             // valid rigid weld, so it is excluded.
             if (
-                (kind == PhysicsJoint2DKind.Wheel
+                (
+                    kind == PhysicsJoint2DKind.Wheel
                     || kind == PhysicsJoint2DKind.Spring
-                    || kind == PhysicsJoint2DKind.Target)
+                    || kind == PhysicsJoint2DKind.Target
+                )
                 && !m_Frequency.hasMultipleDifferentValues
                 && m_Frequency.floatValue <= 0f
             )
@@ -445,12 +420,7 @@ namespace Zori.Entities.Physics2D.Editor
             var r = HandleSize(center) * 12f; // screen-relative arc radius (cosmetic; the angle math is exact)
 
             // the swept arc as a polyline
-            var arc = PhysicsJoint2DGizmos.AngleLimitArcPoints(
-                center,
-                joint.LowerLimit,
-                joint.UpperLimit,
-                r
-            );
+            var arc = PhysicsJoint2DGizmos.AngleLimitArcPoints(center, joint.LowerLimit, joint.UpperLimit, r);
             DrawPolyline(arc);
 
             // a drag marker at each limit
@@ -458,23 +428,12 @@ namespace Zori.Entities.Physics2D.Editor
             DragAngleMarker(joint, center, r, joint.UpperLimit, lower: false);
         }
 
-        void DragAngleMarker(
-            PhysicsJoint2DAuthoring joint,
-            float2 center,
-            float radius,
-            float limitDeg,
-            bool lower
-        )
+        void DragAngleMarker(PhysicsJoint2DAuthoring joint, float2 center, float radius, float limitDeg, bool lower)
         {
             var marker = PhysicsJoint2DGizmos.AngleLimitMarker(center, limitDeg, radius);
             Handles.DrawLine(ToV3(center), ToV3(marker));
             EditorGUI.BeginChangeCheck();
-            var moved = Handles.FreeMoveHandle(
-                ToV3(marker),
-                HandleSize(marker),
-                Vector3.zero,
-                Handles.DotHandleCap
-            );
+            var moved = Handles.FreeMoveHandle(ToV3(marker), HandleSize(marker), Vector3.zero, Handles.DotHandleCap);
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(joint, k_UndoHandle);
@@ -517,11 +476,7 @@ namespace Zori.Entities.Physics2D.Editor
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(joint, k_UndoHandle);
-                var t = PhysicsJoint2DGizmos.TranslationFromLimitDrag(
-                    joint.Anchor,
-                    joint.AxisAngle,
-                    ToF2(moved)
-                );
+                var t = PhysicsJoint2DGizmos.TranslationFromLimitDrag(joint.Anchor, joint.AxisAngle, ToF2(moved));
                 if (lower)
                     joint.LowerLimit = t;
                 else
@@ -529,8 +484,7 @@ namespace Zori.Entities.Physics2D.Editor
             }
         }
 
-        static float HandleSize(float2 localPoint) =>
-            HandleUtility.GetHandleSize(ToV3(localPoint)) * 0.08f;
+        static float HandleSize(float2 localPoint) => HandleUtility.GetHandleSize(ToV3(localPoint)) * 0.08f;
 
         static void DrawPolyline(float2[] pts)
         {

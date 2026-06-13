@@ -1,10 +1,10 @@
 # Low-level surface
 
-The low-level surface is the direct ECS path onto the same runtime the bake path produces. It exists because the high-level bake path is deliberately not optimised for the many-identical-bodies case, and because the built-in components cannot express some knobs the runtime can. Both capabilities ship in the `Samples~/CustomAuthoring2D` sample; the runtime they target is the one `runtime-systems.md` describes, unchanged. The verified `Unity.U2D.Physics` signatures below were decoded against the editor's module XML (`UnityEngine.PhysicsCore2DModule.xml`) and used in the shipped systems.
+The low-level surface is the direct ECS path onto the same runtime the bake path produces. It exists because the high-level bake path is deliberately not optimised for the many-identical-bodies case, and because the built-in components cannot express some knobs the runtime can. Both capabilities are first-class package members; the runtime they target is the one `runtime-systems.md` describes, unchanged. The verified `Unity.U2D.Physics` signatures below were decoded against the editor's module XML (`UnityEngine.PhysicsCore2DModule.xml`) and used in the shipped systems.
 
 ## Direct runtime authoring
 
-A body can be authored by writing the runtime `IComponentData` directly — `PhysicsBody2DDefinition` + `PhysicsShape2D` (+ the optional `PhysicsBody2DInitialVelocity`) — from code or from your own ECS baker, with no built-in component in between. The creation system makes the Box2D body the same way it does for a baked one, because it keys on the components, not on how they were produced. The `CustomAuthoring2D` sample's `PhysicsBody2DAuthoring` / `PhysicsShape2DAuthoring` MonoBehaviours are the worked example of this (`custom-authoring.md`).
+A body can be authored by writing the runtime `IComponentData` directly — `PhysicsBody2DDefinition` + `PhysicsShape2D` (+ the optional `PhysicsBody2DInitialVelocity`) — from code or from your own ECS baker, with no built-in component in between. The creation system makes the Box2D body the same way it does for a baked one, because it keys on the components, not on how they were produced. The `PhysicsBody2DAuthoring` / `PhysicsShape2DAuthoring` MonoBehaviours are the worked example of this (`custom-authoring.md`).
 
 ## Mass spawning (the cached-template optimisation)
 

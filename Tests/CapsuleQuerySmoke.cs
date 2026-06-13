@@ -28,20 +28,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DCapsuleQuerySmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DCapsuleQuerySmokeWorld", out group, Dt);
 
         static PhysicsWorld GetWorld(EntityManager em)
         {
@@ -54,11 +42,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -91,16 +75,7 @@ namespace Zori.Entities.Physics2D.Tests
             float2 c2 = new float2(0f, 0.5f);
             const float r = 0.5f;
 
-            var n = PhysicsQueries2D.CapsuleCast(
-                pw,
-                c1,
-                c2,
-                r,
-                new float2(1f, 0f),
-                20f,
-                hitLayerMask: 0ul,
-                hits
-            );
+            var n = PhysicsQueries2D.CapsuleCast(pw, c1, c2, r, new float2(1f, 0f), 20f, hitLayerMask: 0ul, hits);
 
             Assert.Greater(n, 0, "Capsule swept +X hit nothing — the cast found no wall ahead.");
             var hit = hits[0];
@@ -110,10 +85,7 @@ namespace Zori.Entities.Physics2D.Tests
                 $"CapsuleCast resolved the wrong nearest entity: got {hit.entity}, expected the near wall "
                     + $"{near} (far was {far}). Nearest-first ordering or the shape→entity packing is wrong."
             );
-            Assert.IsFalse(
-                isnan(hit.point.x) || isnan(hit.point.y),
-                $"CapsuleCast hit point is NaN: {hit.point}."
-            );
+            Assert.IsFalse(isnan(hit.point.x) || isnan(hit.point.y), $"CapsuleCast hit point is NaN: {hit.point}.");
             // The capsule's right cap edge (origin radius 0.5) starts at X=0.5 and must reach the near wall face
             // at X=3, so the contact fraction along the 20-unit cast is ~ (3 - 0.5) / 20 = 0.125.
             Assert.Less(
@@ -129,16 +101,7 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             // The same capsule swept the OTHER way (-X) hits nothing (no body to the left).
-            var nAway = PhysicsQueries2D.CapsuleCast(
-                pw,
-                c1,
-                c2,
-                r,
-                new float2(-1f, 0f),
-                20f,
-                0ul,
-                hits
-            );
+            var nAway = PhysicsQueries2D.CapsuleCast(pw, c1, c2, r, new float2(-1f, 0f), 20f, 0ul, hits);
             Assert.AreEqual(0, nAway, "Capsule swept -X (away from both walls) reported a phantom hit.");
 
             Debug.Log(
@@ -248,10 +211,7 @@ namespace Zori.Entities.Physics2D.Tests
                 hits,
                 out _
             );
-            Assert.IsFalse(
-                foundClose,
-                "ClosestPoint with a 1-unit search radius reported a wall 2 units away."
-            );
+            Assert.IsFalse(foundClose, "ClosestPoint with a 1-unit search radius reported a wall 2 units away.");
 
             Debug.Log(
                 $"[PHYSICS2D-CLOSEST] nearest entity={result.entity} point={result.point} "

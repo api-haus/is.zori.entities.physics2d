@@ -57,37 +57,16 @@ namespace Zori.Entities.Physics2D.Tests
         const float Dt = 1f / 60f;
         static readonly Vector2 NoGravity = Vector2.zero;
 
-        SimulationMode2D _prevMode;
-        Vector2 _prevGravity;
+        Physics2DStateFence _fence;
 
         [SetUp]
-        public void SetUp()
-        {
-            _prevMode = UnityEngine.Physics2D.simulationMode;
-            _prevGravity = UnityEngine.Physics2D.gravity;
-            UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-            UnityEngine.Physics2D.gravity = NoGravity;
-        }
+        public void SetUp() => _fence = Physics2DStateFence.EnterScriptMode(NoGravity);
 
         [TearDown]
-        public void TearDown()
-        {
-            UnityEngine.Physics2D.gravity = _prevGravity;
-            UnityEngine.Physics2D.simulationMode = _prevMode;
-        }
+        public void TearDown() => _fence.Restore();
 
-        static World MakePackageWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("PhaseAMassGateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePackageWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("PhaseAMassGateWorld", out group, Dt);
 
         // =====================================================================================================
         // INVARIANT — COM override induces spin under a centre-origin impulse. A box body authored with an
@@ -106,8 +85,22 @@ namespace Zori.Entities.Physics2D.Tests
             // ---- package: COM-overridden body + a centred control, struck at the origin ----
             var world = MakePackageWorld(out var group);
             var em = world.EntityManager;
-            var overridden = SpawnPkgBox(em, Unity.Mathematics.float2.zero, size, overrideMass: true, com: com, inertia: 0f);
-            var control = SpawnPkgBox(em, new float2(6f, 0f), size, overrideMass: false, com: Unity.Mathematics.float2.zero, inertia: 0f);
+            var overridden = SpawnPkgBox(
+                em,
+                Unity.Mathematics.float2.zero,
+                size,
+                overrideMass: true,
+                com: com,
+                inertia: 0f
+            );
+            var control = SpawnPkgBox(
+                em,
+                new float2(6f, 0f),
+                size,
+                overrideMass: false,
+                com: Unity.Mathematics.float2.zero,
+                inertia: 0f
+            );
             em.AddBuffer<PhysicsBody2DCommand>(overridden);
             em.AddBuffer<PhysicsBody2DCommand>(control);
 
@@ -215,15 +208,37 @@ namespace Zori.Entities.Physics2D.Tests
             // ---- package: default-inertia control + inertia-overridden body, one torque step ----
             var world = MakePackageWorld(out var group);
             var em = world.EntityManager;
-            var control = SpawnPkgBox(em, Unity.Mathematics.float2.zero, size, overrideMass: false, com: Unity.Mathematics.float2.zero, inertia: 0f);
-            var overridden = SpawnPkgBox(em, new float2(6f, 0f), size, overrideMass: true, com: Unity.Mathematics.float2.zero, inertia: bigInertia);
+            var control = SpawnPkgBox(
+                em,
+                Unity.Mathematics.float2.zero,
+                size,
+                overrideMass: false,
+                com: Unity.Mathematics.float2.zero,
+                inertia: 0f
+            );
+            var overridden = SpawnPkgBox(
+                em,
+                new float2(6f, 0f),
+                size,
+                overrideMass: true,
+                com: Unity.Mathematics.float2.zero,
+                inertia: bigInertia
+            );
             em.AddBuffer<PhysicsBody2DCommand>(control);
             em.AddBuffer<PhysicsBody2DCommand>(overridden);
 
             group.Update(); // create
 
-            PhysicsBody2DCommands.AddTorque(em.GetBuffer<PhysicsBody2DCommand>(control), torque, PhysicsForceMode2D.Force);
-            PhysicsBody2DCommands.AddTorque(em.GetBuffer<PhysicsBody2DCommand>(overridden), torque, PhysicsForceMode2D.Force);
+            PhysicsBody2DCommands.AddTorque(
+                em.GetBuffer<PhysicsBody2DCommand>(control),
+                torque,
+                PhysicsForceMode2D.Force
+            );
+            PhysicsBody2DCommands.AddTorque(
+                em.GetBuffer<PhysicsBody2DCommand>(overridden),
+                torque,
+                PhysicsForceMode2D.Force
+            );
             group.Update(); // the torque step
 
             var ctrlBody = em.GetComponentData<PhysicsBody2D>(control).body;
@@ -235,7 +250,14 @@ namespace Zori.Entities.Physics2D.Tests
             world.Dispose();
 
             // ---- GameObject oracle: control vs Rigidbody2D.inertia = bigInertia, one torque step each ----
-            RunGoInertiaTorque(size, torque, bigInertia, out var goCtrlOmega, out var goOverOmega, out var goOverInertia);
+            RunGoInertiaTorque(
+                size,
+                torque,
+                bigInertia,
+                out var goCtrlOmega,
+                out var goOverOmega,
+                out var goOverInertia
+            );
 
             var pkgOmegaRatio = abs(overOmega) / max(abs(ctrlOmega), 1e-6f);
             var expectedRatio = pkgCtrlInertia / pkgOverInertia; // ≈ 0.16667 / 1.0

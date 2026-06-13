@@ -111,12 +111,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
 
         // A unit-scale dynamic disc faller (the compared body). NeverSleep + matched friction are applied by the
         // harness at load; here we just author the body + collider at the drop pose.
-        static GameObject MakeDisc(
-            UnityEngine.SceneManagement.Scene scene,
-            string name,
-            Vector2 pos,
-            float radius
-        )
+        static GameObject MakeDisc(UnityEngine.SceneManagement.Scene scene, string name, Vector2 pos, float radius)
         {
             var go = new GameObject(name);
             go.transform.position = pos;
@@ -340,12 +335,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
                 child,
                 "ScaledCompositeBar",
                 new Vector3(4f, 1.5f, 1f),
-                new[]
-                {
-                    new Vector2(-1f, -0.5f),
-                    new Vector2(0f, -0.5f),
-                    new Vector2(1f, -0.5f),
-                },
+                new[] { new Vector2(-1f, -0.5f), new Vector2(0f, -0.5f), new Vector2(1f, -0.5f) },
                 new Vector2(1f, 1f)
             );
             MakeDisc(child, "CompositeDisc", new Vector2(5f, 5f), 0.5f);

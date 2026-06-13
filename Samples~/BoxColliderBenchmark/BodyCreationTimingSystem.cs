@@ -88,8 +88,7 @@ namespace Zori.Entities.Physics2D.Samples
             if (created <= 0)
                 return; // No creation this frame (pure-step or idle frame) — nothing to attribute.
 
-            var elapsedMicros =
-                (endTimestamp - s.startTimestamp) * 1_000_000.0 / Stopwatch.Frequency;
+            var elapsedMicros = (endTimestamp - s.startTimestamp) * 1_000_000.0 / Stopwatch.Frequency;
             var liveBodies = m_LiveBodyQuery.CalculateEntityCount();
 
             s.totalCreated += created;

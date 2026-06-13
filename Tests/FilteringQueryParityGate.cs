@@ -62,9 +62,10 @@ namespace Zori.Entities.Physics2D.Tests
         const int LX = 11; // the layer paired against Default in the layer-0-ignores-X config
 
         // --- global Physics2D state save/restore -----------------------------------------------------------
+        // The simulationMode + gravity pair rides the shared fence; the query flags and the layer-collision
+        // matrix are this gate's own extra global state, snapshotted alongside it.
 
-        SimulationMode2D _prevMode;
-        Vector2 _prevGravity;
+        Physics2DStateFence _fence;
         bool _prevQueriesStartInColliders;
         bool _prevQueriesHitTriggers;
         readonly List<(int a, int b, bool ignored)> _savedPairs = new();
@@ -72,16 +73,23 @@ namespace Zori.Entities.Physics2D.Tests
         // All ordered layer pairs the gate's configs ever touch — snapshot + restore exactly these.
         static readonly (int a, int b)[] TouchedPairs =
         {
-            (LA, LA), (LB, LB), (LA, LB), (LA, LFloor), (LB, LFloor),
-            (LDefault, LDefault), (LDefault, LX), (LDefault, LFloor), (LX, LFloor), (LX, LX),
-            (LDefault, LA), (LDefault, LB),
+            (LA, LA),
+            (LB, LB),
+            (LA, LB),
+            (LA, LFloor),
+            (LB, LFloor),
+            (LDefault, LDefault),
+            (LDefault, LX),
+            (LDefault, LFloor),
+            (LX, LFloor),
+            (LX, LX),
+            (LDefault, LA),
+            (LDefault, LB),
         };
 
         [SetUp]
         public void SetUp()
         {
-            _prevMode = UnityEngine.Physics2D.simulationMode;
-            _prevGravity = UnityEngine.Physics2D.gravity;
             _prevQueriesStartInColliders = UnityEngine.Physics2D.queriesStartInColliders;
             _prevQueriesHitTriggers = UnityEngine.Physics2D.queriesHitTriggers;
 
@@ -89,8 +97,7 @@ namespace Zori.Entities.Physics2D.Tests
             foreach (var (a, b) in TouchedPairs)
                 _savedPairs.Add((a, b, UnityEngine.Physics2D.GetIgnoreLayerCollision(a, b)));
 
-            UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-            UnityEngine.Physics2D.gravity = Gravity;
+            _fence = Physics2DStateFence.EnterScriptMode(Gravity);
             // A query that starts inside a collider should still report it (the package query has no
             // "skip start-overlapped" notion), and triggers are irrelevant here (no triggers authored).
             UnityEngine.Physics2D.queriesStartInColliders = true;
@@ -104,24 +111,13 @@ namespace Zori.Entities.Physics2D.Tests
                 UnityEngine.Physics2D.IgnoreLayerCollision(a, b, ignored);
             UnityEngine.Physics2D.queriesHitTriggers = _prevQueriesHitTriggers;
             UnityEngine.Physics2D.queriesStartInColliders = _prevQueriesStartInColliders;
-            UnityEngine.Physics2D.gravity = _prevGravity;
-            UnityEngine.Physics2D.simulationMode = _prevMode;
+            _fence.Restore();
         }
 
         // --- package world ---------------------------------------------------------------------------------
 
-        static World MakePackageWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DParityGateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePackageWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DParityGateWorld", out group, Dt);
 
         static PhysicsWorld GetWorld(EntityManager em)
         {
@@ -425,10 +421,30 @@ namespace Zori.Entities.Physics2D.Tests
 
         static readonly QueryTarget[] Targets =
         {
-            new() { pos = new float2(0f, 5f), radius = 1f, layer = LA },
-            new() { pos = new float2(0f, 9f), radius = 1f, layer = LB },
-            new() { pos = new float2(4f, 5f), radius = 1f, layer = LA },
-            new() { pos = new float2(-4f, 5f), radius = 1f, layer = LB },
+            new()
+            {
+                pos = new float2(0f, 5f),
+                radius = 1f,
+                layer = LA,
+            },
+            new()
+            {
+                pos = new float2(0f, 9f),
+                radius = 1f,
+                layer = LB,
+            },
+            new()
+            {
+                pos = new float2(4f, 5f),
+                radius = 1f,
+                layer = LA,
+            },
+            new()
+            {
+                pos = new float2(-4f, 5f),
+                radius = 1f,
+                layer = LB,
+            },
         };
 
         // Build the package query scene. Returns the world + a position→entity map for hit-set identity.
@@ -536,13 +552,7 @@ namespace Zori.Entities.Physics2D.Tests
             cf.useTriggers = false;
             cf.ClearLayerMask();
             var refHitsArr = new RaycastHit2D[16];
-            var n = UnityEngine.Physics2D.Raycast(
-                (Vector2)origin,
-                (Vector2)dir,
-                cf,
-                refHitsArr,
-                dist
-            );
+            var n = UnityEngine.Physics2D.Raycast((Vector2)origin, (Vector2)dir, cf, refHitsArr, dist);
             var refCols = new List<Collider2D>();
             for (var i = 0; i < n; i++)
                 refCols.Add(refHitsArr[i].collider);
@@ -653,7 +663,15 @@ namespace Zori.Entities.Physics2D.Tests
             var refCcKeys = RefHitKeys(ccCols);
 
             var bcArr = new RaycastHit2D[16];
-            var nb = UnityEngine.Physics2D.BoxCast((Vector2)origin, new Vector2(0.5f, 0.5f), 0f, (Vector2)dir, cf, bcArr, dist);
+            var nb = UnityEngine.Physics2D.BoxCast(
+                (Vector2)origin,
+                new Vector2(0.5f, 0.5f),
+                0f,
+                (Vector2)dir,
+                cf,
+                bcArr,
+                dist
+            );
             var bcCols = new List<Collider2D>();
             for (var i = 0; i < nb; i++)
                 bcCols.Add(bcArr[i].collider);

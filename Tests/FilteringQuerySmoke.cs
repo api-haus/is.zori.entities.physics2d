@@ -35,20 +35,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DFilterQuerySmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DFilterQuerySmokeWorld", out group, Dt);
 
         static PhysicsWorld GetWorld(EntityManager em)
         {
@@ -57,13 +45,7 @@ namespace Zori.Entities.Physics2D.Tests
         }
 
         // A dynamic circle authored directly with explicit contact-filter bits.
-        static Entity SpawnCircle(
-            EntityManager em,
-            float2 pos,
-            float radius,
-            ulong categoryBits,
-            ulong contactBits
-        )
+        static Entity SpawnCircle(EntityManager em, float2 pos, float radius, ulong categoryBits, ulong contactBits)
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
@@ -91,11 +73,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -249,10 +227,7 @@ namespace Zori.Entities.Physics2D.Tests
                 $"Raycast resolved the wrong owning entity: got {hit.entity}, expected the target "
                     + $"{target} (decoy was {decoy}). The shape→body→entity userData packing is wrong."
             );
-            Assert.IsFalse(
-                isnan(hit.point.x) || isnan(hit.point.y),
-                $"Raycast hit point is NaN: {hit.point}."
-            );
+            Assert.IsFalse(isnan(hit.point.x) || isnan(hit.point.y), $"Raycast hit point is NaN: {hit.point}.");
             // The hit point is near the bottom of the target circle (y ~= 4), and the normal points down
             // toward the ray origin (negative-ish Y).
             Assert.Less(

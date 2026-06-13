@@ -52,8 +52,7 @@ namespace Zori.Entities.Physics2D.Baking
                     useAutoMass = authoring.useAutoMass,
                     // CCD: collisionDetectionMode Continuous → the Box2D fast-collision (bullet) body flag, so a
                     // fast body does not tunnel a thin collider; Discrete (and the deprecated None) → false.
-                    fastCollisions =
-                        authoring.collisionDetectionMode == CollisionDetectionMode2D.Continuous,
+                    fastCollisions = authoring.collisionDetectionMode == CollisionDetectionMode2D.Continuous,
                     // Interpolation: Rigidbody2D.interpolation → the render-rate smoothing mode. None → no
                     // smoothing (fixed-rate LocalToWorld); Interpolate/Extrapolate → smoothed between steps.
                     interpolation = authoring.interpolation switch
@@ -70,10 +69,7 @@ namespace Zori.Entities.Physics2D.Baking
             // the rendered sprite loses it. Read from lossyScale, matching the collider bakers' shape scale.
             AddComponent(
                 entity,
-                new Zori.Entities.Physics2D.PhysicsBody2DRenderScale
-                {
-                    value = Collider2DBaking.ReadScale(t),
-                }
+                new Zori.Entities.Physics2D.PhysicsBody2DRenderScale { value = Collider2DBaking.ReadScale(t) }
             );
         }
 

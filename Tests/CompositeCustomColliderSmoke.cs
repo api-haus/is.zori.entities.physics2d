@@ -39,20 +39,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DPhase9SmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DPhase9SmokeWorld", out group, Dt);
 
         static float BodyY(EntityManager em, Entity e) =>
             em.GetComponentData<Unity.Transforms.LocalToWorld>(e).Position.y;
@@ -71,9 +59,7 @@ namespace Zori.Entities.Physics2D.Tests
             var arr = builder.Allocate(ref root.points, pts.Length);
             for (var i = 0; i < pts.Length; i++)
                 arr[i] = pts[i];
-            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(
-                Unity.Collections.Allocator.Persistent
-            );
+            var blob = builder.CreateBlobAssetReference<PhysicsShape2DVertices>(Unity.Collections.Allocator.Persistent);
             builder.Dispose();
             tracked.Add(blob);
             return blob;
@@ -110,9 +96,7 @@ namespace Zori.Entities.Physics2D.Tests
             // buffer) AND the CreatePolygons/CreateShapeBatch decompose path on one body.
             var world = MakeFixedWorld(out var group);
             var em = world.EntityManager;
-            var blobs = new System.Collections.Generic.List<
-                BlobAssetReference<PhysicsShape2DVertices>
-            >();
+            var blobs = new System.Collections.Generic.List<BlobAssetReference<PhysicsShape2DVertices>>();
 
             // Floor body: static, no shape geometry of its own beyond the primary; primary = left quad
             // (decomposed), buffer = right quad (single hull). Both span y in [-1, 0] (top at y=0).
@@ -136,13 +120,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                     vertices = Blob(
                         blobs,
-                        new[]
-                        {
-                            new float2(-2f, -1f),
-                            new float2(0f, -1f),
-                            new float2(0f, 0f),
-                            new float2(-2f, 0f),
-                        }
+                        new[] { new float2(-2f, -1f), new float2(0f, -1f), new float2(0f, 0f), new float2(-2f, 0f) }
                     ),
                 }
             );
@@ -158,18 +136,15 @@ namespace Zori.Entities.Physics2D.Tests
                         friction = 0.4f,
                         vertices = Blob(
                             blobs,
-                            new[]
-                            {
-                                new float2(0f, -1f),
-                                new float2(2f, -1f),
-                                new float2(2f, 0f),
-                                new float2(0f, 0f),
-                            }
+                            new[] { new float2(0f, -1f), new float2(2f, -1f), new float2(2f, 0f), new float2(0f, 0f) }
                         ),
                     },
                 }
             );
-            em.AddComponentData(floor, new Unity.Transforms.LocalToWorld { Value = Unity.Mathematics.float4x4.identity });
+            em.AddComponentData(
+                floor,
+                new Unity.Transforms.LocalToWorld { Value = Unity.Mathematics.float4x4.identity }
+            );
 
             var disc = SpawnDisc(em, new float2(0f, 5f), 0.5f);
 
@@ -214,9 +189,7 @@ namespace Zori.Entities.Physics2D.Tests
             // a body interacts with each shape of a multi-shape custom collider.
             var world = MakeFixedWorld(out var group);
             var em = world.EntityManager;
-            var blobs = new System.Collections.Generic.List<
-                BlobAssetReference<PhysicsShape2DVertices>
-            >();
+            var blobs = new System.Collections.Generic.List<BlobAssetReference<PhysicsShape2DVertices>>();
 
             var custom = em.CreateEntity();
             em.AddComponentData(
@@ -239,13 +212,7 @@ namespace Zori.Entities.Physics2D.Tests
                     friction = 0.4f,
                     vertices = Blob(
                         blobs,
-                        new[]
-                        {
-                            new float2(-2f, -1f),
-                            new float2(2f, -1f),
-                            new float2(2f, 0f),
-                            new float2(-2f, 0f),
-                        }
+                        new[] { new float2(-2f, -1f), new float2(2f, -1f), new float2(2f, 0f), new float2(-2f, 0f) }
                     ),
                 }
             );
@@ -265,7 +232,10 @@ namespace Zori.Entities.Physics2D.Tests
                     },
                 }
             );
-            em.AddComponentData(custom, new Unity.Transforms.LocalToWorld { Value = Unity.Mathematics.float4x4.identity });
+            em.AddComponentData(
+                custom,
+                new Unity.Transforms.LocalToWorld { Value = Unity.Mathematics.float4x4.identity }
+            );
 
             // Drop the disc over the LEFT half (clear of the raised step) so it rests on the base top at y=0.
             var disc = SpawnDisc(em, new float2(-1f, 5f), 0.5f);

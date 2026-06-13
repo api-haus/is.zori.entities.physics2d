@@ -64,12 +64,7 @@ namespace Zori.Entities.Physics2D.Authoring
         /// <summary>The closed stadium (capsule) outline from the two end-cap centres
         /// <paramref name="c1"/>/<paramref name="c2"/> and the end <paramref name="radius"/>: a cap arc at each
         /// end plus the two connecting side segments. <paramref name="capSegments"/> points per half-circle.</summary>
-        public static float2[] CapsuleOutline(
-            float2 c1,
-            float2 c2,
-            float radius,
-            int capSegments = 16
-        )
+        public static float2[] CapsuleOutline(float2 c1, float2 c2, float radius, int capSegments = 16)
         {
             var axis = c2 - c1;
             var len = length(axis);
@@ -131,13 +126,7 @@ namespace Zori.Entities.Physics2D.Authoring
         {
             var h = size * 0.5f;
             sincos(radians(angleDeg), out var s, out var c);
-            var local = new[]
-            {
-                new float2(h.x, 0f),
-                new float2(0f, h.y),
-                new float2(-h.x, 0f),
-                new float2(0f, -h.y),
-            };
+            var local = new[] { new float2(h.x, 0f), new float2(0f, h.y), new float2(-h.x, 0f), new float2(0f, -h.y) };
             var pts = new float2[4];
             for (var i = 0; i < 4; i++)
                 pts[i] = center + Rotate(local[i], s, c);
@@ -146,11 +135,7 @@ namespace Zori.Entities.Physics2D.Authoring
 
         /// <summary>The position of the rotation-ring handle: a point at <paramref name="ringRadius"/> from the
         /// box centre along the box's local +X axis (so dragging it around the ring reads as the box angle).</summary>
-        public static float2 BoxRotationHandlePosition(
-            float2 center,
-            float angleDeg,
-            float ringRadius
-        )
+        public static float2 BoxRotationHandlePosition(float2 center, float angleDeg, float ringRadius)
         {
             sincos(radians(angleDeg), out var s, out var c);
             return center + Rotate(new float2(ringRadius, 0f), s, c);
@@ -237,8 +222,7 @@ namespace Zori.Entities.Physics2D.Authoring
             var width = 2f * (half + radius);
             var height = 2f * radius;
 
-            var deg =
-                lengthsq(axis) < 1e-12f ? 0f : degrees(atan2(axis.y, axis.x));
+            var deg = lengthsq(axis) < 1e-12f ? 0f : degrees(atan2(axis.y, axis.x));
             // normalise to (−90°, 90°]
             while (deg > 90f)
                 deg -= 180f;
@@ -257,7 +241,6 @@ namespace Zori.Entities.Physics2D.Authoring
 
         // ----- helpers -----
 
-        static float2 Rotate(float2 v, float s, float c) =>
-            new float2(c * v.x - s * v.y, s * v.x + c * v.y);
+        static float2 Rotate(float2 v, float s, float c) => new float2(c * v.x - s * v.y, s * v.x + c * v.y);
     }
 }

@@ -147,7 +147,7 @@ namespace Zori.Entities.Physics2D
         /// <summary>Platform: <c>useOneWay</c> as a flag — 1 = the one-way gating is active, 0 = the platform is a
         /// plain solid collider (no gating). The package gates the platform BODY's participation each step from the
         /// surface arc (an approximation; Box2D-v3's faithful per-contact pre-solve veto is unreachable from the
-        /// package's native-poll posture — see the Phase-10b design's negative-space writeup).</summary>
+        /// package's native-poll posture).</summary>
         public byte useOneWay;
 
         // ---- Surface -------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ namespace Zori.Entities.Physics2D
         public byte useContactForce;
 
         /// <summary>Surface: <c>useFriction</c> as a flag — whether the surface contact uses friction. The
-        /// collider's <c>PhysicsMaterial2D.friction</c> is already baked onto the shape surface material (Phase 1A),
+        /// collider's <c>PhysicsMaterial2D.friction</c> is already baked onto the shape surface material,
         /// so a friction surface already has it; this flag is carried for parity-gate assertion and does not
         /// re-apply friction.</summary>
         public byte surfaceUseFriction;

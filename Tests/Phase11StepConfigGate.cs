@@ -678,13 +678,13 @@ namespace Zori.Entities.Physics2D.Tests
             var childScene = SceneManager.GetSceneByName(childName);
             var refBodies = new List<Rigidbody2D>();
             foreach (var root in childScene.GetRootGameObjects())
-                foreach (var rb in root.GetComponentsInChildren<Rigidbody2D>(includeInactive: true))
-                {
-                    if (rb.bodyType == RigidbodyType2D.Static)
-                        continue;
-                    rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
-                    refBodies.Add(rb);
-                }
+            foreach (var rb in root.GetComponentsInChildren<Rigidbody2D>(includeInactive: true))
+            {
+                if (rb.bodyType == RigidbodyType2D.Static)
+                    continue;
+                rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
+                refBodies.Add(rb);
+            }
             Assert.AreEqual(
                 bakedQuery.CalculateEntityCount(),
                 refBodies.Count,

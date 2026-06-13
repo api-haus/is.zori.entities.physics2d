@@ -97,11 +97,7 @@ namespace Zori.Entities.Physics2D.Tests
 
             // First update creates the bodies (no step), so both sit at their authored pose.
             fixedGroup.Update();
-            Assert.AreEqual(
-                2,
-                CountDynamic(liveQuery),
-                "Body creation did not run for both baked bodies."
-            );
+            Assert.AreEqual(2, CountDynamic(liveQuery), "Body creation did not run for both baked bodies.");
 
             var traj = new float2[stepCount][]; // [step][bodyIndexByStartX]
             var ang = new float[stepCount][];
@@ -141,13 +137,7 @@ namespace Zori.Entities.Physics2D.Tests
             }
         }
 
-        static void AssertNearExact(
-            float2[][] traj,
-            float[][] ang,
-            float posTol,
-            float angTol,
-            int loadFrames
-        )
+        static void AssertNearExact(float2[][] traj, float[][] ang, float posTol, float angTol, int loadFrames)
         {
             var stepCount = traj.Length;
             Assert.AreEqual(2, traj[0].Length, "The tight gate requires exactly two dynamic bodies.");
@@ -175,10 +165,7 @@ namespace Zori.Entities.Physics2D.Tests
                 var dp = length(customDisp - builtinDisp);
                 var da = abs(AngleDelta(ang[s][0], ang[s][1]));
 
-                if (
-                    nanViolation == null
-                    && (isnan(dp) || isinf(dp) || isnan(da) || isinf(da))
-                )
+                if (nanViolation == null && (isnan(dp) || isinf(dp) || isnan(da) || isinf(da)))
                     nanViolation = $"NaN/Inf at step {s}.";
                 worstPos = max(worstPos, dp);
                 worstAng = max(worstAng, da);
@@ -188,13 +175,10 @@ namespace Zori.Entities.Physics2D.Tests
                         + $"near-exact tolerance {posTol} m. The custom baker is not producing the same "
                         + "PhysicsBody2DDefinition/PhysicsShape2D as the built-in baker.";
                 if (angViolation == null && da > angTol)
-                    angViolation =
-                        $"Custom-vs-built-in angle diverged at step {s}: {da} rad exceeds {angTol} rad.";
+                    angViolation = $"Custom-vs-built-in angle diverged at step {s}: {da} rad exceeds {angTol} rad.";
                 log.AppendLine($"{s}\t{dp:E6}\t{da:E6}");
             }
-            log.AppendLine(
-                $"[PHYSICS2D-CUSTOM-PARITY] WORST_POS_ERR={worstPos:E6} WORST_ANG_ERR={worstAng:E6}"
-            );
+            log.AppendLine($"[PHYSICS2D-CUSTOM-PARITY] WORST_POS_ERR={worstPos:E6} WORST_ANG_ERR={worstAng:E6}");
             if (nanViolation != null)
                 log.AppendLine($"[PHYSICS2D-CUSTOM-PARITY] NAN: {nanViolation}");
             if (posViolation != null)
@@ -205,9 +189,7 @@ namespace Zori.Entities.Physics2D.Tests
             // Disqualifier: both bodies must actually have fallen (a no-op bake would leave them at start).
             var customDrop = abs((traj[stepCount - 1][0] - custom0).y);
             var builtinDrop = abs((traj[stepCount - 1][1] - builtin0).y);
-            log.AppendLine(
-                $"[PHYSICS2D-CUSTOM-PARITY] customDrop={customDrop:F4} builtinDrop={builtinDrop:F4}"
-            );
+            log.AppendLine($"[PHYSICS2D-CUSTOM-PARITY] customDrop={customDrop:F4} builtinDrop={builtinDrop:F4}");
             string travelViolation = null;
             if (customDrop < 0.5f || builtinDrop < 0.5f)
                 travelViolation =
@@ -343,10 +325,7 @@ namespace Zori.Entities.Physics2D.Tests
         // Build live Rigidbody2D + collider reference bodies from the custom authoring components in the
         // child scene — the same fields the package's custom bakers read, so single authoring is preserved:
         // one authored child scene feeds the ECS bake (via the parent SubScene) AND this GameObject reference.
-        static List<Rigidbody2D> BuildReferenceFromCustomAuthoring(
-            Scene childScene,
-            PhysicsMaterial2D fallbackMaterial
-        )
+        static List<Rigidbody2D> BuildReferenceFromCustomAuthoring(Scene childScene, PhysicsMaterial2D fallbackMaterial)
         {
             var bodies = new List<Rigidbody2D>();
             foreach (var root in childScene.GetRootGameObjects())
@@ -399,11 +378,7 @@ namespace Zori.Entities.Physics2D.Tests
             return bodies;
         }
 
-        static void AddColliderFor(
-            GameObject go,
-            PhysicsShape2DAuthoring shape,
-            PhysicsMaterial2D fallbackMaterial
-        )
+        static void AddColliderFor(GameObject go, PhysicsShape2DAuthoring shape, PhysicsMaterial2D fallbackMaterial)
         {
             Collider2D col = shape.Kind switch
             {
@@ -439,9 +414,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             var c = go.AddComponent<CapsuleCollider2D>();
             c.size = shape.CapsuleSize;
-            c.direction = shape.CapsuleVertical
-                ? CapsuleDirection2D.Vertical
-                : CapsuleDirection2D.Horizontal;
+            c.direction = shape.CapsuleVertical ? CapsuleDirection2D.Vertical : CapsuleDirection2D.Horizontal;
             return c;
         }
 

@@ -9,7 +9,7 @@ namespace Zori.Entities.Physics2D.Editor
     /// sample's <c>PhysicsBodyAuthoringEditor</c> (structure-only reference). It mirrors the 3D layout: a body-type
     /// selector, fields shown conditionally on the motion type, an Advanced foldout for the less-common knobs
     /// (CCD, the mass-distribution override), and a status HelpBox. The 3D-only knobs (solver type, world index, an
-    /// inertia-tensor orientation) are 2D negative space and absent.
+    /// inertia-tensor orientation) are intentionally omitted in 2D and absent.
     /// </summary>
     [CustomEditor(typeof(PhysicsBody2DAuthoring))]
     [CanEditMultipleObjects]
@@ -87,10 +87,7 @@ namespace Zori.Entities.Physics2D.Editor
                 // A non-Dynamic body has infinite mass — show a disabled ∞ field (the 3D inspector's touch).
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    var rect = EditorGUILayout.GetControlRect(
-                        true,
-                        EditorGUIUtility.singleLineHeight
-                    );
+                    var rect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
                     EditorGUI.BeginProperty(rect, k_MassLabel, m_Mass);
                     EditorGUI.FloatField(rect, k_MassLabel, float.PositiveInfinity);
                     EditorGUI.EndProperty();

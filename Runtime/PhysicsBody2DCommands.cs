@@ -48,11 +48,7 @@ namespace Zori.Entities.Physics2D
 
         /// <summary>Apply a force at the body's centre of mass in the given mode —
         /// <c>AddForce(f, ForceMode2D.Force|Impulse)</c>.</summary>
-        public static void AddForce(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float2 force,
-            PhysicsForceMode2D mode
-        )
+        public static void AddForce(DynamicBuffer<PhysicsBody2DCommand> buffer, float2 force, PhysicsForceMode2D mode)
         {
             buffer.Add(
                 new PhysicsBody2DCommand
@@ -91,11 +87,7 @@ namespace Zori.Entities.Physics2D
         /// <summary>Apply a torque about the body's centre of mass — <c>AddTorque(t, mode)</c>. The
         /// <paramref name="torque"/> is a torque in N·m (Force mode) or an angular impulse (Impulse mode), NOT an
         /// angle, so it carries no radians/degrees unit.</summary>
-        public static void AddTorque(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float torque,
-            PhysicsForceMode2D mode
-        )
+        public static void AddTorque(DynamicBuffer<PhysicsBody2DCommand> buffer, float torque, PhysicsForceMode2D mode)
         {
             buffer.Add(
                 new PhysicsBody2DCommand
@@ -111,17 +103,10 @@ namespace Zori.Entities.Physics2D
 
         /// <summary>Set the body's linear velocity directly (m/s), waking it — the
         /// <c>Rigidbody2D.linearVelocity = v</c> write.</summary>
-        public static void SetLinearVelocity(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float2 velocity
-        )
+        public static void SetLinearVelocity(DynamicBuffer<PhysicsBody2DCommand> buffer, float2 velocity)
         {
             buffer.Add(
-                new PhysicsBody2DCommand
-                {
-                    kind = PhysicsBody2DCommandKind.SetLinearVelocity,
-                    linear = velocity,
-                }
+                new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.SetLinearVelocity, linear = velocity }
             );
         }
 
@@ -129,10 +114,7 @@ namespace Zori.Entities.Physics2D
         /// <c>Rigidbody2D.angularVelocity = w</c> write. The value is in <b>degrees per second</b>: the engine's
         /// <c>PhysicsBody.angularVelocity</c> is deg/sec (module XML), matching <c>Rigidbody2D.angularVelocity</c>
         /// (the angular-unit convention in <c>Documentation~/parity-matrix.md</c>).</summary>
-        public static void SetAngularVelocity(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float degreesPerSecond
-        )
+        public static void SetAngularVelocity(DynamicBuffer<PhysicsBody2DCommand> buffer, float degreesPerSecond)
         {
             buffer.Add(
                 new PhysicsBody2DCommand
@@ -147,13 +129,7 @@ namespace Zori.Entities.Physics2D
         /// <c>MovePosition(target)</c>, a swept, collision-aware kinematic move, not a teleport.</summary>
         public static void MovePosition(DynamicBuffer<PhysicsBody2DCommand> buffer, float2 target)
         {
-            buffer.Add(
-                new PhysicsBody2DCommand
-                {
-                    kind = PhysicsBody2DCommandKind.MovePosition,
-                    linear = target,
-                }
-            );
+            buffer.Add(new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.MovePosition, linear = target });
         }
 
         /// <summary>Sweep the body to a target rotation over the next step (keeping its current position) —
@@ -162,17 +138,10 @@ namespace Zori.Entities.Physics2D
         /// chooses radians — see the angular-unit convention in <c>Documentation~/parity-matrix.md</c>). Note
         /// <c>Rigidbody2D.MoveRotation</c> takes degrees, so a verbatim port must convert with
         /// <c>math.radians</c>.</summary>
-        public static void MoveRotation(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float targetRadians
-        )
+        public static void MoveRotation(DynamicBuffer<PhysicsBody2DCommand> buffer, float targetRadians)
         {
             buffer.Add(
-                new PhysicsBody2DCommand
-                {
-                    kind = PhysicsBody2DCommandKind.MoveRotation,
-                    angular = targetRadians,
-                }
+                new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.MoveRotation, angular = targetRadians }
             );
         }
 
@@ -246,10 +215,7 @@ namespace Zori.Entities.Physics2D
         /// form of <see cref="SetTransform"/> (a hard set, not the swept <see cref="MoveRotation"/>, so it lands the
         /// exact angle in one step with none of <c>MoveRotation</c>'s single-step undershoot). The
         /// <paramref name="rotationRadians"/> is in <b>radians</b>.</summary>
-        public static void SetRotation(
-            DynamicBuffer<PhysicsBody2DCommand> buffer,
-            float rotationRadians
-        )
+        public static void SetRotation(DynamicBuffer<PhysicsBody2DCommand> buffer, float rotationRadians)
         {
             buffer.Add(
                 new PhysicsBody2DCommand
@@ -271,9 +237,7 @@ namespace Zori.Entities.Physics2D
         /// (interpolation <see cref="PhysicsBody2DInterpolation.None"/>) — such a body has no streak to suppress.</summary>
         public static void SkipInterpolation(DynamicBuffer<PhysicsBody2DCommand> buffer)
         {
-            buffer.Add(
-                new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.SkipInterpolation }
-            );
+            buffer.Add(new PhysicsBody2DCommand { kind = PhysicsBody2DCommandKind.SkipInterpolation });
         }
     }
 }

@@ -31,14 +31,13 @@ namespace Zori.Entities.Physics2D.Authoring
     /// runtime components <c>Rigidbody2DBaker</c> emits, so a body authored this way and an equivalent
     /// <c>Rigidbody2D</c>-authored body converge on one runtime archetype and one Box2D solver — the
     /// dual-surface convergence the design relies on. This component lives in a compiled package assembly
-    /// (not only in <c>Samples~</c>) so it is unit-testable; the importable <c>Samples~/CustomAuthoring2D</c>
-    /// sample references it and ships authored scenes that use it.
+    /// so it is unit-testable; it is a first-class authoring surface, not a <c>Samples~</c> sample.
     ///
     /// <para><b>Deliberately omitted knobs.</b> The DOTS 3D sample also exposes <c>WorldIndex</c>,
     /// <c>SolverType</c>, and a custom inertia tensor. Those are NOT exposed here: world-index sharding
     /// needs the multi-world model the package defers, and a custom 2D solver/inertia override has no field
     /// on the current runtime archetype. Adding them would drag in deferred infrastructure for no current
-    /// need (the design's negative-space rule). They are the natural extension when that infrastructure
+    /// need. They are the natural extension when that infrastructure
     /// lands — an additive extension component, not a fork.</para>
     /// </remarks>
     [AddComponentMenu("Zori/Entities Physics 2D/Physics Body 2D")]
@@ -46,9 +45,7 @@ namespace Zori.Entities.Physics2D.Authoring
     public sealed class PhysicsBody2DAuthoring : MonoBehaviour
     {
         [SerializeField]
-        [Tooltip(
-            "Whether the body is fully simulated (Dynamic), moved directly (Kinematic), or fixed (Static)."
-        )]
+        [Tooltip("Whether the body is fully simulated (Dynamic), moved directly (Kinematic), or fixed (Static).")]
         PhysicsBody2DMotionType m_BodyType = PhysicsBody2DMotionType.Dynamic;
 
         [SerializeField]
@@ -121,9 +118,7 @@ namespace Zori.Entities.Physics2D.Authoring
         bool m_OverrideMassDistribution;
 
         [SerializeField]
-        [Tooltip(
-            "Explicit local-space center of mass, applied when OverrideMassDistribution is true."
-        )]
+        [Tooltip("Explicit local-space center of mass, applied when OverrideMassDistribution is true.")]
         float2 m_CenterOfMass = float2.zero;
 
         [SerializeField]

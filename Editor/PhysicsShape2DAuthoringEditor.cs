@@ -87,9 +87,7 @@ namespace Zori.Entities.Physics2D.Editor
             m_Density = serializedObject.FindProperty("m_Density");
             m_OverrideFrictionCombine = serializedObject.FindProperty("m_OverrideFrictionCombine");
             m_FrictionCombine = serializedObject.FindProperty("m_FrictionCombine");
-            m_OverrideBouncinessCombine = serializedObject.FindProperty(
-                "m_OverrideBouncinessCombine"
-            );
+            m_OverrideBouncinessCombine = serializedObject.FindProperty("m_OverrideBouncinessCombine");
             m_BouncinessCombine = serializedObject.FindProperty("m_BouncinessCombine");
             m_Layer = serializedObject.FindProperty("m_Layer");
             m_OverrideFilterBits = serializedObject.FindProperty("m_OverrideFilterBits");
@@ -212,10 +210,7 @@ namespace Zori.Entities.Physics2D.Editor
                 DrawLayerPopup();
 
                 EditorGUILayout.PropertyField(m_OverrideFilterBits);
-                if (
-                    m_OverrideFilterBits.boolValue
-                    || m_OverrideFilterBits.hasMultipleDifferentValues
-                )
+                if (m_OverrideFilterBits.boolValue || m_OverrideFilterBits.hasMultipleDifferentValues)
                 {
                     using (new EditorGUI.IndentLevelScope())
                     {
@@ -260,8 +255,7 @@ namespace Zori.Entities.Physics2D.Editor
             );
             if (EditorGUI.EndChangeCheck())
             {
-                m_Layer.intValue =
-                    newIndex == 0 ? -1 : LayerMask.NameToLayer(layerNames[newIndex - 1]);
+                m_Layer.intValue = newIndex == 0 ? -1 : LayerMask.NameToLayer(layerNames[newIndex - 1]);
             }
             EditorGUI.showMixedValue = false;
         }
@@ -273,11 +267,7 @@ namespace Zori.Entities.Physics2D.Editor
             EditorGUI.showMixedValue = prop.hasMultipleDifferentValues;
             EditorGUI.BeginChangeCheck();
             var masked = InternalEditorUtility.LayerMaskToConcatenatedLayersMask(prop.intValue);
-            var newMasked = EditorGUILayout.MaskField(
-                new GUIContent(label),
-                masked,
-                layerNames
-            );
+            var newMasked = EditorGUILayout.MaskField(new GUIContent(label), masked, layerNames);
             if (EditorGUI.EndChangeCheck())
                 prop.intValue = InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(newMasked);
             EditorGUI.showMixedValue = false;
@@ -368,14 +358,9 @@ namespace Zori.Entities.Physics2D.Editor
             using (new EditorGUI.DisabledScope(inheriting))
             {
                 var displayIndex = inheriting ? inheritedEnumIndex : valueProp.enumValueIndex;
-                EditorGUI.showMixedValue =
-                    !inheriting && valueProp.hasMultipleDifferentValues;
+                EditorGUI.showMixedValue = !inheriting && valueProp.hasMultipleDifferentValues;
                 EditorGUI.BeginChangeCheck();
-                var newIndex = EditorGUI.Popup(
-                    valueRect,
-                    displayIndex,
-                    valueProp.enumDisplayNames
-                );
+                var newIndex = EditorGUI.Popup(valueRect, displayIndex, valueProp.enumDisplayNames);
                 if (EditorGUI.EndChangeCheck() && !inheriting)
                     valueProp.enumValueIndex = newIndex;
                 EditorGUI.showMixedValue = false;
@@ -398,10 +383,7 @@ namespace Zori.Entities.Physics2D.Editor
             }
             else if (kind == PhysicsShape2DKind.Edge && m_Vertices.arraySize < 2)
             {
-                EditorGUILayout.HelpBox(
-                    "An edge needs at least 2 vertices.",
-                    MessageType.Warning
-                );
+                EditorGUILayout.HelpBox("An edge needs at least 2 vertices.", MessageType.Warning);
             }
 
             if (
@@ -459,9 +441,7 @@ namespace Zori.Entities.Physics2D.Editor
 
                 if (menu.GetItemCount() == 0)
                 {
-                    menu.AddDisabledItem(
-                        new GUIContent("No fit source (add a SpriteRenderer or PolygonCollider2D)")
-                    );
+                    menu.AddDisabledItem(new GUIContent("No fit source (add a SpriteRenderer or PolygonCollider2D)"));
                 }
                 menu.DropDown(rect);
             }
@@ -492,21 +472,9 @@ namespace Zori.Entities.Physics2D.Editor
                     Undo.RecordObject(shape, k_UndoFit);
                     var changed = source switch
                     {
-                        FitSource.SpriteShape => PhysicsShape2DAutoFit.FitToSprite(
-                            shape,
-                            sprite.sprite,
-                            kind
-                        ),
-                        FitSource.SpriteBounds => PhysicsShape2DAutoFit.FitToSpriteRenderer(
-                            shape,
-                            sprite,
-                            kind
-                        ),
-                        FitSource.PolygonCollider => PhysicsShape2DAutoFit.FitToPolygonCollider2D(
-                            shape,
-                            poly,
-                            kind
-                        ),
+                        FitSource.SpriteShape => PhysicsShape2DAutoFit.FitToSprite(shape, sprite.sprite, kind),
+                        FitSource.SpriteBounds => PhysicsShape2DAutoFit.FitToSpriteRenderer(shape, sprite, kind),
+                        FitSource.PolygonCollider => PhysicsShape2DAutoFit.FitToPolygonCollider2D(shape, poly, kind),
                         _ => false,
                     };
                     if (changed)
@@ -551,8 +519,7 @@ namespace Zori.Entities.Physics2D.Editor
             Handles.color = prevColor;
         }
 
-        static float HandleSize(float2 worldLocalPoint) =>
-            HandleUtility.GetHandleSize(ToV3(worldLocalPoint)) * 0.08f;
+        static float HandleSize(float2 worldLocalPoint) => HandleUtility.GetHandleSize(ToV3(worldLocalPoint)) * 0.08f;
 
         void OffsetHandle(PhysicsShape2DAuthoring shape)
         {
@@ -596,27 +563,15 @@ namespace Zori.Entities.Physics2D.Editor
         void BoxHandles(PhysicsShape2DAuthoring shape)
         {
             // outline
-            DrawClosedHandles(
-                PhysicsShape2DGizmos.BoxOutline(shape.Offset, shape.BoxSize, shape.BoxAngle),
-                true
-            );
+            DrawClosedHandles(PhysicsShape2DGizmos.BoxOutline(shape.Offset, shape.BoxSize, shape.BoxAngle), true);
 
             // two positive half-extent face handles (+X at index 0, +Y at index 1)
-            var faces = PhysicsShape2DGizmos.BoxEdgeHandlePositions(
-                shape.Offset,
-                shape.BoxSize,
-                shape.BoxAngle
-            );
+            var faces = PhysicsShape2DGizmos.BoxEdgeHandlePositions(shape.Offset, shape.BoxSize, shape.BoxAngle);
             for (var edge = 0; edge < 2; edge++)
             {
                 var p = faces[edge];
                 EditorGUI.BeginChangeCheck();
-                var moved = Handles.FreeMoveHandle(
-                    ToV3(p),
-                    HandleSize(p),
-                    Vector3.zero,
-                    Handles.DotHandleCap
-                );
+                var moved = Handles.FreeMoveHandle(ToV3(p), HandleSize(p), Vector3.zero, Handles.DotHandleCap);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(shape, k_UndoHandle);
@@ -632,11 +587,7 @@ namespace Zori.Entities.Physics2D.Editor
 
             // rotation ring handle
             var ringR = 0.5f * math.length(shape.BoxSize) + 0.25f;
-            var ringPos = PhysicsShape2DGizmos.BoxRotationHandlePosition(
-                shape.Offset,
-                shape.BoxAngle,
-                ringR
-            );
+            var ringPos = PhysicsShape2DGizmos.BoxRotationHandlePosition(shape.Offset, shape.BoxAngle, ringR);
             EditorGUI.BeginChangeCheck();
             var newRing = Handles.FreeMoveHandle(
                 ToV3(ringPos),
@@ -729,12 +680,7 @@ namespace Zori.Entities.Physics2D.Editor
             {
                 var p = (float2)verts[i] + shape.Offset;
                 EditorGUI.BeginChangeCheck();
-                var moved = Handles.FreeMoveHandle(
-                    ToV3(p),
-                    HandleSize(p),
-                    Vector3.zero,
-                    Handles.DotHandleCap
-                );
+                var moved = Handles.FreeMoveHandle(ToV3(p), HandleSize(p), Vector3.zero, Handles.DotHandleCap);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(shape, k_UndoHandle);

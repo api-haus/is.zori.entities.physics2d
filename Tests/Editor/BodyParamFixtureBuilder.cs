@@ -64,9 +64,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log(
-                "Entities Physics2D body-param fixtures built (Bounce/Friction/Velocity/FreezeX/Mass/Static)."
-            );
+            Debug.Log("Entities Physics2D body-param fixtures built (Bounce/Friction/Velocity/FreezeX/Mass/Static).");
         }
 
         // A bouncy ball dropped onto a bouncy floor: bounciness 0.8 on both surfaces, so the ball rebounds

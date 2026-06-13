@@ -19,11 +19,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         [Test]
         public void BoxOutline_AxisAligned_IsTheFourCorners()
         {
-            var pts = PhysicsShape2DGizmos.BoxOutline(
-                Unity.Mathematics.float2.zero,
-                new float2(2f, 4f),
-                0f
-            );
+            var pts = PhysicsShape2DGizmos.BoxOutline(Unity.Mathematics.float2.zero, new float2(2f, 4f), 0f);
             Assert.AreEqual(4, pts.Length);
             // corners at (±1, ±2) in some CCW order starting bottom-left
             Assert.IsTrue(Approx(pts[0], new float2(-1f, -2f)));
@@ -46,11 +42,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         [Test]
         public void BoxOutline_Rotated90_SwapsExtents()
         {
-            var pts = PhysicsShape2DGizmos.BoxOutline(
-                Unity.Mathematics.float2.zero,
-                new float2(2f, 4f),
-                90f
-            );
+            var pts = PhysicsShape2DGizmos.BoxOutline(Unity.Mathematics.float2.zero, new float2(2f, 4f), 90f);
             // after a 90° rotation the bounding extents are (4, 2): max |x| ~ 2, max |y| ~ 1
             var maxX = 0f;
             var maxY = 0f;
@@ -101,10 +93,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         [Test]
         public void CircleRadiusFromDrag_IsTheDistance()
         {
-            var r = PhysicsShape2DGizmos.CircleRadiusFromDrag(
-                new float2(1f, 1f),
-                new float2(4f, 5f)
-            );
+            var r = PhysicsShape2DGizmos.CircleRadiusFromDrag(new float2(1f, 1f), new float2(4f, 5f));
             Assert.AreEqual(5f, r, Eps); // |(3,4)| = 5
         }
 
@@ -120,10 +109,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         [Test]
         public void AngleFromRotationDrag_RecoversTheAngle()
         {
-            var deg = PhysicsShape2DGizmos.AngleFromRotationDrag(
-                Unity.Mathematics.float2.zero,
-                new float2(0f, 2f)
-            );
+            var deg = PhysicsShape2DGizmos.AngleFromRotationDrag(Unity.Mathematics.float2.zero, new float2(0f, 2f));
             Assert.AreEqual(90f, deg, Eps);
         }
 
@@ -169,12 +155,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         [Test]
         public void PolygonOutline_AppliesTheOffset()
         {
-            var verts = new[]
-            {
-                new float2(0f, 0f),
-                new float2(1f, 0f),
-                new float2(0f, 1f),
-            };
+            var verts = new[] { new float2(0f, 0f), new float2(1f, 0f), new float2(0f, 1f) };
             var pts = PhysicsShape2DGizmos.PolygonOutline(verts, new float2(10f, 5f));
             Assert.IsTrue(Approx(pts[0], new float2(10f, 5f)));
             Assert.IsTrue(Approx(pts[1], new float2(11f, 5f)));

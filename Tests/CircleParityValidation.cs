@@ -49,13 +49,7 @@ namespace Zori.Entities.Physics2D.Tests
                 minTravelMeters = 0.5f,
             };
 
-            yield return PhysicsParityHarness.RunParity(
-                ParentSceneName,
-                ChildSceneName,
-                Dt,
-                Steps,
-                envelope
-            );
+            yield return PhysicsParityHarness.RunParity(ParentSceneName, ChildSceneName, Dt, Steps, envelope);
         }
     }
 }

@@ -14,7 +14,7 @@ namespace Zori.Entities.Physics2D.Samples.Tests
     /// The mara-side local verification of the Box Collider Creation Benchmark sample (which ships in the package's
     /// <c>Samples~/BoxColliderBenchmark</c> and whose C# is the compiled copy in
     /// <c>Assets/EntitiesPhysics2DBenchmark/</c>). It is the dev/test fixture for the sample, the way
-    /// <c>Assets/EntitiesPhysics2DFixture/</c> verifies CustomAuthoring2D — but a PlayMode test rather than an
+    /// <c>Assets/EntitiesPhysics2DFixture/</c> holds the authored bake fixtures — but a PlayMode test rather than an
     /// authored scene, because the load-bearing facts to verify are programmatic: the spray spawns, each quad
     /// instance gains the Unity.Entities.Graphics render components + a valid <see cref="LocalToWorld"/> (so it is
     /// renderable off the physics write-back), the dedup on/off toggle takes effect (the cache engages past the
@@ -42,21 +42,13 @@ namespace Zori.Entities.Physics2D.Samples.Tests
             fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
             fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>()
-            );
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<BodyCreationTimingBeginSystem>()
-            );
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<BodyCreationTimingEndSystem>()
-            );
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<BodyCreationTimingBeginSystem>());
+            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<BodyCreationTimingEndSystem>());
             fixedGroup.SortSystems();
 
             var initGroup = world.GetOrCreateSystemManaged<InitializationSystemGroup>();
-            initGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystemManaged<BoxColliderBenchmarkSpawnerSystem>()
-            );
+            initGroup.AddSystemToUpdateList(world.GetOrCreateSystemManaged<BoxColliderBenchmarkSpawnerSystem>());
             initGroup.SortSystems();
             initGroupHandle = initGroup.SystemHandle;
 
@@ -143,19 +135,11 @@ namespace Zori.Entities.Physics2D.Samples.Tests
                 ComponentType.ReadOnly<MaterialMeshInfo>(),
                 ComponentType.ReadOnly<RenderMeshArray>()
             );
-            Assert.AreEqual(
-                Count,
-                sharedRMA.CalculateEntityCount(),
-                "every instance should share the RenderMeshArray"
-            );
+            Assert.AreEqual(Count, sharedRMA.CalculateEntityCount(), "every instance should share the RenderMeshArray");
 
             // The LocalToWorld the renderer reads is the physics pose — finite, and moved by gravity from the spawn
             // band (bodies have fallen), confirming the write-back drives the transform the renderer consumes.
-            using (
-                var l2ws = renderableQuery.ToComponentDataArray<LocalToWorld>(
-                    Unity.Collections.Allocator.Temp
-                )
-            )
+            using (var l2ws = renderableQuery.ToComponentDataArray<LocalToWorld>(Unity.Collections.Allocator.Temp))
             {
                 for (var i = 0; i < l2ws.Length; i++)
                 {

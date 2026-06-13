@@ -133,10 +133,7 @@ namespace Zori.Entities.Physics2D.Authoring
             var localCenter = (min2 + max2) * 0.5f;
             // rotate the local-frame centre back by +angle
             sincos(angle, out var s2, out var c2);
-            var center = new float2(
-                c2 * localCenter.x - s2 * localCenter.y,
-                s2 * localCenter.x + c2 * localCenter.y
-            );
+            var center = new float2(c2 * localCenter.x - s2 * localCenter.y, s2 * localCenter.x + c2 * localCenter.y);
             return new BoxFit(center, max2 - min2, degrees(angle));
         }
 
@@ -279,10 +276,7 @@ namespace Zori.Entities.Physics2D.Authoring
             var sorted = new float2[n];
             for (var i = 0; i < n; i++)
                 sorted[i] = points[i];
-            System.Array.Sort(
-                sorted,
-                (a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y)
-            );
+            System.Array.Sort(sorted, (a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
 
             var hull = new float2[2 * n];
             var k = 0;
@@ -444,10 +438,7 @@ namespace Zori.Entities.Physics2D.Authoring
         /// into <paramref name="cloud"/> — the deliberately-coarse "fit to the sprite rectangle" source, the 2D
         /// analogue of the 3D sample's hierarchy AABB. Returns false when no sprite is assigned.
         /// </summary>
-        public static bool TryGatherSpriteRendererBounds(
-            SpriteRenderer renderer,
-            List<float2> cloud
-        )
+        public static bool TryGatherSpriteRendererBounds(SpriteRenderer renderer, List<float2> cloud)
         {
             if (renderer == null || renderer.sprite == null || cloud == null)
                 return false;
@@ -461,11 +452,7 @@ namespace Zori.Entities.Physics2D.Authoring
         /// <paramref name="cloud"/> and report the collider's own <paramref name="offset"/>. Returns false for a
         /// null collider or an empty result.
         /// </summary>
-        public static bool TryGatherPolygonCollider(
-            PolygonCollider2D collider,
-            List<float2> cloud,
-            out float2 offset
-        )
+        public static bool TryGatherPolygonCollider(PolygonCollider2D collider, List<float2> cloud, out float2 offset)
         {
             offset = Unity.Mathematics.float2.zero;
             if (collider == null || cloud == null)
@@ -484,15 +471,10 @@ namespace Zori.Entities.Physics2D.Authoring
 
         /// <summary>Gather a <see cref="Sprite"/>'s physics shape and fit <paramref name="kind"/> onto
         /// <paramref name="target"/>. Returns false (no change) when the sprite yields no points.</summary>
-        public static bool FitToSprite(
-            PhysicsShape2DAuthoring target,
-            Sprite sprite,
-            PhysicsShape2DKind kind
-        )
+        public static bool FitToSprite(PhysicsShape2DAuthoring target, Sprite sprite, PhysicsShape2DKind kind)
         {
             var cloud = new List<float2>(64);
-            return TryGatherSpriteShape(sprite, cloud)
-                && FitTo(target, cloud, kind, Unity.Mathematics.float2.zero);
+            return TryGatherSpriteShape(sprite, cloud) && FitTo(target, cloud, kind, Unity.Mathematics.float2.zero);
         }
 
         /// <summary>Gather a <see cref="SpriteRenderer"/>'s sprite bounds and fit <paramref name="kind"/> onto
@@ -518,8 +500,7 @@ namespace Zori.Entities.Physics2D.Authoring
         )
         {
             var cloud = new List<float2>(64);
-            return TryGatherPolygonCollider(collider, cloud, out var offset)
-                && FitTo(target, cloud, kind, offset);
+            return TryGatherPolygonCollider(collider, cloud, out var offset) && FitTo(target, cloud, kind, offset);
         }
 
         // ----- helpers -----
@@ -564,11 +545,9 @@ namespace Zori.Entities.Physics2D.Authoring
         }
 
         /// <summary>z of the cross product (b−a)×(c−a); &gt; 0 is a CCW (left) turn.</summary>
-        static float Cross(float2 a, float2 b, float2 c) =>
-            (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        static float Cross(float2 a, float2 b, float2 c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 
-        static bool InCircle(float2 p, float2 center, float radius) =>
-            lengthsq(p - center) <= radius * radius + 1e-6f;
+        static bool InCircle(float2 p, float2 center, float radius) => lengthsq(p - center) <= radius * radius + 1e-6f;
 
         static void Circumcircle(float2 a, float2 b, float2 c, out float2 center, out float radius)
         {

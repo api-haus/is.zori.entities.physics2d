@@ -12,9 +12,10 @@ namespace Zori.Entities.Physics2D
     /// exactly one <c>Simulate(dt)</c> for the bodies already live, THEN creates a Box2D body+shape for each
     /// baked entity that does not yet have one — so a body never integrates on the frame it is created (it
     /// joins the simulation on the next step) while the existing population keeps stepping on a frame that
-    /// also creates new bodies. Lives in <see cref="FixedStepSimulationSystemGroup"/> so the step runs at the
-    /// group's fixed timestep with the catch-up manager sub-stepping to wall-clock — deterministic, framerate
-    /// independent, no bespoke sub-stepping.
+    /// also creates new bodies. Lives in <see cref="Physics2DSimulationSystemGroup"/>, itself in
+    /// <see cref="FixedStepSimulationSystemGroup"/>, so the step runs at the group's fixed timestep with the
+    /// catch-up manager sub-stepping to wall-clock — deterministic, framerate independent, no bespoke
+    /// sub-stepping.
     /// </summary>
     /// <remarks>
     /// Not <c>[BurstCompile]</c>: the world/body calls are managed <c>Unity.U2D.Physics</c> instance
@@ -32,7 +33,7 @@ namespace Zori.Entities.Physics2D
     /// surface is source-generated against the system instance and is not available from a static helper,
     /// so the body/shape creation stays in the system method rather than a factored-out function.
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     public partial struct PhysicsWorld2DSystem : ISystem
     {
         // The cross-frame cached body-template store, keyed by the baked PhysicsBody2DFormHash. An entry is built
@@ -318,8 +319,8 @@ namespace Zori.Entities.Physics2D
 
         // Drain the same-frame collapse buckets. For each form with K >= 2 members that arrived this frame, issue one
         // CreateBodyBatch from the cached body def, attach the K cached shapes, apply the K cached masses, and one
-        // SetBatchTransform writing the K individual poses — the inner routine factored from the removed batch
-        // creation system. A lone member (K == 1) takes the plain template path (a 1-body batch buys nothing). Every
+        // SetBatchTransform writing the K individual poses. A lone member (K == 1) takes the plain template path (a
+        // 1-body batch buys nothing). Every
         // created body gets the same ECS components through the shared ECB. The K bodies are bit-identical to K
         // per-entity bodies; only the native body-CREATION call count is collapsed (the K CreateShape calls remain).
         void DrainSameFrameCollapse(
@@ -370,9 +371,9 @@ namespace Zori.Entities.Physics2D
 
         // One CreateBodyBatch for the K same-frame members of an isBuilt form: one native body-creation call for all
         // K bodies from the shared cached def, then the K cached-shape attachments, the K cached-mass applies, one
-        // SetBatchTransform writing each member's individual pose, and the per-body userData + ECS components. This
-        // is the inner routine of the removed PhysicsBody2DBatchCreationSystem, now fed by the cached template and
-        // attaching to the already-instantiated entities (not fresh em.CreateEntity ones).
+        // SetBatchTransform writing each member's individual pose, and the per-body userData + ECS components. The
+        // batch is fed by the cached template and attaches to the already-instantiated entities (not fresh
+        // em.CreateEntity ones).
         void CreateBodyBatchInto(
             PhysicsWorld world,
             ref EntityCommandBuffer ecb,
@@ -404,11 +405,7 @@ namespace Zori.Entities.Physics2D
                 }
 
                 var rot = PhysicsRotate.FromRadians(p.rotationRadians);
-                transforms[i] = new PhysicsBody.BatchTransform(body)
-                {
-                    position = (Vector2)p.position,
-                    rotation = rot,
-                };
+                transforms[i] = new PhysicsBody.BatchTransform(body) { position = (Vector2)p.position, rotation = rot };
                 AddPhysicalBodyComponentsFromTemplate(ref ecb, in t, p, body);
             }
 
@@ -457,9 +454,9 @@ namespace Zori.Entities.Physics2D
         // A new PhysicsWorld is always invalid until created; this is also the recreation path when the
         // engine's 2D physics module is reset (PlayMode enter / scene load) under it — see remarks.
         //
-        // Backward-compatible config fallback: with no PhysicsWorld2DConfig (no PhysicsStep2DAuthoring in the
-        // scene) the world is built straight from PhysicsWorldDefinition.defaultDefinition — the exact world
-        // shipped before this config surface existed. A config (baked from PhysicsStep2DAuthoring) overrides
+        // Config fallback: with no PhysicsWorld2DConfig (no PhysicsStep2DAuthoring in the scene) the world is
+        // built straight from PhysicsWorldDefinition.defaultDefinition. A config (baked from
+        // PhysicsStep2DAuthoring) overrides
         // ONLY the fields it carries; defaultDefinition supplies the rest. simulationType is overwritten to
         // Script in either case: the package owns stepping via the explicit Simulate(dt) below, and Script is
         // the mode where the engine does not also auto-step (defaultDefinition.simulateType is FixedUpdate, so
@@ -490,16 +487,10 @@ namespace Zori.Entities.Physics2D
             return world;
         }
 
-        // The contacts row to bake into a categorized shape's Box2D ContactFilter so its query-visibility does
-        // not depend on its collision-matrix row. Box2D's query-vs-shape match is bidirectional and ANDs
-        // (shape.categories & query.hitCategories) with (shape.contacts & query.categories); the query surface
-        // sets query.categories = All, so a shape with contacts = 0 fails the second clause and is invisible to
-        // EVERY query — even the documented "mask 0 = hit everything" path. A shape on a dedicated layer whose 2D
-        // collision-matrix row is fully unchecked (GetLayerCollisionMask(layer) = 0, e.g. a non-blocking rope
-        // anchor / detection marker) bakes contactBits = 0 and so was unqueryable. Substituting the shape's own
-        // categoryBits when the authored row is empty keeps it colliding with nothing on every OTHER category
-        // (the real collision surfaces) while restoring (contacts & All) != 0 so a category query finds it. A
-        // non-empty authored row passes through unchanged, so a shape that already collides is untouched.
+        // The contacts row to bake into a categorized shape's Box2D ContactFilter so its query-visibility does not
+        // depend on its collision-matrix row: an empty authored row is substituted with the shape's own categoryBits.
+        // Rationale (Box2D's bidirectional-AND query match, the rope-anchor / detection-marker case):
+        // Documentation~/parity-matrix.md "Query visibility of a shape whose collision-matrix row is empty".
         static ulong QueryVisibleContacts(in PhysicsShape2D sh)
         {
             return sh.contactBits != 0ul ? sh.contactBits : sh.categoryBits;
@@ -549,11 +540,7 @@ namespace Zori.Entities.Physics2D
                             allocator: Allocator.Temp
                         );
                         if (fragments.Length > 0)
-                            body.CreateShapeBatch(
-                                fragments.AsReadOnlySpan(),
-                                shapeDef,
-                                Allocator.Temp
-                            );
+                            body.CreateShapeBatch(fragments.AsReadOnlySpan(), shapeDef, Allocator.Temp);
                         if (fragments.IsCreated)
                             fragments.Dispose();
                     }
@@ -637,16 +624,14 @@ namespace Zori.Entities.Physics2D
                 shapeDef.contactFilter = filter;
             }
 
-            // Trigger (sensor) + event reporting. Collider2D.isTrigger → PhysicsShapeDefinition.isTrigger: a
-            // sensor overlaps without a collision response (XML P:…PhysicsShapeDefinition.isTrigger). Contact and
-            // trigger events are enabled on EVERY shape so every package pair is event-eligible, matching the
-            // GameObject's always-on Enter/Stay/Exit (no per-collider opt-in): a contact event fires if EITHER
-            // shape has contactEvents (:11609), a trigger event fires only if BOTH have triggerEvents (:11718),
-            // so unconditional-true on both satisfies both rules. startStaticContacts forces a Static body's
-            // shape to create contacts at add time (implicitly already true for Trigger/Dynamic/Kinematic,
-            // :11699) so a dynamic body landing on a static floor fires a contact-begin. The flags are set on the
-            // definition, not post-creation: the XML warns a runtime flag change is expensive and may lose
-            // begin/end events (:10061, :11615).
+            // Trigger (sensor) + event reporting (isTrigger → a sensor overlaps without a collision response).
+            // Contact and trigger events are enabled on EVERY shape so every pair is event-eligible, matching
+            // GameObject's always-on Enter/Stay/Exit (parity-matrix.md): a contact event fires if EITHER shape
+            // has contactEvents (:11609), a trigger event only if BOTH have triggerEvents (:11718), so true on
+            // both satisfies both rules. startStaticContacts forces a Static shape to create contacts at add
+            // time (already implicit for Trigger/Dynamic/Kinematic, :11699) so a body landing on a static floor
+            // fires a contact-begin. Set on the definition because a post-creation flag change is expensive and
+            // may drop begin/end events (:10061, :11615).
             shapeDef.isTrigger = sh.isTrigger;
             shapeDef.contactEvents = true;
             shapeDef.triggerEvents = true;
@@ -667,10 +652,7 @@ namespace Zori.Entities.Physics2D
             PolygonGeometry.CreateBox(
                 size: (Vector2)sh.size,
                 radius: sh.radius,
-                transform: new PhysicsTransform(
-                    (Vector2)sh.offset,
-                    PhysicsRotate.FromRadians(sh.boxAngleRadians)
-                ),
+                transform: new PhysicsTransform((Vector2)sh.offset, PhysicsRotate.FromRadians(sh.boxAngleRadians)),
                 inscribe: false
             );
 
@@ -687,10 +669,7 @@ namespace Zori.Entities.Physics2D
         // via a PhysicsTransform. The PolygonGeometry has a fixed maximum vertex count, so the returned value is
         // self-contained (no NativeArray) and is the cached value. The caller owns the span; CreateShape copies the
         // vertices into the geometry's inline storage.
-        static PolygonGeometry BuildPolygonGeometry(
-            in PhysicsShape2D sh,
-            NativeArray<Vector2> span
-        ) =>
+        static PolygonGeometry BuildPolygonGeometry(in PhysicsShape2D sh, NativeArray<Vector2> span) =>
             PolygonGeometry.Create(
                 vertices: span.AsReadOnlySpan(),
                 radius: sh.radius,
@@ -714,30 +693,14 @@ namespace Zori.Entities.Physics2D
         // The built-in Rigidbody2D default mass, used to recognise "the author did not set a custom mass".
         const float DefaultRigidbody2DMass = 1f;
 
-        // Resolve a dynamic body's mass after its shapes exist, mirroring Rigidbody2D's mass / useAutoMass.
-        // After CreateShape, Box2D has already computed a density-derived MassConfiguration from the attached
-        // shapes (XML: the MassConfiguration is recomputed whenever a shape is added). The guiding rule is to
-        // touch massConfiguration as LITTLE as possible: a measured side effect of explicitly assigning it is
-        // that the v3 sub-stepping solver's free-fall integration shifts relative to the v2 GameObject
-        // reference (the cross-solver convention offset roughly 2.6×es, from ~1.7e-3 to ~4.4e-3 m/step on a
-        // free-falling circle), independent of the mass value. So every body that does NOT need a custom mass
-        // is left on its auto-computed mass — that keeps the falling-body and collider fixtures on the tight
-        // free-fall band they are calibrated to. Cases:
-        //   - useAutoMass true: keep the density-derived mass (Rigidbody2D.useAutoMass) — except a chain
-        //     (EdgeCollider2D) is a non-solid surface contributing NO mass, so a dynamic chain-only body lands
-        //     at mass 0 and never integrates; floor it to a unit MassConfiguration (a built-in Rigidbody2D
-        //     defaults to mass 1 regardless of collider). This is the Phase-1A chain-only mass floor, now
-        //     folded into the mass feature.
-        //   - useAutoMass false, default mass on a solid body that already has positive auto mass: a no-op.
-        //     The body falls correctly on either mass, so the assignment is skipped to avoid the solver
-        //     perturbation — this is what keeps the default-mass fixtures (Circle, all 1A shapes) green.
-        //   - useAutoMass false, custom mass (or a body with no auto mass, e.g. a chain): apply the explicit
-        //     Rigidbody2D.mass via massConfiguration, scaling the rotational inertia by mass/oldMass so spin
-        //     stays consistent. Scenes that set a custom mass carry a band wide enough for the perturbed slope.
-        // Non-dynamic bodies (Static/Kinematic) ignore mass entirely. Implemented as a pure RESOLVE (read the
-        // body's shape-derived mass, decide whether and what to write) followed by an APPLY, so the cached-template
-        // path can capture the resolution from the donor body and replay the identical write on every later body of
-        // the form — making a template-path body bit-identical to a per-entity-path one.
+        // Resolve a dynamic body's mass after its shapes exist (per-case contract: bake-contract.md "Mass floor
+        // for chain-only dynamic bodies" + the custom OverrideMassDistribution row). The load-bearing rule is to
+        // touch massConfiguration as LITTLE as possible: explicitly assigning it shifts the v3 sub-stepping
+        // solver's free-fall integration relative to the v2 GameObject reference (the cross-solver convention
+        // offset roughly 2.6×es, ~1.7e-3 to ~4.4e-3 m/step on a free-falling circle) independent of the mass
+        // value, so any body that needs no custom mass keeps its auto-computed mass and stays on the tight
+        // free-fall band the falling-body / collider fixtures are calibrated to. Split into a pure RESOLVE
+        // followed by an APPLY so the cached-template path replays the donor's write bit-identically.
         static void ApplyMass(PhysicsBody body, in PhysicsBody2DDefinition d) =>
             ApplyResolvedMass(body, ResolveMass(body, in d));
 
@@ -820,21 +783,15 @@ namespace Zori.Entities.Physics2D
             // survive the scene-load / PlayMode-enter boundary that resets the 2D physics module, so the
             // world is owned here lazily rather than at OnCreate.
             // Resolve the optional simulation config baked from a PhysicsStep2DAuthoring. Absent → the
-            // backward-compatible defaultDefinition path; present → it overrides the world params at creation.
+            // defaultDefinition path; present → it overrides the world params at creation.
             // Resolved fresh here (not cached) so a world recreated after a physics-module reset re-reads the
             // current config. TryGetSingleton throws on more than one config, surfacing the single-world
             // "one PhysicsStep2D per world" rule loudly rather than silently picking one.
-            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(
-                out var cfg
-            )
-                ? cfg
-                : null;
+            PhysicsWorld2DConfig? config = SystemAPI.TryGetSingleton<PhysicsWorld2DConfig>(out var cfg) ? cfg : null;
 
             if (!SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton))
             {
-                state.EntityManager.CreateSingleton(
-                    new PhysicsWorldSingleton2D { world = CreateWorld(config) }
-                );
+                state.EntityManager.CreateSingleton(new PhysicsWorldSingleton2D { world = CreateWorld(config) });
                 // The per-frame event streams ride the singleton entity: two DynamicBuffers cleared and refilled
                 // each step from the post-Simulate event spans (below). Added once at creation; they survive a
                 // world recreate (only the PhysicsWorld handle is reset on a module reset, not the entity).
@@ -859,20 +816,7 @@ namespace Zori.Entities.Physics2D
             if (!world.isValid)
                 return;
 
-            // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle. Three paths,
-            // chosen per entity by the cached-template optimisation (PhysicsWorld2DConfig.cacheIdenticalBodies):
-            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
-            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
-            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
-            //     definition/geometry/mass instead of re-constructing them;
-            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
-            //     CreateBodyBatch instead of K CreateBody calls (the inner routine factored from the removed batch
-            //     creation system). A 1/frame cross-frame spray gets K = 1 and the plain template path.
-            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
-            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
-            // so the new bodies are live for the next step. Whatever path created a body, the RESULT is identical —
-            // a cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
-            // body), which is what keeps the optimisation transparent.
+            // Bodies for newly-baked entities are created AFTER the step below, not here — see the creation loop.
             var cacheEnabled = config.HasValue
                 ? config.Value.cacheIdenticalBodies
                 : PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
@@ -883,10 +827,7 @@ namespace Zori.Entities.Physics2D
                     : PhysicsWorld2DConfig.Default.identicalBodyThreshold
             );
             if (cacheEnabled && !m_Templates.IsCreated)
-                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(
-                    16,
-                    Allocator.Persistent
-                );
+                m_Templates = new NativeHashMap<uint4, CachedBodyTemplate>(16, Allocator.Persistent);
 
             // The per-frame event buffers on the singleton entity. Cleared every frame and refilled below from the
             // post-Simulate spans, so they always reflect exactly this step's events.
@@ -902,18 +843,16 @@ namespace Zori.Entities.Physics2D
             // step, so they first integrate on the NEXT update. This preserves the spawn-frame-no-step rule per BODY
             // (a body never advances on the frame it is created — it sits at its authored pose until the next step),
             // while letting the world keep stepping the existing population on a frame that ALSO creates new bodies.
-            // The previous form gated the whole step on "no body was created this frame" (if (!createdAny)), which
-            // froze every body for the entire duration of a cross-frame spray (the spawner creates each frame, so no
-            // frame ever stepped until the spray ended) — the deferred-simulation bug. The parity harness lockstep
-            // still holds: its first group Update has no live body to step (the step is a no-op) and then creates
-            // all bodies; each later Update steps the now-live population exactly once before creating nothing, so
-            // capture s still reflects (s + 1) integrations, matched against the reference's per-loop Simulate.
+            // The parity harness lockstep still holds: its first group Update has no live body to step (the step is a
+            // no-op) and then creates all bodies; each later Update steps the now-live population exactly once before
+            // creating nothing, so capture s still reflects (s + 1) integrations, matched against the reference's
+            // per-loop Simulate.
             {
                 var dt = SystemAPI.Time.DeltaTime;
 
                 // Drain every body entity's runtime write-in command buffer onto its Box2D body BEFORE the step,
-                // then clear the buffer. This is the runtime force/impulse/torque/velocity/MovePosition surface
-                // (Phase 7): the user appends commands via PhysicsBody2DCommands; the apply happens here, on the
+                // then clear the buffer. This is the runtime force/impulse/torque/velocity/MovePosition surface:
+                // the user appends commands via PhysicsBody2DCommands; the apply happens here, on the
                 // step frame, immediately before Simulate, so a continuous Force command is integrated by Box2D
                 // during the step (and N such commands sum through Box2D's own force accumulator the way repeated
                 // Rigidbody2D.AddForce calls sum within one FixedUpdate), an Impulse command's velocity delta is
@@ -928,9 +867,7 @@ namespace Zori.Entities.Physics2D
                 // smoothing system) — a per-entity component the body handle alone cannot reach. The lookup is
                 // grabbed once here and indexed per command, so a body with no smoothing component (interpolation
                 // None) is a cheap HasComponent miss and the command is a no-op for it.
-                var smoothingLookup = SystemAPI.GetComponentLookup<PhysicsBody2DSmoothing>(
-                    isReadOnly: false
-                );
+                var smoothingLookup = SystemAPI.GetComponentLookup<PhysicsBody2DSmoothing>(isReadOnly: false);
                 foreach (
                     var (bodyRO, commands, entity) in SystemAPI
                         .Query<RefRO<PhysicsBody2D>, DynamicBuffer<PhysicsBody2DCommand>>()
@@ -953,7 +890,7 @@ namespace Zori.Entities.Physics2D
                     commands.Clear();
                 }
 
-                // Force-field effectors (Phase 10a): Area / Buoyancy / Point. Each effector entity carries a
+                // Force-field effectors: Area / Buoyancy / Point. Each effector entity carries a
                 // baked PhysicsEffector2D definition alongside its sensor PhysicsShape2D (its trigger collider
                 // region) and a static body. Here, BEFORE Simulate (the same pre-step force-accumulation window
                 // the command drain above uses), each effector overlap-queries its region for the dynamic bodies
@@ -967,11 +904,7 @@ namespace Zori.Entities.Physics2D
                 var bodyLookup = SystemAPI.GetComponentLookup<PhysicsBody2D>(isReadOnly: true);
                 foreach (
                     var (effBodyRO, effRO, effShapeRO, effEntity) in SystemAPI
-                        .Query<
-                            RefRO<PhysicsBody2D>,
-                            RefRO<PhysicsEffector2D>,
-                            RefRO<PhysicsShape2D>
-                        >()
+                        .Query<RefRO<PhysicsBody2D>, RefRO<PhysicsEffector2D>, RefRO<PhysicsShape2D>>()
                         .WithEntityAccess()
                 )
                 {
@@ -1003,38 +936,24 @@ namespace Zori.Entities.Physics2D
                 CollectEvents(world, contactEvents, triggerEvents);
                 // Resolve each break's owner entity and its baked action. The definition lookup only READS ECS
                 // data (it does not mutate the Box2D world), so it is safe inside the volatile-span loop.
-                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(
-                    isReadOnly: true
-                );
+                var jointDefLookup = SystemAPI.GetComponentLookup<PhysicsJoint2DDefinition>(isReadOnly: true);
                 CollectJointBreaks(world, jointBreakEvents, jointDefLookup);
 
                 // Record this step's time so PhysicsBody2DSmoothingSystem (render rate) can compute how far the
                 // render time is ahead of the last physics step. ElapsedTime/DeltaTime here are the fixed
-                // group's clock (this system runs in FixedStepSimulationSystemGroup).
+                // group's clock — the sub-group inherits FixedStepSimulationSystemGroup's rate manager.
                 SystemAPI.SetSingleton(
-                    new PhysicsFixedStepTime2D
-                    {
-                        elapsedTime = SystemAPI.Time.ElapsedTime,
-                        deltaTime = dt,
-                    }
+                    new PhysicsFixedStepTime2D { elapsedTime = SystemAPI.Time.ElapsedTime, deltaTime = dt }
                 );
             }
 
             // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle, AFTER the step
-            // above. Three paths, chosen per entity by the cached-template optimisation
-            // (PhysicsWorld2DConfig.cacheIdenticalBodies):
-            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
-            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
-            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
-            //     definition/geometry/mass instead of re-constructing them;
-            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
-            //     CreateBodyBatch instead of K CreateBody calls (the inner routine factored from the removed batch
-            //     creation system). A 1/frame cross-frame spray gets K = 1 and the plain template path.
-            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
-            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
-            // so the new bodies are live for the NEXT step (the step above already ran for this frame). Whatever path
-            // created a body, the RESULT is identical — a cached-template body is bit-identical to a per-entity one
-            // (same definition + same shape → same Box2D body), which is what keeps the optimisation transparent.
+            // above — so a body never advances on its spawn frame and first integrates on the NEXT update. One of
+            // three per-entity paths runs (each commented at its own arm below): the per-entity path, the cached-
+            // template replay, and the same-frame CreateBodyBatch collapse. The result is path-independent — a
+            // cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
+            // body), which is what keeps the cacheIdenticalBodies optimisation transparent. Component adds go
+            // through one ECB played back immediately, so the new bodies are live for that next step.
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // Same-frame buckets: per form-hash, the entities of an isBuilt form that arrived this frame and are
@@ -1053,18 +972,14 @@ namespace Zori.Entities.Physics2D
                 var sh = shapeRO.ValueRO;
 
                 var hasVelocity = SystemAPI.HasComponent<PhysicsBody2DInitialVelocity>(entity);
-                var velocity = hasVelocity
-                    ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity)
-                    : default;
+                var velocity = hasVelocity ? SystemAPI.GetComponent<PhysicsBody2DInitialVelocity>(entity) : default;
                 var hasExtraShapes = SystemAPI.HasBuffer<PhysicsShape2DElement>(entity);
-                var extra = hasExtraShapes
-                    ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity)
-                    : default;
+                var extra = hasExtraShapes ? SystemAPI.GetBuffer<PhysicsShape2DElement>(entity) : default;
 
                 // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
                 // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
                 // Edge's chain geometry and a decompose polygon are NOT cacheable, multi-shape is excluded). Anything
-                // failing this falls to the unchanged per-entity path, exactly as before this optimisation existed.
+                // failing this falls to the unchanged per-entity path.
                 var geometry = default(GeometryUnion);
                 var eligible =
                     cacheEnabled
@@ -1074,15 +989,7 @@ namespace Zori.Entities.Physics2D
 
                 if (!eligible)
                 {
-                    var bodyA = CreatePerEntityBody(
-                        world,
-                        entity,
-                        in d,
-                        in sh,
-                        hasVelocity,
-                        in velocity,
-                        extra
-                    );
+                    var bodyA = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
                     AddPhysicalBodyComponents(ref ecb, entity, in d, bodyA);
                     continue;
                 }
@@ -1098,10 +1005,7 @@ namespace Zori.Entities.Physics2D
                     // K == 1). The template stays in the map; only the counter advanced.
                     m_Templates[hash] = tmpl;
                     if (!collapse.IsCreated)
-                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(
-                            64,
-                            Allocator.Temp
-                        );
+                        collapse = new NativeParallelMultiHashMap<uint4, PendingInit>(64, Allocator.Temp);
                     collapse.Add(
                         hash,
                         new PendingInit
@@ -1118,15 +1022,7 @@ namespace Zori.Entities.Physics2D
 
                 // Below or crossing the threshold. Create this body through the unchanged per-entity path (its
                 // result is the donor for the template), and on the crossing build the template from it.
-                var body = CreatePerEntityBody(
-                    world,
-                    entity,
-                    in d,
-                    in sh,
-                    hasVelocity,
-                    in velocity,
-                    extra
-                );
+                var body = CreatePerEntityBody(world, entity, in d, in sh, hasVelocity, in velocity, extra);
                 AddPhysicalBodyComponents(ref ecb, entity, in d, body);
 
                 if (tmpl.seenCount >= threshold)
@@ -1193,10 +1089,7 @@ namespace Zori.Entities.Physics2D
                     body.awake = true;
                     break;
                 case PhysicsBody2DCommandKind.MovePosition:
-                    body.SetTransformTarget(
-                        new PhysicsTransform((Vector2)cmd.linear, body.rotation),
-                        dt
-                    );
+                    body.SetTransformTarget(new PhysicsTransform((Vector2)cmd.linear, body.rotation), dt);
                     break;
                 case PhysicsBody2DCommandKind.MoveRotation:
                     body.SetTransformTarget(
@@ -1206,10 +1099,7 @@ namespace Zori.Entities.Physics2D
                     break;
                 case PhysicsBody2DCommandKind.MovePositionAndRotation:
                     body.SetTransformTarget(
-                        new PhysicsTransform(
-                            (Vector2)cmd.linear,
-                            PhysicsRotate.FromRadians(cmd.angular)
-                        ),
+                        new PhysicsTransform((Vector2)cmd.linear, PhysicsRotate.FromRadians(cmd.angular)),
                         dt
                     );
                     break;
@@ -1291,13 +1181,8 @@ namespace Zori.Entities.Physics2D
                 return;
             }
 
-            // Platform is a one-way gate on a SOLID collider: it applies no force to bodies; it classifies each
-            // nearby body (blocking vs passing) against the surface arc and toggles its OWN body's participation so
-            // a body inside the arc rests on it while a body outside it passes through (an approximation — the
-            // faithful per-contact pre-solve veto is unreachable; see the Phase-10b design's negative space). It
-            // owns its own EXPANDED region query: a fast body's collision contact forms a step before the tight
-            // shape overlap reports it, so an approaching body must be detected a margin out to disable the
-            // platform BEFORE the solver forms the contact that would stop it.
+            // Platform is a one-way gate on a SOLID collider: it applies no force, it toggles its own body's
+            // participation by the surface arc (see ApplyPlatformOneWay).
             if (eff.kind == PhysicsEffector2DKind.Platform)
             {
                 ApplyPlatformOneWay(
@@ -1324,26 +1209,13 @@ namespace Zori.Entities.Physics2D
                 case PhysicsShape2DKind.Circle:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapCircle(
-                        world,
-                        center,
-                        effShape.radius,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapCircle(world, center, effShape.radius, eff.colliderMask, hits);
                     break;
                 }
                 case PhysicsShape2DKind.Box:
                 {
                     var center = bodyPos + Rotate(effShape.offset, bodyRot.cos, bodyRot.sin);
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        center,
-                        effShape.size,
-                        bodyAngle,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, center, effShape.size, bodyAngle, eff.colliderMask, hits);
                     break;
                 }
                 default:
@@ -1351,14 +1223,7 @@ namespace Zori.Entities.Physics2D
                     var aabb = effectorBody.GetAABB();
                     var lo = (float2)(Vector2)aabb.lowerBound;
                     var hi = (float2)(Vector2)aabb.upperBound;
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        (lo + hi) * 0.5f,
-                        hi - lo,
-                        0f,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, (lo + hi) * 0.5f, hi - lo, 0f, eff.colliderMask, hits);
                     break;
                 }
             }
@@ -1403,10 +1268,7 @@ namespace Zori.Entities.Physics2D
         // body, may add torque off-centre). Applied as a continuous force the upcoming Simulate integrates.
         static void ApplyAreaForce(PhysicsBody body, in PhysicsEffector2D eff, float effectorAngle)
         {
-            var angle =
-                eff.useGlobalAngle != 0
-                    ? eff.forceAngleRadians
-                    : eff.forceAngleRadians + effectorAngle;
+            var angle = eff.useGlobalAngle != 0 ? eff.forceAngleRadians : eff.forceAngleRadians + effectorAngle;
             sincos(angle, out var s, out var c);
             var f = new float2(c, s) * (eff.forceMagnitude + Variation(eff.forceVariation));
             if (eff.forceTargetIsRigidbody != 0)
@@ -1440,8 +1302,7 @@ namespace Zori.Entities.Physics2D
             if (eff.flowMagnitude != 0f || eff.flowVariation != 0f)
             {
                 sincos(eff.flowAngleRadians, out var fs, out var fc);
-                var flow =
-                    new float2(fc, fs) * ((eff.flowMagnitude + Variation(eff.flowVariation)) * f);
+                var flow = new float2(fc, fs) * ((eff.flowMagnitude + Variation(eff.flowVariation)) * f);
                 body.ApplyForceToCenter((Vector2)flow, true);
             }
 
@@ -1467,9 +1328,7 @@ namespace Zori.Entities.Physics2D
             else
             {
                 var rot = effectorBody.rotation;
-                source =
-                    (float2)(Vector2)effectorBody.position
-                    + Rotate(effShape.offset, rot.cos, rot.sin);
+                source = (float2)(Vector2)effectorBody.position + Rotate(effShape.offset, rot.cos, rot.sin);
             }
 
             var targetPos = (float2)(Vector2)body.worldCenterOfMass;
@@ -1495,19 +1354,17 @@ namespace Zori.Entities.Physics2D
             body.ApplyForceToCenter((Vector2)f, true);
         }
 
-        // Platform (one-way): gate the platform's OWN body participation so a body within the surface arc rests on
-        // it (solid) while a body outside the arc passes through (transparent). Box2D-v3's faithful per-contact
-        // pre-solve veto (IPreSolveCallback.OnPreSolve2D) is unreachable from the package's native-poll posture (it
-        // is callback-only, mid-step, any-thread, world-write-locked, managed-callbackTarget-per-shape), so this
-        // is a per-step WHOLE-BODY approximation: it is faithful for the single-interacting-body case (the example
-        // scenes drop one body at a time), with a documented gap for simultaneous mixed bodies (one above resting +
-        // one below passing) — see the Phase-10b design's negative space. The platform applies NO force to bodies.
-        // The margin (metres) the platform region is grown by for the one-way detection query. A fast body's
-        // collision contact forms a step before the tight platform-shape overlap reports it, so an approaching
-        // body must be caught a margin out to disable the platform BEFORE the solver forms the stopping contact.
-        // ~2 m catches a body several steps out at typical speeds; larger only widens the detection zone.
+        // The margin (metres) the platform region is grown by for the detection query. A fast body's collision
+        // contact forms a step before the tight platform-shape overlap reports it, so an approaching body must be
+        // caught a margin out to disable the platform BEFORE the solver forms the stopping contact; larger only
+        // widens the detection zone.
         const float PlatformOneWayMargin = 2f;
 
+        // Platform (one-way): gate the platform's OWN body participation so a body within the surface arc rests on
+        // it (solid) while a body outside it passes through (transparent), applying no force. A per-step whole-body
+        // toggle, not Box2D-v3's per-contact pre-solve veto (unreachable from the native-poll posture), so it is a
+        // documented approximation faithful only for a single interacting body — parity-matrix.md "PlatformEffector2D
+        // multi-body one-way is NOT faithful".
         static void ApplyPlatformOneWay(
             PhysicsWorld world,
             PhysicsBody platformBody,
@@ -1534,9 +1391,7 @@ namespace Zori.Entities.Physics2D
             {
                 case PhysicsShape2DKind.Circle:
                 {
-                    var center =
-                        platformPos
-                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapCircle(
                         world,
                         center,
@@ -1548,9 +1403,7 @@ namespace Zori.Entities.Physics2D
                 }
                 case PhysicsShape2DKind.Box:
                 {
-                    var center =
-                        platformPos
-                        + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
+                    var center = platformPos + Rotate(effShape.offset, cos(platformAngle), sin(platformAngle));
                     PhysicsQueries2D.OverlapBox(
                         world,
                         center,
@@ -1566,14 +1419,7 @@ namespace Zori.Entities.Physics2D
                     var aabb = platformBody.GetAABB();
                     var lo = (float2)(Vector2)aabb.lowerBound - PlatformOneWayMargin;
                     var hi = (float2)(Vector2)aabb.upperBound + PlatformOneWayMargin;
-                    PhysicsQueries2D.OverlapBox(
-                        world,
-                        (lo + hi) * 0.5f,
-                        hi - lo,
-                        0f,
-                        eff.colliderMask,
-                        hits
-                    );
+                    PhysicsQueries2D.OverlapBox(world, (lo + hi) * 0.5f, hi - lo, 0f, eff.colliderMask, hits);
                     break;
                 }
             }
@@ -1621,7 +1467,7 @@ namespace Zori.Entities.Physics2D
         // Surface (conveyor): drive every dynamic body in CONTACT with the surface body tangentially toward the
         // belt speed, via a velocity-error linear impulse so the tangential velocity converges without overshoot.
         // Contacting bodies are discovered from the surface body's live contact list (PhysicsBody.GetContacts), the
-        // CURRENT touching set pre-Simulate (a body riding the belt persists in it every step) — not the Phase-6
+        // CURRENT touching set pre-Simulate (a body riding the belt persists in it every step) — not the
         // begin/end edge buffer, which would drive a riding body for only one step. The impulse is mass-scaled
         // (impulse ∝ mass) so every body reaches the same belt speed regardless of mass, matching the GameObject
         // "maintain a speed" semantics. Managed Unity.U2D.Physics calls on the main thread — not Burst.
@@ -1743,7 +1589,7 @@ namespace Zori.Entities.Physics2D
         }
 
         // Drain the four post-step event spans into the singleton's owned buffers, resolving every event shape
-        // back to its owning entity through the Phase-5 userData packing (shape.body.userData → Entity). Called
+        // back to its owning entity through the userData packing (shape.body.userData → Entity). Called
         // only right after Simulate, while the spans are valid. Managed Unity.U2D.Physics span reads on the main
         // thread — not Burst, like the rest of this system.
         static void CollectEvents(

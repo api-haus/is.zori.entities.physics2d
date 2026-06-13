@@ -73,8 +73,156 @@ namespace Zori.Entities.Physics2D.Tests
 
         const float Eps = 1e-5f;
 
+        // The four baked shapes, discovered once per test by LoadAndDiscoverShapes from the SubScene.
+        PhysicsShape2D m_TemplateCustom;
+        PhysicsShape2D m_TemplateBuiltIn;
+        PhysicsShape2D m_OverrideCustom;
+        PhysicsShape2D m_DefaultCustom;
+
         [UnityTest]
-        public IEnumerator MaterialTemplate_Override_Default_ResolvePrecedence_AndConvergeWithBuiltIn()
+        public IEnumerator TemplateArm_NonOverridingCustomShape_InheritsTheAssetValues()
+        {
+            yield return LoadAndDiscoverShapes();
+
+            Assert.AreEqual(
+                TemplateFriction,
+                m_TemplateCustom.friction,
+                Eps,
+                "TemplateCustom did not inherit the template friction — ResolveSurface ignored the assigned "
+                    + "PhysicsMaterial2D (fell to the inline default 0.4 instead of the asset's 0.123). "
+                    + "Either the template arm is broken or DependsOn did not read the asset at bake."
+            );
+            Assert.AreEqual(
+                TemplateBounciness,
+                m_TemplateCustom.bounciness,
+                Eps,
+                "TemplateCustom did not inherit the template bounciness — fell to the inline default 0 instead "
+                    + "of the asset's 0.456."
+            );
+            Assert.AreEqual(
+                TemplateFrictionMixing,
+                m_TemplateCustom.frictionMixing,
+                "TemplateCustom did not inherit the template frictionCombine (Maximum) — MapCombine/ResolveSurface "
+                    + "did not route the template's combine through the friction-mixing arm."
+            );
+            Assert.AreEqual(
+                TemplateBounceMixing,
+                m_TemplateCustom.bouncinessMixing,
+                "TemplateCustom did not inherit the template bounceCombine (Minimum)."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator Convergence_TemplateDrivenCustomShape_BakesBitIdenticalToTheBuiltInOracle()
+        {
+            yield return LoadAndDiscoverShapes();
+
+            Assert.AreEqual(
+                m_TemplateBuiltIn.friction,
+                m_TemplateCustom.friction,
+                0f,
+                $"Convergence broke on friction: custom template-driven {m_TemplateCustom.friction} != built-in "
+                    + $"sharedMaterial-driven {m_TemplateBuiltIn.friction}. ResolveSurface and ReadSurface diverge "
+                    + "for the same PhysicsMaterial2D."
+            );
+            Assert.AreEqual(
+                m_TemplateBuiltIn.bounciness,
+                m_TemplateCustom.bounciness,
+                0f,
+                $"Convergence broke on bounciness: custom {m_TemplateCustom.bounciness} != built-in "
+                    + $"{m_TemplateBuiltIn.bounciness}."
+            );
+            Assert.AreEqual(
+                m_TemplateBuiltIn.frictionMixing,
+                m_TemplateCustom.frictionMixing,
+                "Convergence broke on frictionMixing: custom != built-in for the same material's frictionCombine."
+            );
+            Assert.AreEqual(
+                m_TemplateBuiltIn.bouncinessMixing,
+                m_TemplateCustom.bouncinessMixing,
+                "Convergence broke on bouncinessMixing: custom != built-in for the same material's bounceCombine."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OverrideArm_OverriddenFieldsTakeInlineValue_UnOverriddenStillInherit()
+        {
+            yield return LoadAndDiscoverShapes();
+
+            Assert.AreEqual(
+                OverrideFriction,
+                m_OverrideCustom.friction,
+                Eps,
+                $"OverrideCustom friction = {m_OverrideCustom.friction}, expected the inline override "
+                    + $"{OverrideFriction}. The override did NOT beat the template (got "
+                    + $"{(abs(m_OverrideCustom.friction - TemplateFriction) < Eps ? "the template value" : "neither")})."
+            );
+            Assert.AreEqual(
+                OverrideBounceMixing,
+                m_OverrideCustom.bouncinessMixing,
+                $"OverrideCustom bouncinessMixing = {m_OverrideCustom.bouncinessMixing}, expected the inline "
+                    + $"override {OverrideBounceMixing}. The combine override did not beat the template."
+            );
+            // The two fields left un-overridden on the override body STILL inherit the template — per-field.
+            Assert.AreEqual(
+                TemplateBounciness,
+                m_OverrideCustom.bounciness,
+                Eps,
+                "OverrideCustom bounciness should still inherit the template (it was NOT overridden) — a "
+                    + "per-field override leaked into bounciness, or the whole surface fell to the default."
+            );
+            Assert.AreEqual(
+                TemplateFrictionMixing,
+                m_OverrideCustom.frictionMixing,
+                "OverrideCustom frictionMixing should still inherit the template (friction-combine was NOT "
+                    + "overridden) — the friction-value override wrongly captured the friction-combine."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DefaultArm_NoTemplateNoOverride_BakesTheInlinePhaseADefaults()
+        {
+            yield return LoadAndDiscoverShapes();
+
+            Assert.AreEqual(
+                DefaultFriction,
+                m_DefaultCustom.friction,
+                Eps,
+                $"DefaultCustom friction = {m_DefaultCustom.friction}, expected the inline default {DefaultFriction}."
+            );
+            Assert.AreEqual(
+                DefaultBounciness,
+                m_DefaultCustom.bounciness,
+                Eps,
+                $"DefaultCustom bounciness = {m_DefaultCustom.bounciness}, expected the inline default "
+                    + $"{DefaultBounciness}."
+            );
+            Assert.AreEqual(
+                DefaultMixing,
+                m_DefaultCustom.frictionMixing,
+                "DefaultCustom frictionMixing should be the inline default Average."
+            );
+            Assert.AreEqual(
+                DefaultMixing,
+                m_DefaultCustom.bouncinessMixing,
+                "DefaultCustom bouncinessMixing should be the inline default Average."
+            );
+
+            // Disqualifier: the template value must actually DIFFER from the default, or "inherited the template"
+            // is vacuously satisfied by the default. (A regression that made the template equal the default would
+            // pass the template arm but fail here.)
+            Assert.AreNotEqual(
+                DefaultFriction,
+                TemplateFriction,
+                "Test self-check: the template friction must differ from the inline default, or the template arm "
+                    + "proves nothing."
+            );
+        }
+
+        // Load the baked SubScene and resolve the four collider-only bodies into m_TemplateCustom / m_TemplateBuiltIn
+        // / m_OverrideCustom / m_DefaultCustom, keyed by baked initialPosition.x. The bodies carry immutable baked
+        // PhysicsShape2D snapshots, so each precedence arm above reads its own shape independently of the others.
+        IEnumerator LoadAndDiscoverShapes()
         {
             SceneManager.LoadScene(ParentScenePath, LoadSceneMode.Single);
             yield return null;
@@ -109,41 +257,38 @@ namespace Zori.Entities.Physics2D.Tests
             var haveTemplateBuiltIn = false;
             var haveOverrideCustom = false;
             var haveDefaultCustom = false;
-            PhysicsShape2D templateCustom = default;
-            PhysicsShape2D templateBuiltIn = default;
-            PhysicsShape2D overrideCustom = default;
-            PhysicsShape2D defaultCustom = default;
+            m_TemplateCustom = default;
+            m_TemplateBuiltIn = default;
+            m_OverrideCustom = default;
+            m_DefaultCustom = default;
 
             for (var i = 0; i < shapes.Length; i++)
             {
                 var x = defs[i].initialPosition.x;
                 if (abs(x - XTemplateCustom) < 0.25f)
                 {
-                    templateCustom = shapes[i];
+                    m_TemplateCustom = shapes[i];
                     haveTemplateCustom = true;
                 }
                 else if (abs(x - XTemplateBuiltIn) < 0.25f)
                 {
-                    templateBuiltIn = shapes[i];
+                    m_TemplateBuiltIn = shapes[i];
                     haveTemplateBuiltIn = true;
                 }
                 else if (abs(x - XOverrideCustom) < 0.25f)
                 {
-                    overrideCustom = shapes[i];
+                    m_OverrideCustom = shapes[i];
                     haveOverrideCustom = true;
                 }
                 else if (abs(x - XDefaultCustom) < 0.25f)
                 {
-                    defaultCustom = shapes[i];
+                    m_DefaultCustom = shapes[i];
                     haveDefaultCustom = true;
                 }
             }
 
             Assert.IsTrue(
-                haveTemplateCustom
-                    && haveTemplateBuiltIn
-                    && haveOverrideCustom
-                    && haveDefaultCustom,
+                haveTemplateCustom && haveTemplateBuiltIn && haveOverrideCustom && haveDefaultCustom,
                 $"Missing one of the four baked bodies (templateCustom={haveTemplateCustom}, "
                     + $"templateBuiltIn={haveTemplateBuiltIn}, overrideCustom={haveOverrideCustom}, "
                     + $"defaultCustom={haveDefaultCustom})."
@@ -151,136 +296,15 @@ namespace Zori.Entities.Physics2D.Tests
 
             Debug.Log(
                 "[PHYSICS2D-PHASEB-TEMPLATE] "
-                    + $"templateCustom(f={templateCustom.friction:F4} b={templateCustom.bounciness:F4} "
-                    + $"fMix={templateCustom.frictionMixing} bMix={templateCustom.bouncinessMixing}) | "
-                    + $"templateBuiltIn(f={templateBuiltIn.friction:F4} b={templateBuiltIn.bounciness:F4} "
-                    + $"fMix={templateBuiltIn.frictionMixing} bMix={templateBuiltIn.bouncinessMixing}) | "
-                    + $"overrideCustom(f={overrideCustom.friction:F4} b={overrideCustom.bounciness:F4} "
-                    + $"fMix={overrideCustom.frictionMixing} bMix={overrideCustom.bouncinessMixing}) | "
-                    + $"defaultCustom(f={defaultCustom.friction:F4} b={defaultCustom.bounciness:F4} "
-                    + $"fMix={defaultCustom.frictionMixing} bMix={defaultCustom.bouncinessMixing})"
+                    + $"templateCustom(f={m_TemplateCustom.friction:F4} b={m_TemplateCustom.bounciness:F4} "
+                    + $"fMix={m_TemplateCustom.frictionMixing} bMix={m_TemplateCustom.bouncinessMixing}) | "
+                    + $"templateBuiltIn(f={m_TemplateBuiltIn.friction:F4} b={m_TemplateBuiltIn.bounciness:F4} "
+                    + $"fMix={m_TemplateBuiltIn.frictionMixing} bMix={m_TemplateBuiltIn.bouncinessMixing}) | "
+                    + $"overrideCustom(f={m_OverrideCustom.friction:F4} b={m_OverrideCustom.bounciness:F4} "
+                    + $"fMix={m_OverrideCustom.frictionMixing} bMix={m_OverrideCustom.bouncinessMixing}) | "
+                    + $"defaultCustom(f={m_DefaultCustom.friction:F4} b={m_DefaultCustom.bounciness:F4} "
+                    + $"fMix={m_DefaultCustom.frictionMixing} bMix={m_DefaultCustom.bouncinessMixing})"
             );
-
-            // ---- TEMPLATE arm: a non-overriding custom shape bakes the asset's values. ----
-            Assert.AreEqual(
-                TemplateFriction,
-                templateCustom.friction,
-                Eps,
-                "TemplateCustom did not inherit the template friction — ResolveSurface ignored the assigned "
-                    + "PhysicsMaterial2D (fell to the inline default 0.4 instead of the asset's 0.123). "
-                    + "Either the template arm is broken or DependsOn did not read the asset at bake."
-            );
-            Assert.AreEqual(
-                TemplateBounciness,
-                templateCustom.bounciness,
-                Eps,
-                "TemplateCustom did not inherit the template bounciness — fell to the inline default 0 instead "
-                    + "of the asset's 0.456."
-            );
-            Assert.AreEqual(
-                TemplateFrictionMixing,
-                templateCustom.frictionMixing,
-                "TemplateCustom did not inherit the template frictionCombine (Maximum) — MapCombine/ResolveSurface "
-                    + "did not route the template's combine through the friction-mixing arm."
-            );
-            Assert.AreEqual(
-                TemplateBounceMixing,
-                templateCustom.bouncinessMixing,
-                "TemplateCustom did not inherit the template bounceCombine (Minimum)."
-            );
-
-            // ---- CONVERGENCE: the template-driven custom shape bakes bit-identical to the built-in oracle. ----
-            Assert.AreEqual(
-                templateBuiltIn.friction,
-                templateCustom.friction,
-                0f,
-                $"Convergence broke on friction: custom template-driven {templateCustom.friction} != built-in "
-                    + $"sharedMaterial-driven {templateBuiltIn.friction}. ResolveSurface and ReadSurface diverge "
-                    + "for the same PhysicsMaterial2D."
-            );
-            Assert.AreEqual(
-                templateBuiltIn.bounciness,
-                templateCustom.bounciness,
-                0f,
-                $"Convergence broke on bounciness: custom {templateCustom.bounciness} != built-in "
-                    + $"{templateBuiltIn.bounciness}."
-            );
-            Assert.AreEqual(
-                templateBuiltIn.frictionMixing,
-                templateCustom.frictionMixing,
-                "Convergence broke on frictionMixing: custom != built-in for the same material's frictionCombine."
-            );
-            Assert.AreEqual(
-                templateBuiltIn.bouncinessMixing,
-                templateCustom.bouncinessMixing,
-                "Convergence broke on bouncinessMixing: custom != built-in for the same material's bounceCombine."
-            );
-
-            // ---- OVERRIDE arm: overridden fields take the inline value; un-overridden fields inherit. ----
-            Assert.AreEqual(
-                OverrideFriction,
-                overrideCustom.friction,
-                Eps,
-                $"OverrideCustom friction = {overrideCustom.friction}, expected the inline override "
-                    + $"{OverrideFriction}. The override did NOT beat the template (got "
-                    + $"{(abs(overrideCustom.friction - TemplateFriction) < Eps ? "the template value" : "neither")})."
-            );
-            Assert.AreEqual(
-                OverrideBounceMixing,
-                overrideCustom.bouncinessMixing,
-                $"OverrideCustom bouncinessMixing = {overrideCustom.bouncinessMixing}, expected the inline "
-                    + $"override {OverrideBounceMixing}. The combine override did not beat the template."
-            );
-            // The two fields left un-overridden on the override body STILL inherit the template — per-field.
-            Assert.AreEqual(
-                TemplateBounciness,
-                overrideCustom.bounciness,
-                Eps,
-                "OverrideCustom bounciness should still inherit the template (it was NOT overridden) — a "
-                    + "per-field override leaked into bounciness, or the whole surface fell to the default."
-            );
-            Assert.AreEqual(
-                TemplateFrictionMixing,
-                overrideCustom.frictionMixing,
-                "OverrideCustom frictionMixing should still inherit the template (friction-combine was NOT "
-                    + "overridden) — the friction-value override wrongly captured the friction-combine."
-            );
-
-            // ---- DEFAULT arm: no template, no override → the inline Phase-A defaults (pre-Phase-B bake). ----
-            Assert.AreEqual(
-                DefaultFriction,
-                defaultCustom.friction,
-                Eps,
-                $"DefaultCustom friction = {defaultCustom.friction}, expected the inline default {DefaultFriction}."
-            );
-            Assert.AreEqual(
-                DefaultBounciness,
-                defaultCustom.bounciness,
-                Eps,
-                $"DefaultCustom bounciness = {defaultCustom.bounciness}, expected the inline default "
-                    + $"{DefaultBounciness}."
-            );
-            Assert.AreEqual(
-                DefaultMixing,
-                defaultCustom.frictionMixing,
-                "DefaultCustom frictionMixing should be the inline default Average."
-            );
-            Assert.AreEqual(
-                DefaultMixing,
-                defaultCustom.bouncinessMixing,
-                "DefaultCustom bouncinessMixing should be the inline default Average."
-            );
-
-            // Disqualifier: the template value must actually DIFFER from the default, or "inherited the template"
-            // is vacuously satisfied by the default. (A regression that made the template equal the default would
-            // pass the template arm but fail here.)
-            Assert.AreNotEqual(
-                DefaultFriction,
-                TemplateFriction,
-                "Test self-check: the template friction must differ from the inline default, or the template arm "
-                    + "proves nothing."
-            );
-            yield break;
         }
     }
 }

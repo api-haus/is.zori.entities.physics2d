@@ -53,8 +53,7 @@ namespace Zori.Entities.Physics2D.Baking
                     interpolation = authoring.Interpolation,
                     // Continuous collision detection (Rigidbody2D.collisionDetectionMode). Continuous → the Box2D
                     // fast-collision (bullet) body flag. Discrete (the default) bakes false, the prior value.
-                    fastCollisions =
-                        authoring.CollisionDetection == PhysicsCollisionDetection2D.Continuous,
+                    fastCollisions = authoring.CollisionDetection == PhysicsCollisionDetection2D.Continuous,
                     // Custom mass distribution: the explicit center-of-mass + scalar rotational-inertia override
                     // applied post-creation via PhysicsBody.massConfiguration (ApplyMass). Off by default → the
                     // body keeps its shape-derived mass distribution, the built-in path's behaviour.
@@ -82,10 +81,7 @@ namespace Zori.Entities.Physics2D.Baking
             // Carry the entity scale to graphics, matching the built-in Rigidbody2D path: the shape geometry
             // is baked at this scale (PhysicsShape2DAuthoringBaker), so the body is unit scale and the
             // write-back re-applies the scale to LocalToWorld.
-            AddComponent(
-                entity,
-                new PhysicsBody2DRenderScale { value = Collider2DBaking.ReadScale(t) }
-            );
+            AddComponent(entity, new PhysicsBody2DRenderScale { value = Collider2DBaking.ReadScale(t) });
         }
 
         /// <summary>

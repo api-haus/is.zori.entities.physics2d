@@ -36,16 +36,10 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         public void AngleFromAxisDrag_RecoversTheDirectionAngle()
         {
             // drag the axis endpoint to straight up from the anchor → 90°
-            var deg = PhysicsJoint2DGizmos.AngleFromAxisDrag(
-                new float2(1f, 1f),
-                new float2(1f, 5f)
-            );
+            var deg = PhysicsJoint2DGizmos.AngleFromAxisDrag(new float2(1f, 1f), new float2(1f, 5f));
             Assert.AreEqual(90f, deg, Eps);
             // a 45° NE drag
-            var deg2 = PhysicsJoint2DGizmos.AngleFromAxisDrag(
-                Unity.Mathematics.float2.zero,
-                new float2(2f, 2f)
-            );
+            var deg2 = PhysicsJoint2DGizmos.AngleFromAxisDrag(Unity.Mathematics.float2.zero, new float2(2f, 2f));
             Assert.AreEqual(45f, deg2, Eps);
         }
 
@@ -68,15 +62,13 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         public void AngleLimitArcPoints_NegativeSpan_SweepsTheOtherWay()
         {
             // upper below lower sweeps the negative direction (an empty/inverted range, but the geometry holds)
-            var pts = PhysicsJoint2DGizmos.AngleLimitArcPoints(
-                Unity.Mathematics.float2.zero,
-                30f,
-                -30f,
-                1f,
-                4
+            var pts = PhysicsJoint2DGizmos.AngleLimitArcPoints(Unity.Mathematics.float2.zero, 30f, -30f, 1f, 4);
+            Assert.IsTrue(
+                Approx(pts[0], PhysicsJoint2DGizmos.AngleLimitMarker(Unity.Mathematics.float2.zero, 30f, 1f))
             );
-            Assert.IsTrue(Approx(pts[0], PhysicsJoint2DGizmos.AngleLimitMarker(Unity.Mathematics.float2.zero, 30f, 1f)));
-            Assert.IsTrue(Approx(pts[4], PhysicsJoint2DGizmos.AngleLimitMarker(Unity.Mathematics.float2.zero, -30f, 1f)));
+            Assert.IsTrue(
+                Approx(pts[4], PhysicsJoint2DGizmos.AngleLimitMarker(Unity.Mathematics.float2.zero, -30f, 1f))
+            );
         }
 
         [Test]
@@ -102,14 +94,7 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         public void TranslationLimitSegment_EndpointsAlongTheAxis()
         {
             // a horizontal axis (0°): lower −2, upper 3 → endpoints at anchor + (−2,0) and (3,0)
-            PhysicsJoint2DGizmos.TranslationLimitSegment(
-                new float2(1f, 1f),
-                0f,
-                -2f,
-                3f,
-                out var a,
-                out var b
-            );
+            PhysicsJoint2DGizmos.TranslationLimitSegment(new float2(1f, 1f), 0f, -2f, 3f, out var a, out var b);
             Assert.IsTrue(Approx(a, new float2(-1f, 1f)));
             Assert.IsTrue(Approx(b, new float2(4f, 1f)));
         }

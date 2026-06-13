@@ -15,8 +15,8 @@ namespace Zori.Entities.Physics2D.Baking
     /// <remarks>
     /// <c>surfaceArc</c> and <c>rotationalOffset</c> bake degrees → radians; <c>useOneWay</c> bakes to a flag
     /// byte. The side-arc / side-friction / side-bounce behaviours are NOT modelled (they need the same
-    /// per-contact pre-solve hook one-way faithfully needs, which the package cannot reach — see the Phase-10b
-    /// design); the OneWay scene authors them off. Editor-only assembly, so this never reaches a player build.
+    /// per-contact pre-solve hook one-way faithfully needs, which the package cannot reach); the OneWay scene
+    /// authors them off. Editor-only assembly, so this never reaches a player build.
     /// </remarks>
     public sealed class PlatformEffector2DBaker : Baker<PlatformEffector2D>
     {

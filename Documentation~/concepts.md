@@ -13,7 +13,7 @@ A body's life has four stages, and the package owns the middle two:
 
 ## The DOTS posture
 
-The package commits to a specific set of DOTS design decisions, and several of its properties follow from them. These are intentional and load-bearing — the negative space is as much a part of the design as the positive.
+The package commits to a specific set of DOTS design decisions, and several of its properties follow from them. These are intentional and load-bearing — what the package deliberately leaves out is as much a part of the design as what it includes.
 
 - **The pose is written directly to `LocalToWorld`, not routed through `LocalTransform`.** The physics bodies are flat and unparented, so the post-step pose IS the world matrix; there is no parent to compose against. The write-back system writes `LocalToWorld` under a `[WriteGroup(typeof(LocalToWorld))]`, so `LocalToWorldSystem` yields ownership of these entities' matrices and the direct write avoids the one-fixed-step recompose latency a `LocalTransform` round-trip would add.
 - **No managed-`Transform` write-back.** The engine's Box2D managed-Transform tween (`TransformWriteMode.Interpolate`) is never enabled. Interpolation and extrapolation are done in ECS over the stored poses by a render-rate smoothing job, holding the DOTS posture rather than reaching back into a managed `Transform`.

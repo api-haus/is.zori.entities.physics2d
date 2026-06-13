@@ -77,18 +77,8 @@ namespace Zori.Entities.Physics2D.Tests
 
         // ---- package world (the FilteringQueryParityGate pattern) ------------------------------------------
 
-        static World MakePackageWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("RayScanParityWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePackageWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("RayScanParityWorld", out group, Dt);
 
         static PhysicsWorld GetWorld(EntityManager em)
         {
@@ -97,10 +87,7 @@ namespace Zori.Entities.Physics2D.Tests
         }
 
         // Create one static package body carrying the given shape at the world centre, and return the live world.
-        static (World world, FixedStepSimulationSystemGroup group) SpawnPackage(
-            float2 center,
-            PhysicsShape2D shape
-        )
+        static (World world, FixedStepSimulationSystemGroup group) SpawnPackage(float2 center, PhysicsShape2D shape)
         {
             var world = MakePackageWorld(out var group);
             shape.density = 1f;
@@ -268,11 +255,7 @@ namespace Zori.Entities.Physics2D.Tests
                 sincos(radians((float)i), out var s, out var c);
                 var ringPoint = center + new float2(c, s) * ringRadius;
                 var dir = -new float2(c, s);
-                var hit = UnityEngine.Physics2D.Raycast(
-                    (Vector2)ringPoint,
-                    (Vector2)dir,
-                    ringRadius
-                );
+                var hit = UnityEngine.Physics2D.Raycast((Vector2)ringPoint, (Vector2)dir, ringRadius);
                 d[i] = hit.collider != null ? hit.distance : -1f;
             }
             return d;
@@ -334,11 +317,7 @@ namespace Zori.Entities.Physics2D.Tests
                     + "convex shape that contains its centre, so every ray must hit. A miss is a geometry hole "
                     + "or a shape far smaller than intended."
             );
-            Assert.AreEqual(
-                0,
-                goMisses,
-                $"[{label}] {goMisses} of 360 inward rays MISSED the native collider."
-            );
+            Assert.AreEqual(0, goMisses, $"[{label}] {goMisses} of 360 inward rays MISSED the native collider.");
             Assert.Less(
                 hitMissMismatch,
                 0,
@@ -392,11 +371,7 @@ namespace Zori.Entities.Physics2D.Tests
             var center = new float2(0f, 0f);
             var R = length(baseSize) + 1f;
             var authored = AuthoredSizeFor(m, baseSize);
-            var go = SpawnNative<BoxCollider2D>(
-                center,
-                ScaleFor(m),
-                c => c.size = (Vector2)authored
-            );
+            var go = SpawnNative<BoxCollider2D>(center, ScaleFor(m), c => c.size = (Vector2)authored);
             RunCase($"BOX/{m}", center, R, PackageBox(m, baseSize), go, BoxPolyEps);
             yield return null;
         }

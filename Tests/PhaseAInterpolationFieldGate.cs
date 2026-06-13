@@ -36,18 +36,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePackageWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("PhaseAInterpFieldWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePackageWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("PhaseAInterpFieldWorld", out group, Dt);
 
         static Entity SpawnCircle(EntityManager em, float2 pos, PhysicsBody2DInterpolation interp)
         {

@@ -42,22 +42,8 @@ namespace Zori.Entities.Physics2D.Tests
         // default; PhysicsWorldDefinition.maximumLinearSpeed). The per-step swept ceiling is this × dt.
         const float MaxLinearSpeed = 400f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DSetTransformGateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(
-                world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>()
-            );
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DSetTransformGateWorld", out group, Dt);
 
         static Entity SpawnDrivable(
             EntityManager em,
@@ -88,8 +74,7 @@ namespace Zori.Entities.Physics2D.Tests
             return entity;
         }
 
-        static PhysicsBody BodyOf(EntityManager em, Entity e) =>
-            em.GetComponentData<PhysicsBody2D>(e).body;
+        static PhysicsBody BodyOf(EntityManager em, Entity e) => em.GetComponentData<PhysicsBody2D>(e).body;
 
         static DynamicBuffer<PhysicsBody2DCommand> CommandsOf(EntityManager em, Entity e) =>
             em.GetBuffer<PhysicsBody2DCommand>(e);
@@ -189,11 +174,7 @@ namespace Zori.Entities.Physics2D.Tests
             var farPos = new float2(500f, 200f);
             PhysicsBody2DCommands.SetPosition(CommandsOf(em, entity), farPos);
             group.Update();
-            Assert.Less(
-                length(PosOf(body) - farPos),
-                1e-3f,
-                "SetPosition did not land at the far position."
-            );
+            Assert.Less(length(PosOf(body) - farPos), 1e-3f, "SetPosition did not land at the far position.");
             Assert.Less(
                 abs(body.rotation.radians),
                 1e-3f,

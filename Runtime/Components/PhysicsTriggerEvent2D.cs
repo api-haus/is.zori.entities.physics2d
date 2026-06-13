@@ -20,7 +20,7 @@ namespace Zori.Entities.Physics2D
     /// 2D physics, which raises <c>OnTriggerEnter2D</c> on both trigger colliders. (The Box2D "triggers do not
     /// collide with other triggers" rule governs collision RESPONSE — two sensors never produce a solid contact —
     /// not trigger-event reporting; with trigger events enabled on every shape, a sensor pair fires begin/end
-    /// just like a sensor/solid pair. Verified by the Phase-6 validation gate in editor 6000.6.0a6.)
+    /// just like a sensor/solid pair.)
     /// </remarks>
     public struct PhysicsTriggerEvent2D : IBufferElementData
     {

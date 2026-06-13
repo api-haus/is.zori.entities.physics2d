@@ -46,8 +46,7 @@ namespace Zori.Entities.Physics2D.Tests
     /// stiff-spring position controllers on a frictionless symmetric disc whose transient is FP-chaos-sensitive
     /// — two field-identical joints amplify the v3 per-body solve-order noise and end ~1-3 m apart, a property
     /// of the fixture geometry, not a custom-vs-built-in asymmetry (the Wheel's bit-identical result proves two
-    /// field-identical joints simulate identically when the transient is stable). See the negative-space note
-    /// in 08-phaseF.</para>
+    /// field-identical joints simulate identically when the transient is stable).</para>
     ///
     /// <para>Build the fixture first via <c>-executeMethod
     /// Zori.Entities.Physics2D.Tests.Editor.CustomJointConvergenceFixtureBuilder.Build</c> (the same fixture
@@ -58,8 +57,7 @@ namespace Zori.Entities.Physics2D.Tests
         const float Dt = 1f / 60f;
         const int LoadTimeoutFrames = 600;
         const int StepCount = 150;
-        const string ParentScenePath =
-            "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
+        const string ParentScenePath = "Assets/EntitiesPhysics2DFixture/CustomJointConvergence.unity";
         const int ExpectedJointOwners = 18; // 9 kinds × (custom + built-in)
 
         // Mirror of CustomJointConvergenceFixtureBuilder X-keys for the span this gate witnesses. The span is
@@ -123,10 +121,7 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.Enabled = false;
 
             var framesWaited = 0;
-            while (
-                ownerQuery.CalculateEntityCount() < ExpectedJointOwners
-                && framesWaited < LoadTimeoutFrames
-            )
+            while (ownerQuery.CalculateEntityCount() < ExpectedJointOwners && framesWaited < LoadTimeoutFrames)
             {
                 framesWaited++;
                 yield return null;
@@ -184,16 +179,9 @@ namespace Zori.Entities.Physics2D.Tests
             // field-identical joints CAN simulate bit-identically when the transient is stable) — so Relative /
             // Target / Distance / Spring / Fixed / Friction are pinned at the BAKE level (field-identity →
             // identical Box2D joint → identical simulation by construction) and not re-driven here against a
-            // tight behavioral band a chaotic transient cannot meet. See the negative-space note in 08-phaseF.
+            // tight behavioral band a chaotic transient cannot meet.
             AssertPairParity("Hinge", XHingeCustom, XHingeBuiltIn, AngleCapSpin, entityByKey, traj);
-            AssertPairParity(
-                "Slider",
-                XSliderCustom,
-                XSliderBuiltIn,
-                AngleCapHeld,
-                entityByKey,
-                traj
-            );
+            AssertPairParity("Slider", XSliderCustom, XSliderBuiltIn, AngleCapHeld, entityByKey, traj);
             AssertPairParity("Wheel", XWheelCustom, XWheelBuiltIn, AngleCapSpin, entityByKey, traj);
 
             yield break;
@@ -204,9 +192,7 @@ namespace Zori.Entities.Physics2D.Tests
         static Dictionary<float, Entity> MapOwnerEntitiesByInitialX(EntityQuery ownerQuery)
         {
             using var entities = ownerQuery.ToEntityArray(Allocator.Temp);
-            using var defs = ownerQuery.ToComponentDataArray<PhysicsBody2DDefinition>(
-                Allocator.Temp
-            );
+            using var defs = ownerQuery.ToComponentDataArray<PhysicsBody2DDefinition>(Allocator.Temp);
             var map = new Dictionary<float, Entity>();
             for (var i = 0; i < entities.Length; i++)
             {
@@ -243,10 +229,7 @@ namespace Zori.Entities.Physics2D.Tests
             var customKey = (float)System.Math.Round(xCustom / 2.0) * 2f;
             var builtInKey = (float)System.Math.Round(xBuiltIn / 2.0) * 2f;
 
-            Assert.IsTrue(
-                entityByKey.ContainsKey(customKey),
-                $"{label}: no custom joint owner at X-key {customKey}."
-            );
+            Assert.IsTrue(entityByKey.ContainsKey(customKey), $"{label}: no custom joint owner at X-key {customKey}.");
             Assert.IsTrue(
                 entityByKey.ContainsKey(builtInKey),
                 $"{label}: no built-in joint owner at X-key {builtInKey}."

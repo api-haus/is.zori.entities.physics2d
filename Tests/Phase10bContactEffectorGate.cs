@@ -36,7 +36,7 @@ namespace Zori.Entities.Physics2D.Tests
     ///
     /// <para><b>The documented multi-body Platform gap.</b> The package one-way is a per-step WHOLE-PLATFORM-BODY
     /// <c>enabled</c> gate (the faithful per-contact <c>OnPreSolve2D</c> veto is unreachable from the package's
-    /// native-poll DOTS posture — Phase-10b design negative space). A whole-body gate cannot simultaneously rest a
+    /// native-poll DOTS posture). A whole-body gate cannot simultaneously rest a
     /// body from above AND pass a body from below in the same steps. <see cref="Platform_MultiBody_KnownGap_Characterized"/>
     /// constructs that exact scenario, MEASURES what each medium does, and records WHICH body is served wrong vs
     /// GameObject. It is the documented known-gap — GREEN-with-evidence (the divergence is recorded, not forced to
@@ -74,13 +74,8 @@ namespace Zori.Entities.Physics2D.Tests
 
             public PackageMedium()
             {
-                _world = new World("Physics2DContactEffectorGateWorld");
-                _group = _world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-                _group.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-                _group.SortSystems();
+                _world = PhysicsTestWorld.Create("Physics2DContactEffectorGateWorld", out var group, Dt);
+                _group = group;
             }
 
             public EntityManager Em => _world.EntityManager;
@@ -175,17 +170,10 @@ namespace Zori.Entities.Physics2D.Tests
 
         sealed class GameObjectMedium : System.IDisposable
         {
-            readonly SimulationMode2D _prevMode;
-            readonly Vector2 _prevGravity;
+            readonly Physics2DStateFence _fence;
             readonly List<GameObject> _spawned = new();
 
-            public GameObjectMedium(Vector2 gravity)
-            {
-                _prevMode = UnityEngine.Physics2D.simulationMode;
-                _prevGravity = UnityEngine.Physics2D.gravity;
-                UnityEngine.Physics2D.simulationMode = SimulationMode2D.Script;
-                UnityEngine.Physics2D.gravity = gravity;
-            }
+            public GameObjectMedium(Vector2 gravity) => _fence = Physics2DStateFence.EnterScriptMode(gravity);
 
             // A SOLID box-collider effector body (isTrigger=false, usedByEffector=true) — the example-scene
             // authoring. rotationDeg tilts the platform so its local up rotates with it. `configure` sets the
@@ -260,8 +248,7 @@ namespace Zori.Entities.Physics2D.Tests
                 foreach (var go in _spawned)
                     if (go != null)
                         Object.Destroy(go);
-                UnityEngine.Physics2D.gravity = _prevGravity;
-                UnityEngine.Physics2D.simulationMode = _prevMode;
+                _fence.Restore();
             }
         }
 
@@ -341,7 +328,12 @@ namespace Zori.Entities.Physics2D.Tests
                         s.useBounce = false;
                     }
                 );
-                var rb = go.SpawnBox(new Vector2(0f, 1f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero);
+                var rb = go.SpawnBox(
+                    new Vector2(0f, 1f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 1f,
+                    Vector2.zero
+                );
                 for (var i = 0; i < steps - 1; i++)
                     go.Step();
                 goVxPrev = rb.linearVelocity.x;
@@ -429,7 +421,12 @@ namespace Zori.Entities.Physics2D.Tests
                 );
                 var rbs = new Rigidbody2D[startX.Length];
                 for (var i = 0; i < startX.Length; i++)
-                    rbs[i] = go.SpawnBox(new Vector2(startX[i], 1f), new Vector2(BoxSize.x, BoxSize.y), 1f, Vector2.zero);
+                    rbs[i] = go.SpawnBox(
+                        new Vector2(startX[i], 1f),
+                        new Vector2(BoxSize.x, BoxSize.y),
+                        1f,
+                        Vector2.zero
+                    );
                 for (var i = 0; i < steps; i++)
                     go.Step();
                 for (var i = 0; i < rbs.Length; i++)
@@ -487,12 +484,28 @@ namespace Zori.Entities.Physics2D.Tests
                 vSlowFew + 1f,
                 $"forceScale did not scale the convergence rate: fast vx@{fewSteps}={vFastFew}, slow={vSlowFew}."
             );
-            Assert.Greater(vFastFew, beltSpeed * 0.85f, $"fs=1 body did not converge quickly (vx@{fewSteps}={vFastFew}).");
-            Assert.Less(vSlowFew, beltSpeed * 0.7f, $"fs=0.1 body converged too fast — forceScale not slowing it (vx@{fewSteps}={vSlowFew}).");
+            Assert.Greater(
+                vFastFew,
+                beltSpeed * 0.85f,
+                $"fs=1 body did not converge quickly (vx@{fewSteps}={vFastFew})."
+            );
+            Assert.Less(
+                vSlowFew,
+                beltSpeed * 0.7f,
+                $"fs=0.1 body converged too fast — forceScale not slowing it (vx@{fewSteps}={vSlowFew})."
+            );
             // Neither flew off — both settle at the belt speed and stay (no overshoot / runaway). A runaway drive
             // would blow vMany well past beltSpeed.
-            Assert.Less(abs(vFastMany - beltSpeed), beltSpeed * 0.15f, $"fast body did not settle at belt speed (vx={vFastMany}).");
-            Assert.Less(abs(vSlowMany - beltSpeed), beltSpeed * 0.15f, $"slow body did not settle at belt speed (vx={vSlowMany}).");
+            Assert.Less(
+                abs(vFastMany - beltSpeed),
+                beltSpeed * 0.15f,
+                $"fast body did not settle at belt speed (vx={vFastMany})."
+            );
+            Assert.Less(
+                abs(vSlowMany - beltSpeed),
+                beltSpeed * 0.15f,
+                $"slow body did not settle at belt speed (vx={vSlowMany})."
+            );
             yield break;
         }
 
@@ -578,7 +591,14 @@ namespace Zori.Entities.Physics2D.Tests
                 }
             );
             // contactBits everything so the body physically rests on the belt; categoryBits decides the mask match.
-            var box = pkg.SpawnBox(new float2(0f, 1f), BoxSize, 1f, Unity.Mathematics.float2.zero, categoryBits: bodyCategory, contactBits: ~0ul);
+            var box = pkg.SpawnBox(
+                new float2(0f, 1f),
+                BoxSize,
+                1f,
+                Unity.Mathematics.float2.zero,
+                categoryBits: bodyCategory,
+                contactBits: ~0ul
+            );
             pkg.Create();
             for (var i = 0; i < steps; i++)
                 pkg.Step();
@@ -601,7 +621,13 @@ namespace Zori.Entities.Physics2D.Tests
                     s.colliderMask = 1 << maskLayer;
                 }
             );
-            var rb = go.SpawnBox(new Vector2(0f, 1f), new Vector2(BoxSize.x, BoxSize.y), 1f, Vector2.zero, layer: bodyLayer);
+            var rb = go.SpawnBox(
+                new Vector2(0f, 1f),
+                new Vector2(BoxSize.x, BoxSize.y),
+                1f,
+                Vector2.zero,
+                layer: bodyLayer
+            );
             for (var i = 0; i < steps; i++)
                 go.Step();
             return rb.linearVelocity.x;
@@ -649,13 +675,23 @@ namespace Zori.Entities.Physics2D.Tests
                 goMinY;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                go.SpawnSurface(new Vector2(0f, 0f), 0f, new Vector2(BeltSize.x, BeltSize.y), s =>
-                {
-                    s.speed = 0f;
-                    s.forceScale = 1f;
-                    s.useFriction = true;
-                });
-                var rb = go.SpawnBox(new Vector2(0f, 2f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero);
+                go.SpawnSurface(
+                    new Vector2(0f, 0f),
+                    0f,
+                    new Vector2(BeltSize.x, BeltSize.y),
+                    s =>
+                    {
+                        s.speed = 0f;
+                        s.forceScale = 1f;
+                        s.useFriction = true;
+                    }
+                );
+                var rb = go.SpawnBox(
+                    new Vector2(0f, 2f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 1f,
+                    Vector2.zero
+                );
                 goMinY = 2f;
                 for (var i = 0; i < steps; i++)
                 {
@@ -712,7 +748,13 @@ namespace Zori.Entities.Physics2D.Tests
         float PackageDropFromAbove(int steps, out float minY)
         {
             using var pkg = new PackageMedium();
-            SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: 180f, rotationalOffsetDeg: 0f, colliderMask: 0ul);
+            SpawnPackagePlatform(
+                pkg,
+                rotationRadians: 0f,
+                surfaceArcDeg: 180f,
+                rotationalOffsetDeg: 0f,
+                colliderMask: 0ul
+            );
             var box = pkg.SpawnBox(new float2(0f, 3f), BoxSize, gravityScale: 1f, Unity.Mathematics.float2.zero);
             pkg.Create();
             minY = 3f;
@@ -727,8 +769,20 @@ namespace Zori.Entities.Physics2D.Tests
         float GameObjectDropFromAbove(int steps, out float minY)
         {
             using var go = new GameObjectMedium(s_PackageGravity);
-            SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: 180f, rotationalOffset: 0f, useMask: false, maskLayer: 0);
-            var rb = go.SpawnBox(new Vector2(0f, 3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero);
+            SpawnGameObjectPlatform(
+                go,
+                rotationDeg: 0f,
+                surfaceArc: 180f,
+                rotationalOffset: 0f,
+                useMask: false,
+                maskLayer: 0
+            );
+            var rb = go.SpawnBox(
+                new Vector2(0f, 3f),
+                new Vector2(BoxSize.x, BoxSize.y),
+                gravityScale: 1f,
+                Vector2.zero
+            );
             minY = 3f;
             for (var i = 0; i < steps; i++)
             {
@@ -749,7 +803,13 @@ namespace Zori.Entities.Physics2D.Tests
             float pkgY;
             using (var pkg = new PackageMedium())
             {
-                SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: 180f, rotationalOffsetDeg: 0f, colliderMask: 0ul);
+                SpawnPackagePlatform(
+                    pkg,
+                    rotationRadians: 0f,
+                    surfaceArcDeg: 180f,
+                    rotationalOffsetDeg: 0f,
+                    colliderMask: 0ul
+                );
                 // Launched up fast from below, gravity off so it keeps rising through the platform.
                 var box = pkg.SpawnBox(new float2(0f, -3f), BoxSize, gravityScale: 0f, new float2(0f, 20f));
                 pkg.Create();
@@ -761,8 +821,20 @@ namespace Zori.Entities.Physics2D.Tests
             float goY;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: 180f, rotationalOffset: 0f, useMask: false, maskLayer: 0);
-                var rb = go.SpawnBox(new Vector2(0f, -3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 0f, new Vector2(0f, 20f));
+                SpawnGameObjectPlatform(
+                    go,
+                    rotationDeg: 0f,
+                    surfaceArc: 180f,
+                    rotationalOffset: 0f,
+                    useMask: false,
+                    maskLayer: 0
+                );
+                var rb = go.SpawnBox(
+                    new Vector2(0f, -3f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 0f,
+                    new Vector2(0f, 20f)
+                );
                 for (var i = 0; i < steps; i++)
                     go.Step();
                 goY = rb.position.y;
@@ -828,7 +900,13 @@ namespace Zori.Entities.Physics2D.Tests
         static float PackagePlatformArcDrop(float surfaceArc, float rotationalOffset, int steps)
         {
             using var pkg = new PackageMedium();
-            SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: surfaceArc, rotationalOffsetDeg: rotationalOffset, colliderMask: 0ul);
+            SpawnPackagePlatform(
+                pkg,
+                rotationRadians: 0f,
+                surfaceArcDeg: surfaceArc,
+                rotationalOffsetDeg: rotationalOffset,
+                colliderMask: 0ul
+            );
             var blocker = pkg.SpawnBox(new float2(0f, 3f), BoxSize, gravityScale: 1f, Unity.Mathematics.float2.zero);
             pkg.Create();
             for (var i = 0; i < steps; i++)
@@ -839,8 +917,20 @@ namespace Zori.Entities.Physics2D.Tests
         static float GameObjectPlatformArcDrop(float surfaceArc, float rotationalOffset, int steps)
         {
             using var go = new GameObjectMedium(s_PackageGravity);
-            SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: surfaceArc, rotationalOffset: rotationalOffset, useMask: false, maskLayer: 0);
-            var blocker = go.SpawnBox(new Vector2(0f, 3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero);
+            SpawnGameObjectPlatform(
+                go,
+                rotationDeg: 0f,
+                surfaceArc: surfaceArc,
+                rotationalOffset: rotationalOffset,
+                useMask: false,
+                maskLayer: 0
+            );
+            var blocker = go.SpawnBox(
+                new Vector2(0f, 3f),
+                new Vector2(BoxSize.x, BoxSize.y),
+                gravityScale: 1f,
+                Vector2.zero
+            );
             for (var i = 0; i < steps; i++)
                 go.Step();
             return blocker.position.y;
@@ -849,7 +939,13 @@ namespace Zori.Entities.Physics2D.Tests
         static float PackagePlatformArcLaunch(float surfaceArc, float rotationalOffset, int steps)
         {
             using var pkg = new PackageMedium();
-            SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: surfaceArc, rotationalOffsetDeg: rotationalOffset, colliderMask: 0ul);
+            SpawnPackagePlatform(
+                pkg,
+                rotationRadians: 0f,
+                surfaceArcDeg: surfaceArc,
+                rotationalOffsetDeg: rotationalOffset,
+                colliderMask: 0ul
+            );
             var passer = pkg.SpawnBox(new float2(0f, -3f), BoxSize, gravityScale: 0f, new float2(0f, 20f));
             pkg.Create();
             for (var i = 0; i < steps; i++)
@@ -860,8 +956,20 @@ namespace Zori.Entities.Physics2D.Tests
         static float GameObjectPlatformArcLaunch(float surfaceArc, float rotationalOffset, int steps)
         {
             using var go = new GameObjectMedium(s_PackageGravity);
-            SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: surfaceArc, rotationalOffset: rotationalOffset, useMask: false, maskLayer: 0);
-            var passer = go.SpawnBox(new Vector2(0f, -3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 0f, new Vector2(0f, 20f));
+            SpawnGameObjectPlatform(
+                go,
+                rotationDeg: 0f,
+                surfaceArc: surfaceArc,
+                rotationalOffset: rotationalOffset,
+                useMask: false,
+                maskLayer: 0
+            );
+            var passer = go.SpawnBox(
+                new Vector2(0f, -3f),
+                new Vector2(BoxSize.x, BoxSize.y),
+                gravityScale: 0f,
+                new Vector2(0f, 20f)
+            );
             for (var i = 0; i < steps; i++)
                 go.Step();
             return passer.position.y;
@@ -911,7 +1019,11 @@ namespace Zori.Entities.Physics2D.Tests
 
             // KNOWN-GAP: the GameObject oracle FALLS the masked-out body through (anchors the comparison — if the
             // oracle did not, the scenario is mis-built).
-            Assert.Less(goOffRestY, -2f, $"Oracle invalid: GameObject masked-out body did not fall through (y={goOffRestY}).");
+            Assert.Less(
+                goOffRestY,
+                -2f,
+                $"Oracle invalid: GameObject masked-out body did not fall through (y={goOffRestY})."
+            );
             // CHARACTERIZE the package divergence: it RESTS the masked-out body (the solid collider still collides;
             // the mask only gates the one-way classifier). Asserted as the EXPECTED divergence — if the package
             // ever falls it through too, the gap has closed and this fails LOUD (update the gap doc).
@@ -928,10 +1040,23 @@ namespace Zori.Entities.Physics2D.Tests
         static float PackagePlatformMaskDropFromAbove(ulong effectorMask, ulong bodyCategory, int steps)
         {
             using var pkg = new PackageMedium();
-            SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: 180f, rotationalOffsetDeg: 0f, colliderMask: effectorMask);
+            SpawnPackagePlatform(
+                pkg,
+                rotationRadians: 0f,
+                surfaceArcDeg: 180f,
+                rotationalOffsetDeg: 0f,
+                colliderMask: effectorMask
+            );
             // Dropped from above; contactBits everything so it can physically contact the solid platform when the
             // mask admits it. categoryBits decides whether the effector interacts.
-            var box = pkg.SpawnBox(new float2(0f, 3f), BoxSize, gravityScale: 1f, Unity.Mathematics.float2.zero, categoryBits: bodyCategory, contactBits: ~0ul);
+            var box = pkg.SpawnBox(
+                new float2(0f, 3f),
+                BoxSize,
+                gravityScale: 1f,
+                Unity.Mathematics.float2.zero,
+                categoryBits: bodyCategory,
+                contactBits: ~0ul
+            );
             pkg.Create();
             for (var i = 0; i < steps; i++)
                 pkg.Step();
@@ -941,8 +1066,21 @@ namespace Zori.Entities.Physics2D.Tests
         static float GameObjectPlatformMaskDropFromAbove(int maskLayer, int bodyLayer, int steps)
         {
             using var go = new GameObjectMedium(s_PackageGravity);
-            SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: 180f, rotationalOffset: 0f, useMask: true, maskLayer: maskLayer);
-            var rb = go.SpawnBox(new Vector2(0f, 3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero, layer: bodyLayer);
+            SpawnGameObjectPlatform(
+                go,
+                rotationDeg: 0f,
+                surfaceArc: 180f,
+                rotationalOffset: 0f,
+                useMask: true,
+                maskLayer: maskLayer
+            );
+            var rb = go.SpawnBox(
+                new Vector2(0f, 3f),
+                new Vector2(BoxSize.x, BoxSize.y),
+                gravityScale: 1f,
+                Vector2.zero,
+                layer: bodyLayer
+            );
             for (var i = 0; i < steps; i++)
                 go.Step();
             return rb.position.y;
@@ -985,15 +1123,25 @@ namespace Zori.Entities.Physics2D.Tests
             float goBelowY;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                go.SpawnPlatform(new Vector2(0f, 0f), 0f, new Vector2(PlatformSize.x, PlatformSize.y), p =>
-                {
-                    p.useOneWay = false; // plain solid
-                    p.surfaceArc = 180f;
-                    p.rotationalOffset = 0f;
-                    p.useSideFriction = false;
-                    p.useSideBounce = false;
-                });
-                var rb = go.SpawnBox(new Vector2(0f, -3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 0f, new Vector2(0f, 8f));
+                go.SpawnPlatform(
+                    new Vector2(0f, 0f),
+                    0f,
+                    new Vector2(PlatformSize.x, PlatformSize.y),
+                    p =>
+                    {
+                        p.useOneWay = false; // plain solid
+                        p.surfaceArc = 180f;
+                        p.rotationalOffset = 0f;
+                        p.useSideFriction = false;
+                        p.useSideBounce = false;
+                    }
+                );
+                var rb = go.SpawnBox(
+                    new Vector2(0f, -3f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 0f,
+                    new Vector2(0f, 8f)
+                );
                 for (var i = 0; i < steps; i++)
                     go.Step();
                 goBelowY = rb.position.y;
@@ -1005,7 +1153,11 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             // BLOCKED below the platform (the collider is solid, not a trigger) in both media.
-            Assert.Less(pkgBelowY, 0f, $"Package no-one-way platform did NOT block from below — collider is not solid (y={pkgBelowY}).");
+            Assert.Less(
+                pkgBelowY,
+                0f,
+                $"Package no-one-way platform did NOT block from below — collider is not solid (y={pkgBelowY})."
+            );
             Assert.Less(goBelowY, 0f, $"GameObject no-one-way platform did NOT block from below (y={goBelowY}).");
             yield break;
         }
@@ -1032,9 +1184,20 @@ namespace Zori.Entities.Physics2D.Tests
                 pkgAboveMinY;
             using (var pkg = new PackageMedium())
             {
-                SpawnPackagePlatform(pkg, rotationRadians: 0f, surfaceArcDeg: 180f, rotationalOffsetDeg: 0f, colliderMask: 0ul);
+                SpawnPackagePlatform(
+                    pkg,
+                    rotationRadians: 0f,
+                    surfaceArcDeg: 180f,
+                    rotationalOffsetDeg: 0f,
+                    colliderMask: 0ul
+                );
                 // Above body: starts just above, dropped onto the platform (rests).
-                var above = pkg.SpawnBox(new float2(-2f, 1.5f), BoxSize, gravityScale: 1f, Unity.Mathematics.float2.zero);
+                var above = pkg.SpawnBox(
+                    new float2(-2f, 1.5f),
+                    BoxSize,
+                    gravityScale: 1f,
+                    Unity.Mathematics.float2.zero
+                );
                 // Below body: starts below, launched UP fast (gravity off), aiming to pass through SIMULTANEOUSLY.
                 var below = pkg.SpawnBox(new float2(2f, -3f), BoxSize, gravityScale: 0f, new float2(0f, 18f));
                 pkg.Create();
@@ -1054,9 +1217,26 @@ namespace Zori.Entities.Physics2D.Tests
                 goAboveMinY;
             using (var go = new GameObjectMedium(s_PackageGravity))
             {
-                SpawnGameObjectPlatform(go, rotationDeg: 0f, surfaceArc: 180f, rotationalOffset: 0f, useMask: false, maskLayer: 0);
-                var above = go.SpawnBox(new Vector2(-2f, 1.5f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 1f, Vector2.zero);
-                var below = go.SpawnBox(new Vector2(2f, -3f), new Vector2(BoxSize.x, BoxSize.y), gravityScale: 0f, new Vector2(0f, 18f));
+                SpawnGameObjectPlatform(
+                    go,
+                    rotationDeg: 0f,
+                    surfaceArc: 180f,
+                    rotationalOffset: 0f,
+                    useMask: false,
+                    maskLayer: 0
+                );
+                var above = go.SpawnBox(
+                    new Vector2(-2f, 1.5f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 1f,
+                    Vector2.zero
+                );
+                var below = go.SpawnBox(
+                    new Vector2(2f, -3f),
+                    new Vector2(BoxSize.x, BoxSize.y),
+                    gravityScale: 0f,
+                    new Vector2(0f, 18f)
+                );
                 goAboveMinY = 1.5f;
                 for (var i = 0; i < steps; i++)
                 {
@@ -1144,19 +1324,24 @@ namespace Zori.Entities.Physics2D.Tests
             int maskLayer
         )
         {
-            go.SpawnPlatform(new Vector2(0f, 0f), rotationDeg, new Vector2(PlatformSize.x, PlatformSize.y), p =>
-            {
-                p.useOneWay = true;
-                p.surfaceArc = surfaceArc;
-                p.rotationalOffset = rotationalOffset;
-                p.useSideFriction = false;
-                p.useSideBounce = false;
-                if (useMask)
+            go.SpawnPlatform(
+                new Vector2(0f, 0f),
+                rotationDeg,
+                new Vector2(PlatformSize.x, PlatformSize.y),
+                p =>
                 {
-                    p.useColliderMask = true;
-                    p.colliderMask = 1 << maskLayer;
+                    p.useOneWay = true;
+                    p.surfaceArc = surfaceArc;
+                    p.rotationalOffset = rotationalOffset;
+                    p.useSideFriction = false;
+                    p.useSideBounce = false;
+                    if (useMask)
+                    {
+                        p.useColliderMask = true;
+                        p.colliderMask = 1 << maskLayer;
+                    }
                 }
-            });
+            );
         }
     }
 }

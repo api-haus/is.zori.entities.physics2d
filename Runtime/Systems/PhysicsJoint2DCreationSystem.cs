@@ -15,7 +15,7 @@ namespace Zori.Entities.Physics2D
     /// </summary>
     /// <remarks>
     /// <b>Ordering — why before the step.</b> The system runs <c>[UpdateBefore(PhysicsWorld2DSystem)]</c> in
-    /// the same <see cref="FixedStepSimulationSystemGroup"/>. The body-creation/step protocol is: on the
+    /// the same <see cref="Physics2DSimulationSystemGroup"/>. The body-creation/step protocol is: on the
     /// group update that first creates the bodies, <see cref="PhysicsWorld2DSystem"/> skips its
     /// <c>Simulate</c> (creation and integration are decoupled), so the bodies sit at their authored pose for
     /// one update; the NEXT update steps them. Running joint creation just before
@@ -32,10 +32,10 @@ namespace Zori.Entities.Physics2D
     ///
     /// <b>Teardown.</b> Destroying the <see cref="PhysicsWorld"/> already frees every joint it owns (a joint
     /// is owned by the world like a body/shape), so the <c>DestroyJointBatch</c> call here is the explicit,
-    /// world-still-valid path for an orderly shutdown and the seam a Phase-2B per-joint break/despawn extends;
+    /// world-still-valid path for an orderly shutdown and the seam per-joint break/despawn extends;
     /// it is a no-op leak-safety belt when the world is torn down first.
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     [UpdateBefore(typeof(PhysicsWorld2DSystem))]
     public partial struct PhysicsJoint2DCreationSystem : ISystem
     {
@@ -53,10 +53,7 @@ namespace Zori.Entities.Physics2D
         {
             // Collect every live joint handle and destroy them in one batch while the world is still valid.
             // Guard on the world: if PhysicsWorld2DSystem already tore it down, the joints went with it.
-            if (
-                !SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton)
-                || !singleton.world.isValid
-            )
+            if (!SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton) || !singleton.world.isValid)
                 return;
 
             var jointQuery = SystemAPI.QueryBuilder().WithAll<PhysicsJoint2D>().Build();
@@ -89,10 +86,7 @@ namespace Zori.Entities.Physics2D
 
             // The world must exist (PhysicsWorld2DSystem creates it). On the first update it may not yet,
             // but then no bodies exist either, so the per-joint readiness check below would skip anyway.
-            if (
-                !SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton)
-                || !singleton.world.isValid
-            )
+            if (!SystemAPI.TryGetSingleton<PhysicsWorldSingleton2D>(out var singleton) || !singleton.world.isValid)
                 return;
 
             var world = singleton.world;

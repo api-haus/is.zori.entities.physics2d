@@ -29,27 +29,13 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DDestructionTestWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DDestructionTestWorld", out group, Dt);
 
         // Live body count straight from the Box2D world the package owns.
         static int LiveBodyCount(EntityManager em)
         {
-            var singletonQuery = em.CreateEntityQuery(
-                ComponentType.ReadOnly<PhysicsWorldSingleton2D>()
-            );
+            var singletonQuery = em.CreateEntityQuery(ComponentType.ReadOnly<PhysicsWorldSingleton2D>());
             var world = singletonQuery.GetSingleton<PhysicsWorldSingleton2D>().world;
             if (!world.isValid)
                 return 0;
@@ -98,11 +84,7 @@ namespace Zori.Entities.Physics2D.Tests
             Assert.IsTrue(handle.isValid, "The created PhysicsBody handle is invalid.");
 
             var baseline = LiveBodyCount(em); // bodies present before the churned entity existed = 0
-            Assert.AreEqual(
-                1,
-                baseline,
-                $"Expected exactly one live Box2D body after creation, found {baseline}."
-            );
+            Assert.AreEqual(1, baseline, $"Expected exactly one live Box2D body after creation, found {baseline}.");
 
             // Step a few times so the body is genuinely being simulated, then destroy the entity.
             for (var f = 0; f < 5; f++)

@@ -13,11 +13,6 @@
   },
   "samples": [
     {
-      "displayName": "Custom Authoring 2D",
-      "description": "The complete custom PhysicsBody2D/PhysicsShape2D authoring surface with a 2D-native scene-view editor: an authored sample scene demonstrating the five shape kinds, a material template with a per-field override, a filtered pair, and a static floor; plus the low-level direct/bulk creation path (CreateBodyBatch). Renderer-agnostic — no Entities.Graphics dependency.",
-      "path": "Samples~/CustomAuthoring2D"
-    },
-    {
       "displayName": "Box Collider Creation Benchmark",
       "description": "Spray-spawns quads with box colliders, rendered with Unity.Entities.Graphics off the package's LocalToWorld write-back, to measure cached-template creation cost (optimisation on/off via PhysicsStep2DAuthoring, threshold sweep). The sample asmdef references Unity.Entities.Graphics; the package itself stays renderer-agnostic, so importing this sample requires adding com.unity.entities.graphics to the project manifest.",
       "path": "Samples~/BoxColliderBenchmark"

@@ -233,7 +233,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             cj.DampingRatio = 1f;
             // TargetJoint2D is single-body: its enableCollision is effectively always true (there is no second
             // body to collide with), so the built-in baker bakes collideConnected=true regardless. The custom
-            // side matches it so the pair converges — see the negative-space note in 08-phaseF.
+            // side matches it so the pair converges.
             cj.CollideConnected = true;
 
             var builtinOwner = NewBuiltInOwnerOnly(XTargetBuiltIn);
@@ -245,7 +245,7 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             target.frequency = 5f;
             target.dampingRatio = 1f;
             // TargetJoint2D.enableCollision is single-body and bakes collideConnected=true regardless of this
-            // setter; the custom side is set to true to match (negative space, documented in 08-phaseF).
+            // setter; the custom side is set to true to match.
         }
 
         // ---- Slider: slide axis (deg) + linear motor (m/s, max FORCE) + translation limit (m), no spring. ----

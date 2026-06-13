@@ -84,7 +84,9 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         }
 
         [Test]
-        public void CapsuleOutline_EveryPointEnclosedWithinRadiusOfTheSpine([Values(0f, 17f, 90f, 153f, 244f)] float spineDeg)
+        public void CapsuleOutline_EveryPointEnclosedWithinRadiusOfTheSpine(
+            [Values(0f, 17f, 90f, 153f, 244f)] float spineDeg
+        )
         {
             // the stadium outline must trace the boundary: every generated point lies within `radius` (+eps) of the
             // segment between the two cap centres, and the extreme points reach exactly `radius` from a cap.
@@ -179,9 +181,10 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
 
             // choose a new half-extent for the moved axis and build the dragged-to world position along that face.
             var newHalf = 1.85f;
-            float2 localTarget = (edge == 0 || edge == 2)
-                ? new float2(edge == 0 ? newHalf : -newHalf, 0f)
-                : new float2(0f, edge == 1 ? newHalf : -newHalf);
+            float2 localTarget =
+                (edge == 0 || edge == 2)
+                    ? new float2(edge == 0 ? newHalf : -newHalf, 0f)
+                    : new float2(0f, edge == 1 ? newHalf : -newHalf);
             var dragged = off + Rot(localTarget, deg);
 
             var newSize = PhysicsShape2DGizmos.BoxSizeFromEdgeDrag(size0, edge, dragged, deg, off);
@@ -204,7 +207,9 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         }
 
         [Test]
-        public void BoxRotationDrag_RoundTrips_OverTheAngleRange([Values(-150f, -90f, -10f, 0f, 23f, 90f, 175f)] float deg)
+        public void BoxRotationDrag_RoundTrips_OverTheAngleRange(
+            [Values(-150f, -90f, -10f, 0f, 23f, 90f, 175f)] float deg
+        )
         {
             // place the rotation ring at angle `deg`, recover the angle from that dragged ring position, and confirm
             // it reproduces the same orientation (compared as a direction so the ±180° wrap is not a false failure).
@@ -231,7 +236,9 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
         }
 
         [Test]
-        public void CapsuleEndcapDrag_MathRoundTripsThroughGetCapsuleCenters([Values(0f, 30f, 45f, 60f, 90f, 120f, 200f, 315f)] float spineDeg)
+        public void CapsuleEndcapDrag_MathRoundTripsThroughGetCapsuleCenters(
+            [Values(0f, 30f, 45f, 60f, 90f, 120f, 200f, 315f)] float spineDeg
+        )
         {
             // THE ESCALATED CASE: drag two end-caps to a known oriented spine (in the offset-relative frame the
             // editor uses), map back to size+vertical+angle+centre, then reconstruct the caps through the REAL
@@ -341,7 +348,12 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
             var auth = new UnityEngine.GameObject("fit-circle").AddComponent<PhysicsShape2DAuthoring>();
             try
             {
-                var changed = PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Circle, Unity.Mathematics.float2.zero);
+                var changed = PhysicsShape2DAutoFit.FitTo(
+                    auth,
+                    cloud,
+                    PhysicsShape2DKind.Circle,
+                    Unity.Mathematics.float2.zero
+                );
                 Assert.IsTrue(changed);
                 Assert.AreEqual(PhysicsShape2DKind.Circle, auth.Kind);
                 // the applied circle (centre = Offset, radius = Radius) must enclose every source point.
@@ -373,7 +385,12 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
             var auth = new UnityEngine.GameObject("fit-box").AddComponent<PhysicsShape2DAuthoring>();
             try
             {
-                var changed = PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Box, Unity.Mathematics.float2.zero);
+                var changed = PhysicsShape2DAutoFit.FitTo(
+                    auth,
+                    cloud,
+                    PhysicsShape2DKind.Box,
+                    Unity.Mathematics.float2.zero
+                );
                 Assert.IsTrue(changed);
                 Assert.AreEqual(PhysicsShape2DKind.Box, auth.Kind);
 
@@ -411,7 +428,12 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
             var auth = new UnityEngine.GameObject("fit-capsule").AddComponent<PhysicsShape2DAuthoring>();
             try
             {
-                var changed = PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Capsule, Unity.Mathematics.float2.zero);
+                var changed = PhysicsShape2DAutoFit.FitTo(
+                    auth,
+                    cloud,
+                    PhysicsShape2DKind.Capsule,
+                    Unity.Mathematics.float2.zero
+                );
                 Assert.IsTrue(changed);
                 Assert.AreEqual(PhysicsShape2DKind.Capsule, auth.Kind);
 
@@ -442,7 +464,12 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
             var auth = new UnityEngine.GameObject("fit-poly").AddComponent<PhysicsShape2DAuthoring>();
             try
             {
-                var changed = PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Polygon, Unity.Mathematics.float2.zero);
+                var changed = PhysicsShape2DAutoFit.FitTo(
+                    auth,
+                    cloud,
+                    PhysicsShape2DKind.Polygon,
+                    Unity.Mathematics.float2.zero
+                );
                 Assert.IsTrue(changed);
                 Assert.AreEqual(PhysicsShape2DKind.Polygon, auth.Kind);
                 Assert.IsFalse(auth.PolygonDecompose, "a <=8-vertex convex hull stays on the single-hull path");
@@ -462,7 +489,9 @@ namespace Zori.Entities.Physics2D.Tests.EditorMath
             try
             {
                 // Edge is an open chain, not an enclosing fit — FitTo must report no change.
-                Assert.IsFalse(PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Edge, Unity.Mathematics.float2.zero));
+                Assert.IsFalse(
+                    PhysicsShape2DAutoFit.FitTo(auth, cloud, PhysicsShape2DKind.Edge, Unity.Mathematics.float2.zero)
+                );
             }
             finally
             {

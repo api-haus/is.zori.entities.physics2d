@@ -157,9 +157,7 @@ namespace Zori.Entities.Physics2D.Tests
             fixedGroup.Enabled = false;
 
             var framesWaited = 0;
-            while (
-                CountNonStatic(bakedQuery) == 0 && framesWaited < LoadTimeoutFrames
-            )
+            while (CountNonStatic(bakedQuery) == 0 && framesWaited < LoadTimeoutFrames)
             {
                 framesWaited++;
                 yield return null;
@@ -399,9 +397,7 @@ namespace Zori.Entities.Physics2D.Tests
             var refOrder = OrderByInitialPose(refTraj[0]);
 
             var log = new System.Text.StringBuilder();
-            log.AppendLine(
-                $"[PHYSICS2D-PARITY] bodies={bodyCount} steps={stepCount} dt={dt} loadFrames={loadFrames}"
-            );
+            log.AppendLine($"[PHYSICS2D-PARITY] bodies={bodyCount} steps={stepCount} dt={dt} loadFrames={loadFrames}");
             log.AppendLine(
                 $"[PHYSICS2D-PARITY] envelope: posBase={envelope.positionBaseMeters} "
                     + $"posGrowth/step={envelope.positionGrowthPerStep} angCap={envelope.angleCapRadians}"
@@ -431,13 +427,16 @@ namespace Zori.Entities.Physics2D.Tests
                     if (
                         nanViolation == null
                         && (
-                            isnan(e.position.x) || isnan(e.position.y) || isinf(e.position.x)
-                            || isinf(e.position.y) || isnan(e.angleRadians) || isinf(e.angleRadians)
+                            isnan(e.position.x)
+                            || isnan(e.position.y)
+                            || isinf(e.position.x)
+                            || isinf(e.position.y)
+                            || isnan(e.angleRadians)
+                            || isinf(e.angleRadians)
                         )
                     )
                         nanViolation =
-                            $"ECS body {b} produced NaN/Inf at step {s}: pos={e.position}, "
-                            + $"ang={e.angleRadians}.";
+                            $"ECS body {b} produced NaN/Inf at step {s}: pos={e.position}, " + $"ang={e.angleRadians}.";
 
                     var dp = length(e.position - r.position);
                     var da = abs(AngleDelta(e.angleRadians, r.angleRadians));
@@ -458,9 +457,7 @@ namespace Zori.Entities.Physics2D.Tests
                 }
                 worstPos = max(worstPos, maxPos);
                 worstAng = max(worstAng, maxAng);
-                log.AppendLine(
-                    $"{s}\t{maxPos:E6}\t{(sumPos / bodyCount):E6}\t{maxAng:E6}\t{posBand:E6}"
-                );
+                log.AppendLine($"{s}\t{maxPos:E6}\t{(sumPos / bodyCount):E6}\t{maxAng:E6}\t{posBand:E6}");
             }
 
             // Disqualifiers on the final state: each body moved, settles in the coarse region.
@@ -478,8 +475,10 @@ namespace Zori.Entities.Physics2D.Tests
                 if (
                     settleViolation == null
                     && !(
-                        end.x >= envelope.settleRegionMin.x && end.x <= envelope.settleRegionMax.x
-                        && end.y >= envelope.settleRegionMin.y && end.y <= envelope.settleRegionMax.y
+                        end.x >= envelope.settleRegionMin.x
+                        && end.x <= envelope.settleRegionMax.x
+                        && end.y >= envelope.settleRegionMin.y
+                        && end.y <= envelope.settleRegionMax.y
                     )
                 )
                     settleViolation =

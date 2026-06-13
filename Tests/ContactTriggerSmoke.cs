@@ -31,20 +31,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DContactTriggerSmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DContactTriggerSmokeWorld", out group, Dt);
 
         static Entity SpawnDynamicCircle(EntityManager em, float2 pos, float radius)
         {
@@ -72,11 +60,7 @@ namespace Zori.Entities.Physics2D.Tests
         {
             return DirectPhysics2DAuthoring.Create(
                 em,
-                new PhysicsBody2DDefinition
-                {
-                    bodyType = PhysicsBody.BodyType.Static,
-                    initialPosition = center,
-                },
+                new PhysicsBody2DDefinition { bodyType = PhysicsBody.BodyType.Static, initialPosition = center },
                 new PhysicsShape2D
                 {
                     kind = PhysicsShape2DKind.Box,
@@ -90,12 +74,7 @@ namespace Zori.Entities.Physics2D.Tests
         }
 
         // True if either ordering of (a,b) appears as the pair in a contact event of the given phase.
-        static bool HasContact(
-            DynamicBuffer<PhysicsContactEvent2D> buf,
-            Entity a,
-            Entity b,
-            PhysicsEventPhase2D phase
-        )
+        static bool HasContact(DynamicBuffer<PhysicsContactEvent2D> buf, Entity a, Entity b, PhysicsEventPhase2D phase)
         {
             for (var i = 0; i < buf.Length; i++)
             {
