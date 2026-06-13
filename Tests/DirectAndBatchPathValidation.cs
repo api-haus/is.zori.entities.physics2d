@@ -58,14 +58,7 @@ namespace Zori.Entities.Physics2D.Tests
             int threshold = 8
         )
         {
-            var world = new World("Physics2DDirectTestWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
+            var world = PhysicsTestWorld.Create("Physics2DDirectTestWorld", out group, Dt);
 
             if (cacheEnabled.HasValue)
             {
@@ -75,7 +68,6 @@ namespace Zori.Entities.Physics2D.Tests
                 world.EntityManager.CreateSingleton(cfg);
             }
 
-            group = fixedGroup;
             return world;
         }
 

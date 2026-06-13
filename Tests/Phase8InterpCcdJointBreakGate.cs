@@ -48,26 +48,8 @@ namespace Zori.Entities.Physics2D.Tests
         // Scaffolds
         // ===============================================================================================
 
-        // A disposable package world with the fixed-step systems; optionally the joint create/break systems.
-        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group, bool withJoints)
-        {
-            var world = new World("Physics2DPhase8GateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            if (withJoints)
-            {
-                fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsJoint2DCreationSystem>());
-                fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsJoint2DBreakSystem>());
-            }
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group, bool withJoints) =>
+            PhysicsTestWorld.Create("Physics2DPhase8GateWorld", out group, Dt, withJoints);
 
         static float BodyX(EntityManager em, Entity e) => em.GetComponentData<LocalToWorld>(e).Position.x;
 

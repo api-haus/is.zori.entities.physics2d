@@ -60,18 +60,8 @@ namespace Zori.Entities.Physics2D.Tests
             s_Blobs.Clear();
         }
 
-        static World MakeWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("PhysicalExtentTestWorld");
-            var fg = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fg.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-            fg.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fg.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fg.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fg.SortSystems();
-            group = fg;
-            return world;
-        }
+        static World MakeWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("PhysicalExtentTestWorld", out group, Dt);
 
         // The EXACT physical extent (width, height) of the body's created shape(s): create the body, step once to
         // create it, union every shape's exact geometry AABB (per-kind CalculateAABB at identity — the shape's

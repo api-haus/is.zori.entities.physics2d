@@ -59,20 +59,8 @@ namespace Zori.Entities.Physics2D.Tests
         // simulation mode so the GameObject oracle steps only when we call Simulate.
         // -----------------------------------------------------------------------------------------------
 
-        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group)
-        {
-            var world = new World("Physics2DPhase7GateWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakePhysicsWorld(out FixedStepSimulationSystemGroup group) =>
+            PhysicsTestWorld.Create("Physics2DPhase7GateWorld", out group, Dt);
 
         // A package-side drivable dynamic circle with the command buffer attached. gravityScale chosen by the
         // caller (0 to isolate a write-in's velocity delta, 1 to compare a free-fall + write-in trajectory).

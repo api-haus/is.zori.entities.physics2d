@@ -80,13 +80,8 @@ namespace Zori.Entities.Physics2D.Tests
 
             public PackageMedium()
             {
-                _world = new World("Physics2DEffectorGateWorld");
-                _group = _world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-                _group.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-                _group.AddSystemToUpdateList(_world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-                _group.SortSystems();
+                _world = PhysicsTestWorld.Create("Physics2DEffectorGateWorld", out var group, Dt);
+                _group = group;
             }
 
             public EntityManager Em => _world.EntityManager;

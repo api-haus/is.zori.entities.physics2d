@@ -44,25 +44,8 @@ namespace Zori.Entities.Physics2D.Tests
     {
         const float Dt = 1f / 60f;
 
-        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group, bool withJoints)
-        {
-            var world = new World("Physics2DPhase8SmokeWorld");
-            var fixedGroup = world.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.RateManager = new Unity.Entities.RateUtils.FixedRateSimpleManager(Dt);
-
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsWorld2DSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DCleanupSystem>());
-            fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsBody2DWriteBackSystem>());
-            if (withJoints)
-            {
-                fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsJoint2DCreationSystem>());
-                fixedGroup.AddSystemToUpdateList(world.GetOrCreateSystem<PhysicsJoint2DBreakSystem>());
-            }
-            fixedGroup.SortSystems();
-
-            group = fixedGroup;
-            return world;
-        }
+        static World MakeFixedWorld(out FixedStepSimulationSystemGroup group, bool withJoints) =>
+            PhysicsTestWorld.Create("Physics2DPhase8SmokeWorld", out group, Dt, withJoints);
 
         static Entity SpawnHorizontalBullet(EntityManager em, float2 pos, float vx, bool continuous)
         {
