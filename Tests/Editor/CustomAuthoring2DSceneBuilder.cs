@@ -10,36 +10,33 @@ using Zori.Entities.Physics2D.Authoring;
 namespace Zori.Entities.Physics2D.Tests.Editor
 {
     /// <summary>
-    /// Click-free, reproducible authoring of the <c>CustomAuthoring2D</c> sample scene — the Phase-E deliverable
-    /// that demonstrates the complete body+shape custom-authoring surface (Phases A–D). It builds one child
+    /// Click-free, reproducible authoring of the <c>CustomAuthoring2D</c> bake fixture — it builds one child
     /// SubScene holding nine authored GameObjects (the five shape kinds, a material-template + per-field override
     /// body, a filtered pair, a static box floor and a static edge wall) and a parent scene carrying that SubScene,
-    /// into mara's fixture folder so the bake smoke runs in place. The committed shippable copy under
-    /// <c>Samples~/CustomAuthoring2D/Scenes/</c> is the same content copied out after the bake check (the
-    /// <c>Samples~</c> folder is not imported, so it cannot be baked in place).
+    /// into the package's fixture folder so the bake smoke runs in place.
     ///
     /// Run via the menu or
-    /// <c>-executeMethod Zori.Entities.Physics2D.Tests.Editor.CustomAuthoring2DSampleSceneBuilder.BuildSampleScene</c>.
+    /// <c>-executeMethod Zori.Entities.Physics2D.Tests.Editor.CustomAuthoring2DSceneBuilder.BuildScene</c>.
     /// </summary>
-    public static class CustomAuthoring2DSampleSceneBuilder
+    public static class CustomAuthoring2DSceneBuilder
     {
         public const string FixtureRoot = "Assets/EntitiesPhysics2DFixture";
 
-        public const string SampleParent = FixtureRoot + "/CustomAuthoring2DSample.unity";
-        public const string SampleChild = FixtureRoot + "/CustomAuthoring2DSample_Sub.unity";
-        public const string SampleMaterial = FixtureRoot + "/BouncyTemplate.physicsMaterial2D";
+        public const string Parent = FixtureRoot + "/CustomAuthoring2D.unity";
+        public const string Child = FixtureRoot + "/CustomAuthoring2D_Sub.unity";
+        public const string Material = FixtureRoot + "/BouncyTemplate.physicsMaterial2D";
 
         const float FloorTop = 0f;
         const int FilterCategory = 8; // an arbitrary explicit category bit for the filtered pair
 
-        [MenuItem("Tools/Zori/Build CustomAuthoring2D Sample Scene")]
-        public static void BuildSampleScene()
+        [MenuItem("Tools/Zori/Build CustomAuthoring2D Scene")]
+        public static void BuildScene()
         {
             Directory.CreateDirectory(FixtureRoot);
 
             // The material template MaterialBody inherits its bounciness from.
             var template = new PhysicsMaterial2D("BouncyTemplate") { friction = 0.3f, bounciness = 0.8f };
-            AssetDatabase.CreateAsset(template, SampleMaterial);
+            AssetDatabase.CreateAsset(template, Material);
 
             var child = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -106,17 +103,17 @@ namespace Zori.Entities.Physics2D.Tests.Editor
             ConfigureFilteredCircle(filterBShape);
 
             EditorSceneManager.MarkSceneDirty(child);
-            EditorSceneManager.SaveScene(child, SampleChild);
+            EditorSceneManager.SaveScene(child, Child);
 
-            SaveParentWithSubScene(SampleParent, SampleChild, "CustomAuthoring2D Sample SubScene");
+            SaveParentWithSubScene(Parent, Child, "CustomAuthoring2D SubScene");
 
-            RegisterSceneInBuildSettings(SampleParent);
-            RegisterSceneInBuildSettings(SampleChild);
+            RegisterSceneInBuildSettings(Parent);
+            RegisterSceneInBuildSettings(Child);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log(
-                "[CustomAuthoring2DSampleSceneBuilder] built the sample scene "
+                "[CustomAuthoring2DSceneBuilder] built the CustomAuthoring2D bake fixture "
                     + "(9 GameObjects: 5 shape kinds + material-template/override + filtered pair + floor + edge)."
             );
         }

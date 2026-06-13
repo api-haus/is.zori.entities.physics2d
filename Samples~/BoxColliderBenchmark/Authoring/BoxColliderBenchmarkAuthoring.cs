@@ -8,7 +8,7 @@ namespace Zori.Entities.Physics2D.Samples
     /// baker (<c>BoxColliderBenchmarkBaker</c>, in the Editor-only Baking assembly) emits the
     /// <see cref="BoxColliderBenchmarkConfig"/> singleton that arms <see cref="BoxColliderBenchmarkSpawnerSystem"/>.
     /// This is the mara-side fixture for the package sample (which ships in <c>Samples~/BoxColliderBenchmark</c>),
-    /// mirroring how <c>Assets/EntitiesPhysics2DFixture/</c> is the mara fixture for the CustomAuthoring2D sample.
+    /// mirroring how <c>Assets/EntitiesPhysics2DFixture/</c> is the fixture folder for the package's bake tests.
     /// Pair it in the scene with a <c>PhysicsStep2DAuthoring</c> whose <c>Cache Identical Bodies</c> / <c>Identical
     /// Body Threshold</c> drive the optimisation under test.
     /// </summary>

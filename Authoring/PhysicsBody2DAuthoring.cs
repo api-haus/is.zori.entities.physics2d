@@ -31,8 +31,7 @@ namespace Zori.Entities.Physics2D.Authoring
     /// runtime components <c>Rigidbody2DBaker</c> emits, so a body authored this way and an equivalent
     /// <c>Rigidbody2D</c>-authored body converge on one runtime archetype and one Box2D solver — the
     /// dual-surface convergence the design relies on. This component lives in a compiled package assembly
-    /// (not only in <c>Samples~</c>) so it is unit-testable; the importable <c>Samples~/CustomAuthoring2D</c>
-    /// sample references it and ships authored scenes that use it.
+    /// so it is unit-testable; it is a first-class authoring surface, not a <c>Samples~</c> sample.
     ///
     /// <para><b>Deliberately omitted knobs.</b> The DOTS 3D sample also exposes <c>WorldIndex</c>,
     /// <c>SolverType</c>, and a custom inertia tensor. Those are NOT exposed here: world-index sharding

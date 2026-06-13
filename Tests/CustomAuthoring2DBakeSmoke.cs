@@ -10,25 +10,24 @@ using UnityEngine.TestTools;
 namespace Zori.Entities.Physics2D.Tests
 {
     /// <summary>
-    /// The Phase-E sample-scene smoke: the <c>CustomAuthoring2D</c> sample SubScene (nine authored GameObjects —
+    /// The authoring-surface bake smoke: the <c>CustomAuthoring2D</c> bake fixture (nine authored GameObjects —
     /// the five shape kinds, a material-template + per-field-override body, a filtered pair, a static box floor,
-    /// and a static edge wall) streams and bakes, and the authored Phase-A/B fields land on the baked
-    /// <see cref="PhysicsShape2D"/> components. This proves the shippable sample bakes through the normal importer
-    /// (the committed <c>Samples~</c> copy is byte-identical content) and that the complete authoring surface the
-    /// docs describe actually produces the expected runtime components.
+    /// and a static edge wall) streams and bakes, and the authored fields land on the baked
+    /// <see cref="PhysicsShape2D"/> components. This proves the complete authoring surface the docs describe
+    /// actually produces the expected runtime components through the normal importer.
     /// </summary>
     /// <remarks>
     /// Runtime-only: the scene is authored by the editor builder
-    /// <c>CustomAuthoring2DSampleSceneBuilder</c> and registered in build settings, so
+    /// <c>CustomAuthoring2DSceneBuilder</c> and registered in build settings, so
     /// <c>SceneManager.LoadScene</c> opens it and the SubScene auto-loads + bakes on PlayMode enter. The test
     /// pumps frames (yield <c>null</c> — <c>WaitForEndOfFrame</c> does not tick in batchmode) until the baked
     /// shapes appear, then asserts the bake outcome. It does not step the simulation — settling is the consumer's
     /// Play, not a bake smoke; the load-bearing fact here is "the authored components bake to the expected
     /// runtime data".
     /// </remarks>
-    public sealed class CustomAuthoring2DSampleBakeSmoke
+    public sealed class CustomAuthoring2DBakeSmoke
     {
-        const string SceneName = "CustomAuthoring2DSample";
+        const string SceneName = "CustomAuthoring2D";
         const int LoadTimeoutFrames = 600;
 
         const int ExpectedShapes = 9; // floor + edge + 7 body shapes
@@ -39,7 +38,7 @@ namespace Zori.Entities.Physics2D.Tests
         const int FilterCategory = 8;
 
         [UnityTest]
-        public IEnumerator SampleScene_Bakes_WithAuthoredFields()
+        public IEnumerator Scene_Bakes_WithAuthoredFields()
         {
             SceneManager.LoadScene(SceneName, LoadSceneMode.Single);
             yield return null; // let the load + SubScene streaming begin
@@ -68,8 +67,8 @@ namespace Zori.Entities.Physics2D.Tests
                 ExpectedShapes,
                 shapeCount,
                 $"Expected {ExpectedShapes} baked shapes after {framesWaited} frames, saw {shapeCount} — the "
-                    + "sample SubScene did not stream/bake the full set. Build it first via "
-                    + "CustomAuthoring2DSampleSceneBuilder.BuildSampleScene."
+                    + "fixture SubScene did not stream/bake the full set. Build it first via "
+                    + "CustomAuthoring2DSceneBuilder.BuildScene."
             );
 
             // Every authored GameObject bakes a body definition — the 7 dynamic bodies and the 2 collider-only
@@ -113,7 +112,7 @@ namespace Zori.Entities.Physics2D.Tests
             );
 
             Debug.Log(
-                $"[CA2D-SAMPLE-SMOKE] shapes={shapeCount} bodies={bodyCount} "
+                $"[CA2D-BAKE-SMOKE] shapes={shapeCount} bodies={bodyCount} "
                     + $"materialTemplateBaked={materialBodyFound} filteredPair={filteredPairCount} "
                     + $"loadFrames={framesWaited}"
             );

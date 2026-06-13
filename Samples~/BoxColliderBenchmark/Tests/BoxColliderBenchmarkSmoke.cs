@@ -14,7 +14,7 @@ namespace Zori.Entities.Physics2D.Samples.Tests
     /// The mara-side local verification of the Box Collider Creation Benchmark sample (which ships in the package's
     /// <c>Samples~/BoxColliderBenchmark</c> and whose C# is the compiled copy in
     /// <c>Assets/EntitiesPhysics2DBenchmark/</c>). It is the dev/test fixture for the sample, the way
-    /// <c>Assets/EntitiesPhysics2DFixture/</c> verifies CustomAuthoring2D — but a PlayMode test rather than an
+    /// <c>Assets/EntitiesPhysics2DFixture/</c> holds the authored bake fixtures — but a PlayMode test rather than an
     /// authored scene, because the load-bearing facts to verify are programmatic: the spray spawns, each quad
     /// instance gains the Unity.Entities.Graphics render components + a valid <see cref="LocalToWorld"/> (so it is
     /// renderable off the physics write-back), the dedup on/off toggle takes effect (the cache engages past the
