@@ -838,20 +838,7 @@ namespace Zori.Entities.Physics2D
             if (!world.isValid)
                 return;
 
-            // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle. Three paths,
-            // chosen per entity by the cached-template optimisation (PhysicsWorld2DConfig.cacheIdenticalBodies):
-            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
-            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
-            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
-            //     definition/geometry/mass instead of re-constructing them;
-            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
-            //     CreateBodyBatch instead of K CreateBody calls. A 1/frame cross-frame spray gets K = 1 and the
-            //     plain template path.
-            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
-            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
-            // so the new bodies are live for the next step. Whatever path created a body, the RESULT is identical —
-            // a cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
-            // body), which is what keeps the optimisation transparent.
+            // Bodies for newly-baked entities are created AFTER the step below, not here — see the creation loop.
             var cacheEnabled = config.HasValue
                 ? config.Value.cacheIdenticalBodies
                 : PhysicsWorld2DConfig.Default.cacheIdenticalBodies;
@@ -985,20 +972,12 @@ namespace Zori.Entities.Physics2D
             }
 
             // Create a Box2D body+shape for each baked entity lacking a live PhysicsBody2D handle, AFTER the step
-            // above. Three paths, chosen per entity by the cached-template optimisation
-            // (PhysicsWorld2DConfig.cacheIdenticalBodies):
-            //   - the unchanged per-entity path (CreatePerEntityBody) — for a heterogeneous bake, a warm-up body
-            //     below the threshold, a no-form-hash body, a multi-shape body, or a kind not value-cacheable;
-            //   - the cheap cached-template path — for an isBuilt form's body, replaying the prepared
-            //     definition/geometry/mass instead of re-constructing them;
-            //   - the same-frame in-frame collapse — for K >= 2 isBuilt-form bodies that land in ONE frame, one
-            //     CreateBodyBatch instead of K CreateBody calls. A 1/frame cross-frame spray gets K = 1 and the
-            //     plain template path.
-            // The PhysicsBody2D / PhysicsBody2DCleanup / PhysicsBody2DSmoothing component adds are identical across
-            // all three paths (AddPhysicalBodyComponents) and are deferred through one ECB played back immediately,
-            // so the new bodies are live for the NEXT step (the step above already ran for this frame). Whatever path
-            // created a body, the RESULT is identical — a cached-template body is bit-identical to a per-entity one
-            // (same definition + same shape → same Box2D body), which is what keeps the optimisation transparent.
+            // above — so a body never advances on its spawn frame and first integrates on the NEXT update. One of
+            // three per-entity paths runs (each commented at its own arm below): the per-entity path, the cached-
+            // template replay, and the same-frame CreateBodyBatch collapse. The result is path-independent — a
+            // cached-template body is bit-identical to a per-entity one (same definition + same shape → same Box2D
+            // body), which is what keeps the cacheIdenticalBodies optimisation transparent. Component adds go
+            // through one ECB played back immediately, so the new bodies are live for that next step.
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // Same-frame buckets: per form-hash, the entities of an isBuilt form that arrived this frame and are
