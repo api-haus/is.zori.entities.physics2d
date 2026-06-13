@@ -59,7 +59,7 @@ namespace Zori.Entities.Physics2D
     /// trigger shape that overlaps without a collision response, <c>Collider2D.isTrigger</c>). Contact and
     /// trigger events are always enabled on every package shape (the always-on Enter/Stay/Exit posture), so the
     /// 3D <c>None</c> (no-event sensor) and an explicit per-shape contact-event opt-in are not expressible here
-    /// without new runtime surface — they are 2D negative space (<c>bake-contract.md</c>).
+    /// without new runtime surface — they are deliberately absent in 2D (<c>bake-contract.md</c>).
     /// </summary>
     public enum PhysicsCollisionResponse2D : byte
     {

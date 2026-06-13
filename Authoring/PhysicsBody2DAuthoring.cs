@@ -38,7 +38,7 @@ namespace Zori.Entities.Physics2D.Authoring
     /// <c>SolverType</c>, and a custom inertia tensor. Those are NOT exposed here: world-index sharding
     /// needs the multi-world model the package defers, and a custom 2D solver/inertia override has no field
     /// on the current runtime archetype. Adding them would drag in deferred infrastructure for no current
-    /// need (the design's negative-space rule). They are the natural extension when that infrastructure
+    /// need. They are the natural extension when that infrastructure
     /// lands — an additive extension component, not a fork.</para>
     /// </remarks>
     [AddComponentMenu("Zori/Entities Physics 2D/Physics Body 2D")]

@@ -31,7 +31,7 @@ namespace Zori.Entities.Physics2D.Tests
     /// geometry, a decompose Polygon, any multi-shape body) are deliberately excluded from the cached arm
     /// (<c>TryGetCacheableGeometry</c> / the <c>!hasExtraShapes</c> guard), so for them transparency means the cache
     /// NEVER engages and the body is always the unchanged per-entity path — proven here by stepping them on vs off
-    /// and getting one identical trajectory, the negative-space half of the contract.</item>
+    /// and getting one identical trajectory, the other half of the contract.</item>
     /// <item><b>Form-hash invariants</b> (<see cref="PhysicsBody2DFormHashBakingSystem"/>). Asserted by driving the
     /// REAL baking system over real authored components and reading back the <see cref="PhysicsBody2DFormHash"/> it
     /// produced — no reimplementation of the hash, so a real split/collision in the shipped code is caught. Two
@@ -327,7 +327,7 @@ namespace Zori.Entities.Physics2D.Tests
         }
 
         // ------------------------------------------------------------------------------------------------
-        // Part A (negative space) — the NON-cacheable kinds are never served from a template, so on vs off is the
+        // The NON-cacheable kinds are never served from a template, so on vs off is the
         // unchanged per-entity path either way and produces ONE identical trajectory. Falsification framing: if a
         // non-cacheable kind were wrongly admitted to the cached arm, the cache could serve it a wrong template (e.g.
         // a stale geometry) and on would diverge from off; equality here proves it is NOT admitted and the body is
@@ -385,7 +385,7 @@ namespace Zori.Entities.Physics2D.Tests
             yield break;
         }
 
-        // Multi-shape body: excluded by the !hasExtraShapes guard regardless of kind. Same negative-space proof.
+        // Multi-shape body: excluded by the !hasExtraShapes guard regardless of kind. Same on-vs-off equality proof.
         [UnityTest]
         public IEnumerator NonCacheableUnaffected_MultiShape()
         {

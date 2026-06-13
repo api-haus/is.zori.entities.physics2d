@@ -46,8 +46,7 @@ namespace Zori.Entities.Physics2D.Tests
     /// stiff-spring position controllers on a frictionless symmetric disc whose transient is FP-chaos-sensitive
     /// — two field-identical joints amplify the v3 per-body solve-order noise and end ~1-3 m apart, a property
     /// of the fixture geometry, not a custom-vs-built-in asymmetry (the Wheel's bit-identical result proves two
-    /// field-identical joints simulate identically when the transient is stable). See the negative-space note
-    /// in 08-phaseF.</para>
+    /// field-identical joints simulate identically when the transient is stable).</para>
     ///
     /// <para>Build the fixture first via <c>-executeMethod
     /// Zori.Entities.Physics2D.Tests.Editor.CustomJointConvergenceFixtureBuilder.Build</c> (the same fixture
@@ -180,7 +179,7 @@ namespace Zori.Entities.Physics2D.Tests
             // field-identical joints CAN simulate bit-identically when the transient is stable) — so Relative /
             // Target / Distance / Spring / Fixed / Friction are pinned at the BAKE level (field-identity →
             // identical Box2D joint → identical simulation by construction) and not re-driven here against a
-            // tight behavioral band a chaotic transient cannot meet. See the negative-space note in 08-phaseF.
+            // tight behavioral band a chaotic transient cannot meet.
             AssertPairParity("Hinge", XHingeCustom, XHingeBuiltIn, AngleCapSpin, entityByKey, traj);
             AssertPairParity("Slider", XSliderCustom, XSliderBuiltIn, AngleCapHeld, entityByKey, traj);
             AssertPairParity("Wheel", XWheelCustom, XWheelBuiltIn, AngleCapSpin, entityByKey, traj);

@@ -5,9 +5,8 @@ namespace Zori.Entities.Physics2D
 {
     /// <summary>
     /// Which built-in 2D joint a <see cref="PhysicsJoint2DDefinition"/> carries, mapped onto a Box2D joint
-    /// definition at creation. Each kind is one enum value plus one creation-switch arm and one baker — the
-    /// same negative-space property the
-    /// <see cref="PhysicsShape2DKind"/> union has. Several built-in joints share a Box2D kind: a rigid
+    /// definition at creation. Each kind is one enum value plus one creation-switch arm and one baker, the
+    /// same shape the <see cref="PhysicsShape2DKind"/> union has. Several built-in joints share a Box2D kind: a rigid
     /// <see cref="Distance"/> and an oscillating <see cref="Spring"/> are both the Box2D
     /// <c>PhysicsDistanceJoint</c> (the spring enable flag distinguishes them); <see cref="Relative"/>,
     /// <see cref="Friction"/>, and <see cref="Target"/> are all the Box2D <c>PhysicsRelativeJoint</c>

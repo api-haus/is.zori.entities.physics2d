@@ -36,7 +36,7 @@ namespace Zori.Entities.Physics2D.Tests
     ///
     /// <para><b>The documented multi-body Platform gap.</b> The package one-way is a per-step WHOLE-PLATFORM-BODY
     /// <c>enabled</c> gate (the faithful per-contact <c>OnPreSolve2D</c> veto is unreachable from the package's
-    /// native-poll DOTS posture — Phase-10b design negative space). A whole-body gate cannot simultaneously rest a
+    /// native-poll DOTS posture). A whole-body gate cannot simultaneously rest a
     /// body from above AND pass a body from below in the same steps. <see cref="Platform_MultiBody_KnownGap_Characterized"/>
     /// constructs that exact scenario, MEASURES what each medium does, and records WHICH body is served wrong vs
     /// GameObject. It is the documented known-gap — GREEN-with-evidence (the divergence is recorded, not forced to
