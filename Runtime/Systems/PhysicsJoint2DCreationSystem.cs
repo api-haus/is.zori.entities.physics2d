@@ -15,7 +15,7 @@ namespace Zori.Entities.Physics2D
     /// </summary>
     /// <remarks>
     /// <b>Ordering — why before the step.</b> The system runs <c>[UpdateBefore(PhysicsWorld2DSystem)]</c> in
-    /// the same <see cref="FixedStepSimulationSystemGroup"/>. The body-creation/step protocol is: on the
+    /// the same <see cref="Physics2DSimulationSystemGroup"/>. The body-creation/step protocol is: on the
     /// group update that first creates the bodies, <see cref="PhysicsWorld2DSystem"/> skips its
     /// <c>Simulate</c> (creation and integration are decoupled), so the bodies sit at their authored pose for
     /// one update; the NEXT update steps them. Running joint creation just before
@@ -35,7 +35,7 @@ namespace Zori.Entities.Physics2D
     /// world-still-valid path for an orderly shutdown and the seam per-joint break/despawn extends;
     /// it is a no-op leak-safety belt when the world is torn down first.
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     [UpdateBefore(typeof(PhysicsWorld2DSystem))]
     public partial struct PhysicsJoint2DCreationSystem : ISystem
     {

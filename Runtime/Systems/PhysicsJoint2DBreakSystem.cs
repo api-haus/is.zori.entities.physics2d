@@ -19,7 +19,7 @@ namespace Zori.Entities.Physics2D
     /// and a <c>RemoveComponent</c> (a structural change) are both illegal mid-span-read. The collect/apply
     /// split mirrors the contact/trigger event collection and the body cleanup: collect from the
     /// volatile span in the world system, do the structural change in a sibling system. Running
-    /// <c>[UpdateAfter(PhysicsWorld2DSystem)]</c> in the same <see cref="FixedStepSimulationSystemGroup"/> tick
+    /// <c>[UpdateAfter(PhysicsWorld2DSystem)]</c> in the same <see cref="Physics2DSimulationSystemGroup"/> tick
     /// means a joint loaded past its threshold this step is gone before the next step integrates the (now free)
     /// bodies.
     ///
@@ -32,7 +32,7 @@ namespace Zori.Entities.Physics2D
     /// the main thread, exactly like the joint creation in the sibling system — Burst is confined to the
     /// write-back / smoothing jobs.
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     [UpdateAfter(typeof(PhysicsWorld2DSystem))]
     public partial struct PhysicsJoint2DBreakSystem : ISystem
     {

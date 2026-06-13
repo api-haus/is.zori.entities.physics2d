@@ -27,7 +27,7 @@ namespace Zori.Entities.Physics2D
     /// by the API, so the call is safe even when the world is gone.
     ///
     /// <b>Ordering — before the step.</b> Runs <c>[UpdateBefore(PhysicsWorld2DSystem)]</c> in
-    /// <see cref="FixedStepSimulationSystemGroup"/> so a body destroyed on any frame is freed at the top of the
+    /// <see cref="Physics2DSimulationSystemGroup"/> so a body destroyed on any frame is freed at the top of the
     /// next fixed step, before <see cref="PhysicsWorld2DSystem"/>'s <c>Simulate</c> would integrate it — a dead
     /// entity is therefore stepped zero further times once cleanup runs. (Write-back already never touches a
     /// ghost: it queries <c>WithAll&lt;PhysicsBody2D, LocalToWorld&gt;</c> and the ghost has neither.)
@@ -38,7 +38,7 @@ namespace Zori.Entities.Physics2D
     /// same way, the orderly no-warning path (harmless if <see cref="PhysicsWorld2DSystem"/> tore the world
     /// down first, since <c>DestroyBatch</c> ignores the now-invalid handles).
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     [UpdateBefore(typeof(PhysicsWorld2DSystem))]
     public partial struct PhysicsBody2DCleanupSystem : ISystem
     {

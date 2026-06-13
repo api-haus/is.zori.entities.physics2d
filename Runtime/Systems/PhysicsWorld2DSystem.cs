@@ -12,9 +12,10 @@ namespace Zori.Entities.Physics2D
     /// exactly one <c>Simulate(dt)</c> for the bodies already live, THEN creates a Box2D body+shape for each
     /// baked entity that does not yet have one — so a body never integrates on the frame it is created (it
     /// joins the simulation on the next step) while the existing population keeps stepping on a frame that
-    /// also creates new bodies. Lives in <see cref="FixedStepSimulationSystemGroup"/> so the step runs at the
-    /// group's fixed timestep with the catch-up manager sub-stepping to wall-clock — deterministic, framerate
-    /// independent, no bespoke sub-stepping.
+    /// also creates new bodies. Lives in <see cref="Physics2DSimulationSystemGroup"/>, itself in
+    /// <see cref="FixedStepSimulationSystemGroup"/>, so the step runs at the group's fixed timestep with the
+    /// catch-up manager sub-stepping to wall-clock — deterministic, framerate independent, no bespoke
+    /// sub-stepping.
     /// </summary>
     /// <remarks>
     /// Not <c>[BurstCompile]</c>: the world/body calls are managed <c>Unity.U2D.Physics</c> instance
@@ -32,7 +33,7 @@ namespace Zori.Entities.Physics2D
     /// surface is source-generated against the system instance and is not available from a static helper,
     /// so the body/shape creation stays in the system method rather than a factored-out function.
     /// </remarks>
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(Physics2DSimulationSystemGroup))]
     public partial struct PhysicsWorld2DSystem : ISystem
     {
         // The cross-frame cached body-template store, keyed by the baked PhysicsBody2DFormHash. An entry is built
@@ -940,7 +941,7 @@ namespace Zori.Entities.Physics2D
 
                 // Record this step's time so PhysicsBody2DSmoothingSystem (render rate) can compute how far the
                 // render time is ahead of the last physics step. ElapsedTime/DeltaTime here are the fixed
-                // group's clock (this system runs in FixedStepSimulationSystemGroup).
+                // group's clock — the sub-group inherits FixedStepSimulationSystemGroup's rate manager.
                 SystemAPI.SetSingleton(
                     new PhysicsFixedStepTime2D { elapsedTime = SystemAPI.Time.ElapsedTime, deltaTime = dt }
                 );
