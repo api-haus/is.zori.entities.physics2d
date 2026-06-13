@@ -629,16 +629,14 @@ namespace Zori.Entities.Physics2D
                 shapeDef.contactFilter = filter;
             }
 
-            // Trigger (sensor) + event reporting. Collider2D.isTrigger → PhysicsShapeDefinition.isTrigger: a
-            // sensor overlaps without a collision response (XML P:…PhysicsShapeDefinition.isTrigger). Contact and
-            // trigger events are enabled on EVERY shape so every package pair is event-eligible, matching the
-            // GameObject's always-on Enter/Stay/Exit (no per-collider opt-in): a contact event fires if EITHER
-            // shape has contactEvents (:11609), a trigger event fires only if BOTH have triggerEvents (:11718),
-            // so unconditional-true on both satisfies both rules. startStaticContacts forces a Static body's
-            // shape to create contacts at add time (implicitly already true for Trigger/Dynamic/Kinematic,
-            // :11699) so a dynamic body landing on a static floor fires a contact-begin. The flags are set on the
-            // definition, not post-creation: the XML warns a runtime flag change is expensive and may lose
-            // begin/end events (:10061, :11615).
+            // Trigger (sensor) + event reporting (isTrigger → a sensor overlaps without a collision response).
+            // Contact and trigger events are enabled on EVERY shape so every pair is event-eligible, matching
+            // GameObject's always-on Enter/Stay/Exit (parity-matrix.md): a contact event fires if EITHER shape
+            // has contactEvents (:11609), a trigger event only if BOTH have triggerEvents (:11718), so true on
+            // both satisfies both rules. startStaticContacts forces a Static shape to create contacts at add
+            // time (already implicit for Trigger/Dynamic/Kinematic, :11699) so a body landing on a static floor
+            // fires a contact-begin. Set on the definition because a post-creation flag change is expensive and
+            // may drop begin/end events (:10061, :11615).
             shapeDef.isTrigger = sh.isTrigger;
             shapeDef.contactEvents = true;
             shapeDef.triggerEvents = true;
@@ -700,29 +698,14 @@ namespace Zori.Entities.Physics2D
         // The built-in Rigidbody2D default mass, used to recognise "the author did not set a custom mass".
         const float DefaultRigidbody2DMass = 1f;
 
-        // Resolve a dynamic body's mass after its shapes exist, mirroring Rigidbody2D's mass / useAutoMass.
-        // After CreateShape, Box2D has already computed a density-derived MassConfiguration from the attached
-        // shapes (XML: the MassConfiguration is recomputed whenever a shape is added). The guiding rule is to
-        // touch massConfiguration as LITTLE as possible: a measured side effect of explicitly assigning it is
-        // that the v3 sub-stepping solver's free-fall integration shifts relative to the v2 GameObject
-        // reference (the cross-solver convention offset roughly 2.6×es, from ~1.7e-3 to ~4.4e-3 m/step on a
-        // free-falling circle), independent of the mass value. So every body that does NOT need a custom mass
-        // is left on its auto-computed mass — that keeps the falling-body and collider fixtures on the tight
-        // free-fall band they are calibrated to. Cases:
-        //   - useAutoMass true: keep the density-derived mass (Rigidbody2D.useAutoMass) — except a chain
-        //     (EdgeCollider2D) is a non-solid surface contributing NO mass, so a dynamic chain-only body lands
-        //     at mass 0 and never integrates; floor it to a unit MassConfiguration (a built-in Rigidbody2D
-        //     defaults to mass 1 regardless of collider).
-        //   - useAutoMass false, default mass on a solid body that already has positive auto mass: a no-op.
-        //     The body falls correctly on either mass, so the assignment is skipped to avoid the solver
-        //     perturbation — this is what keeps the default-mass shape fixtures green.
-        //   - useAutoMass false, custom mass (or a body with no auto mass, e.g. a chain): apply the explicit
-        //     Rigidbody2D.mass via massConfiguration, scaling the rotational inertia by mass/oldMass so spin
-        //     stays consistent. Scenes that set a custom mass carry a band wide enough for the perturbed slope.
-        // Non-dynamic bodies (Static/Kinematic) ignore mass entirely. Implemented as a pure RESOLVE (read the
-        // body's shape-derived mass, decide whether and what to write) followed by an APPLY, so the cached-template
-        // path can capture the resolution from the donor body and replay the identical write on every later body of
-        // the form — making a template-path body bit-identical to a per-entity-path one.
+        // Resolve a dynamic body's mass after its shapes exist (per-case contract: bake-contract.md "Mass floor
+        // for chain-only dynamic bodies" + the custom OverrideMassDistribution row). The load-bearing rule is to
+        // touch massConfiguration as LITTLE as possible: explicitly assigning it shifts the v3 sub-stepping
+        // solver's free-fall integration relative to the v2 GameObject reference (the cross-solver convention
+        // offset roughly 2.6×es, ~1.7e-3 to ~4.4e-3 m/step on a free-falling circle) independent of the mass
+        // value, so any body that needs no custom mass keeps its auto-computed mass and stays on the tight
+        // free-fall band the falling-body / collider fixtures are calibrated to. Split into a pure RESOLVE
+        // followed by an APPLY so the cached-template path replays the donor's write bit-identically.
         static void ApplyMass(PhysicsBody body, in PhysicsBody2DDefinition d) =>
             ApplyResolvedMass(body, ResolveMass(body, in d));
 
@@ -1205,13 +1188,8 @@ namespace Zori.Entities.Physics2D
                 return;
             }
 
-            // Platform is a one-way gate on a SOLID collider: it applies no force to bodies; it classifies each
-            // nearby body (blocking vs passing) against the surface arc and toggles its OWN body's participation so
-            // a body inside the arc rests on it while a body outside it passes through (an approximation — the
-            // faithful per-contact pre-solve veto is unreachable). It
-            // owns its own EXPANDED region query: a fast body's collision contact forms a step before the tight
-            // shape overlap reports it, so an approaching body must be detected a margin out to disable the
-            // platform BEFORE the solver forms the contact that would stop it.
+            // Platform is a one-way gate on a SOLID collider: it applies no force, it toggles its own body's
+            // participation by the surface arc (see ApplyPlatformOneWay).
             if (eff.kind == PhysicsEffector2DKind.Platform)
             {
                 ApplyPlatformOneWay(
@@ -1384,16 +1362,14 @@ namespace Zori.Entities.Physics2D
         }
 
         // Platform (one-way): gate the platform's OWN body participation so a body within the surface arc rests on
-        // it (solid) while a body outside the arc passes through (transparent). Box2D-v3's faithful per-contact
-        // pre-solve veto (IPreSolveCallback.OnPreSolve2D) is unreachable from the package's native-poll posture (it
-        // is callback-only, mid-step, any-thread, world-write-locked, managed-callbackTarget-per-shape), so this
-        // is a per-step WHOLE-BODY approximation: it is faithful for the single-interacting-body case (the example
-        // scenes drop one body at a time), with a documented gap for simultaneous mixed bodies (one above resting +
-        // one below passing). The platform applies NO force to bodies.
-        // The margin (metres) the platform region is grown by for the one-way detection query. A fast body's
-        // collision contact forms a step before the tight platform-shape overlap reports it, so an approaching
-        // body must be caught a margin out to disable the platform BEFORE the solver forms the stopping contact.
-        // ~2 m catches a body several steps out at typical speeds; larger only widens the detection zone.
+        // it (solid) while a body outside it passes through (transparent), applying no force. A per-step whole-body
+        // toggle, not Box2D-v3's per-contact pre-solve veto (unreachable from the native-poll posture), so it is a
+        // documented approximation faithful only for a single interacting body — parity-matrix.md "PlatformEffector2D
+        // multi-body one-way is NOT faithful".
+        // The margin (metres) the platform region is grown by for the detection query. A fast body's collision
+        // contact forms a step before the tight platform-shape overlap reports it, so an approaching body must be
+        // caught a margin out to disable the platform BEFORE the solver forms the stopping contact; larger only
+        // widens the detection zone.
         const float PlatformOneWayMargin = 2f;
 
         static void ApplyPlatformOneWay(
