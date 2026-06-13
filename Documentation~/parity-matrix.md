@@ -67,6 +67,14 @@ These reproduce the built-in behaviour within the band and commit none of the di
 | trigger events (begin / end), `Collider2D.isTrigger` → sensor | `world.triggerBeginEvents` / `triggerEndEvents` → `DynamicBuffer<PhysicsTriggerEvent2D>`; `isTrigger` baked to `PhysicsShapeDefinition.isTrigger` | at-parity | `Phase6ContactTriggerEventGate` | one begin + one end on a sensor pass-through, no contact event |
 | trigger-vs-trigger (sensor-vs-sensor) | symmetric trigger events, one per sensor's perspective | at-parity | `Phase6ContactTriggerEventGate` (`TriggerVsTrigger`) | both backends detect the sensor pair (a design assumption of under-reporting was overturned by validation — see Flagged decisions / note below) |
 
+#### Query visibility of a shape whose collision-matrix row is empty
+
+A shape's queryability is decoupled from its collision-matrix row by substituting its own `categoryBits` for the contacts filter when the authored row bakes to zero. The substitution is `QueryVisibleContacts` in `PhysicsWorld2DSystem`; this note is its canonical rationale.
+
+The substitution is needed because Box2D's query-vs-shape match is bidirectional and ANDs `(shape.categories & query.hitCategories)` with `(shape.contacts & query.categories)`. The query surface sets `query.categories = All`, so a shape with `contacts = 0` fails the second clause and is invisible to every query, including the documented "mask 0 = hit everything" path. A shape on a dedicated layer whose 2D collision-matrix row is fully unchecked (`GetLayerCollisionMask(layer) = 0`, the non-blocking rope-anchor or detection-marker case) bakes `contactBits = 0` and so would be unqueryable.
+
+Substituting the shape's own `categoryBits` when the authored row is empty restores `(contacts & All) != 0`, so a category query finds it, while it still collides with nothing on every other category because its `categories` row contains only its own dedicated layer. A non-empty authored row passes through unchanged, so a shape that already collides is untouched.
+
 ### Runtime write-in, smoothing, CCD
 
 | Built-in 2D feature | Package mechanism | State | Exercising test | Worst error |

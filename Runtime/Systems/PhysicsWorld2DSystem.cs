@@ -486,16 +486,10 @@ namespace Zori.Entities.Physics2D
             return world;
         }
 
-        // The contacts row to bake into a categorized shape's Box2D ContactFilter so its query-visibility does
-        // not depend on its collision-matrix row. Box2D's query-vs-shape match is bidirectional and ANDs
-        // (shape.categories & query.hitCategories) with (shape.contacts & query.categories); the query surface
-        // sets query.categories = All, so a shape with contacts = 0 fails the second clause and is invisible to
-        // EVERY query — even the documented "mask 0 = hit everything" path. A shape on a dedicated layer whose 2D
-        // collision-matrix row is fully unchecked (GetLayerCollisionMask(layer) = 0, e.g. a non-blocking rope
-        // anchor / detection marker) bakes contactBits = 0 and so was unqueryable. Substituting the shape's own
-        // categoryBits when the authored row is empty keeps it colliding with nothing on every OTHER category
-        // (the real collision surfaces) while restoring (contacts & All) != 0 so a category query finds it. A
-        // non-empty authored row passes through unchanged, so a shape that already collides is untouched.
+        // The contacts row to bake into a categorized shape's Box2D ContactFilter so its query-visibility does not
+        // depend on its collision-matrix row: an empty authored row is substituted with the shape's own categoryBits.
+        // Rationale (Box2D's bidirectional-AND query match, the rope-anchor / detection-marker case):
+        // Documentation~/parity-matrix.md "Query visibility of a shape whose collision-matrix row is empty".
         static ulong QueryVisibleContacts(in PhysicsShape2D sh)
         {
             return sh.contactBits != 0ul ? sh.contactBits : sh.categoryBits;
@@ -848,12 +842,10 @@ namespace Zori.Entities.Physics2D
             // step, so they first integrate on the NEXT update. This preserves the spawn-frame-no-step rule per BODY
             // (a body never advances on the frame it is created — it sits at its authored pose until the next step),
             // while letting the world keep stepping the existing population on a frame that ALSO creates new bodies.
-            // The previous form gated the whole step on "no body was created this frame" (if (!createdAny)), which
-            // froze every body for the entire duration of a cross-frame spray (the spawner creates each frame, so no
-            // frame ever stepped until the spray ended) — the deferred-simulation bug. The parity harness lockstep
-            // still holds: its first group Update has no live body to step (the step is a no-op) and then creates
-            // all bodies; each later Update steps the now-live population exactly once before creating nothing, so
-            // capture s still reflects (s + 1) integrations, matched against the reference's per-loop Simulate.
+            // The parity harness lockstep still holds: its first group Update has no live body to step (the step is a
+            // no-op) and then creates all bodies; each later Update steps the now-live population exactly once before
+            // creating nothing, so capture s still reflects (s + 1) integrations, matched against the reference's
+            // per-loop Simulate.
             {
                 var dt = SystemAPI.Time.DeltaTime;
 
@@ -986,7 +978,7 @@ namespace Zori.Entities.Physics2D
                 // Eligibility for the cached arm: the optimisation is on, the entity carries a baked form hash, it
                 // is single-shape, and its kind has a value-cacheable geometry (Circle/Box/Capsule/simple-Polygon —
                 // Edge's chain geometry and a decompose polygon are NOT cacheable, multi-shape is excluded). Anything
-                // failing this falls to the unchanged per-entity path, exactly as before this optimisation existed.
+                // failing this falls to the unchanged per-entity path.
                 var geometry = default(GeometryUnion);
                 var eligible =
                     cacheEnabled
@@ -1361,17 +1353,17 @@ namespace Zori.Entities.Physics2D
             body.ApplyForceToCenter((Vector2)f, true);
         }
 
-        // Platform (one-way): gate the platform's OWN body participation so a body within the surface arc rests on
-        // it (solid) while a body outside it passes through (transparent), applying no force. A per-step whole-body
-        // toggle, not Box2D-v3's per-contact pre-solve veto (unreachable from the native-poll posture), so it is a
-        // documented approximation faithful only for a single interacting body — parity-matrix.md "PlatformEffector2D
-        // multi-body one-way is NOT faithful".
         // The margin (metres) the platform region is grown by for the detection query. A fast body's collision
         // contact forms a step before the tight platform-shape overlap reports it, so an approaching body must be
         // caught a margin out to disable the platform BEFORE the solver forms the stopping contact; larger only
         // widens the detection zone.
         const float PlatformOneWayMargin = 2f;
 
+        // Platform (one-way): gate the platform's OWN body participation so a body within the surface arc rests on
+        // it (solid) while a body outside it passes through (transparent), applying no force. A per-step whole-body
+        // toggle, not Box2D-v3's per-contact pre-solve veto (unreachable from the native-poll posture), so it is a
+        // documented approximation faithful only for a single interacting body — parity-matrix.md "PlatformEffector2D
+        // multi-body one-way is NOT faithful".
         static void ApplyPlatformOneWay(
             PhysicsWorld world,
             PhysicsBody platformBody,
