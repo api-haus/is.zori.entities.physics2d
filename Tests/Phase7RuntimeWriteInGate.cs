@@ -3,7 +3,11 @@ using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using UnityEngine.TestTools;
 using static Unity.Mathematics.math;
@@ -974,11 +978,11 @@ namespace Zori.Entities.Physics2D.Tests
 
                 if (s == 0)
                 {
-                    ecsAfterOneStep = body.rotation.radians;
+                    ecsAfterOneStep = body.rotation.angle;
                     refAfterOneStep = math.radians(rb.rotation);
                 }
             }
-            landedEcsRad = body.rotation.radians;
+            landedEcsRad = body.rotation.angle;
             landedRefRad = math.radians(rb.rotation);
 
             // PARITY (the source-of-truth assert): under sustained re-issue both backends converge to the SAME

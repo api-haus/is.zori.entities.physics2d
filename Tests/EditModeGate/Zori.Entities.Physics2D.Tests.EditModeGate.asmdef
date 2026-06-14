@@ -1,0 +1,34 @@
+{
+  "name": "Zori.Entities.Physics2D.Tests.EditModeGate",
+  "rootNamespace": "Zori.Entities.Physics2D.Tests.EditModeGate",
+  "references": [
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner",
+    "Zori.Entities.Physics2D.Runtime",
+    "Zori.Entities.Physics2D.Authoring",
+    "Zori.Entities.Physics2D.Baking",
+    "Zori.Entities.Physics2D.Tests.Editor",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Scenes",
+    "Unity.Scenes.Editor",
+    "Unity.Transforms",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

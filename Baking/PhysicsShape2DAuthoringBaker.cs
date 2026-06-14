@@ -1,7 +1,11 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using Zori.Entities.Physics2D.Authoring;
 using static Unity.Mathematics.math;

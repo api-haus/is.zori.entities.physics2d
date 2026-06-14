@@ -3,7 +3,11 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using static Unity.Mathematics.math;
 
 namespace Zori.Entities.Physics2D
@@ -16,7 +20,7 @@ namespace Zori.Entities.Physics2D
     /// <remarks>
     /// Write-back addressing (the slice's simplest reliable form): one pass over the
     /// <see cref="PhysicsBody2D"/> query builds two index-aligned arrays — the body handles for the bulk
-    /// <see cref="PhysicsBody.GetBatchTransform"/> read and the matching entities — then the Burst job
+    /// <c>GetBatchTransform</c> read and the matching entities — then the Burst job
     /// scatters each read pose into that entity's <see cref="LocalToWorld"/> via a
     /// <see cref="ComponentLookup{T}"/>. This inherits the POC's index-alignment assumption
     /// (<c>GetBatchTransform</c> returns results in input-span order); the chunk-native form that makes
@@ -58,7 +62,7 @@ namespace Zori.Entities.Physics2D
             bodyComponents.Dispose();
 
             // The bulk read is index-aligned with the input body span (and therefore with `entities`).
-            var transforms = PhysicsBody.GetBatchTransform(bodies.AsReadOnlySpan(), Allocator.TempJob);
+            var transforms = LowLevelPhysics2DCompat.GetBatchTransform(bodies, count, Allocator.TempJob);
 
             // Capture the prev/cur/velocity smoothing state for each interpolated body BEFORE scheduling the
             // write-back job. This is a main-thread pass (it reads the body's managed velocity via the

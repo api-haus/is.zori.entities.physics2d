@@ -3,6 +3,11 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+#if UNITY_6000_6_OR_NEWER
+using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using static Unity.Mathematics.math;
 
 namespace Zori.Entities.Physics2D.Baking
@@ -116,7 +121,7 @@ namespace Zori.Entities.Physics2D.Baking
                         shape.vertices = BuildVertexBlob(verts, scale, flip);
                         // Decompose only if the polygon exceeds the single-hull vertex cap; a normal small convex
                         // custom polygon keeps the single-hull path (decompose false).
-                        shape.polygonDecompose = verts.Count > Unity.U2D.Physics.PhysicsConstants.MaxPolygonVertices;
+                        shape.polygonDecompose = verts.Count > PhysicsConstants.MaxPolygonVertices;
                         break;
 
                     case PhysicsShapeType2D.Edges:

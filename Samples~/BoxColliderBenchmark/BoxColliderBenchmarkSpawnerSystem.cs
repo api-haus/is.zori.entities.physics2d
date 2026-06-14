@@ -3,7 +3,11 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using UnityEngine.Rendering;
 using static Unity.Mathematics.math;

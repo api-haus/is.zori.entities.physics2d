@@ -1,7 +1,12 @@
 using Unity.Collections;
 using Unity.Entities;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
+using static Unity.Mathematics.math;
 
 namespace Zori.Entities.Physics2D
 {
@@ -223,7 +228,7 @@ namespace Zori.Entities.Physics2D
                     // by the authored axis angle (SliderJoint2D.angle, in degrees).
                     def.localAnchorA = new PhysicsTransform(
                         (Vector2)d.connectedAnchor,
-                        PhysicsRotate.FromDegrees(d.axisAngleDegrees)
+                        new PhysicsRotate(radians(d.axisAngleDegrees))
                     );
                     def.localAnchorB = anchorB;
                     def.collideConnected = d.collideConnected;
@@ -246,7 +251,7 @@ namespace Zori.Entities.Physics2D
                     // encodes it (it builds the same rotation from the suspension angle).
                     def.localAnchorA = new PhysicsTransform(
                         (Vector2)d.connectedAnchor,
-                        PhysicsRotate.FromDegrees(d.axisAngleDegrees)
+                        new PhysicsRotate(radians(d.axisAngleDegrees))
                     );
                     def.localAnchorB = anchorB;
                     def.collideConnected = d.collideConnected;
@@ -329,7 +334,7 @@ namespace Zori.Entities.Physics2D
                     def.localAnchorA = anchorA;
                     def.localAnchorB = new PhysicsTransform(
                         (Vector2)(d.anchor + d.linearOffset),
-                        PhysicsRotate.FromDegrees(d.angularOffsetDegrees)
+                        new PhysicsRotate(radians(d.angularOffsetDegrees))
                     );
                     def.collideConnected = d.collideConnected;
 

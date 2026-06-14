@@ -1,7 +1,11 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using static Unity.Mathematics.math;
 
@@ -130,7 +134,7 @@ namespace Zori.Entities.Physics2D
             bodyDef.linearDamping = d.linearDamping;
             bodyDef.angularDamping = d.angularDamping;
             bodyDef.position = (Vector2)d.initialPosition;
-            bodyDef.rotation = PhysicsRotate.FromRadians(d.initialRotationRadians);
+            bodyDef.rotation = new PhysicsRotate(d.initialRotationRadians);
             // Initial velocity seed from the optional PhysicsBody2DInitialVelocity (absent → zero). The units match
             // 1:1: XML P:…PhysicsBodyDefinition.linearVelocity is m/s and .angularVelocity is deg/sec, the same units
             // InitialVelocity2DAuthoring carries.
@@ -303,7 +307,7 @@ namespace Zori.Entities.Physics2D
         {
             var bodyDef = t.bodyDef;
             bodyDef.position = (Vector2)position;
-            bodyDef.rotation = PhysicsRotate.FromRadians(rotationRadians);
+            bodyDef.rotation = new PhysicsRotate(rotationRadians);
             if (hasVelocity)
             {
                 bodyDef.linearVelocity = (Vector2)velocity.linearVelocity;
@@ -404,7 +408,7 @@ namespace Zori.Entities.Physics2D
                     body.angularVelocity = p.velocity.angularVelocity;
                 }
 
-                var rot = PhysicsRotate.FromRadians(p.rotationRadians);
+                var rot = new PhysicsRotate(p.rotationRadians);
                 transforms[i] = new PhysicsBody.BatchTransform(body) { position = (Vector2)p.position, rotation = rot };
                 AddPhysicalBodyComponentsFromTemplate(ref ecb, in t, p, body);
             }
@@ -534,7 +538,7 @@ namespace Zori.Entities.Physics2D
                         // decomposes it into convex fragments (each within MaxPolygonVertices) and validates
                         // them; the fragments are attached in one CreateShapeBatch call. The returned array
                         // must be disposed. An empty result (degenerate outline) attaches nothing.
-                        var fragments = PolygonGeometry.CreatePolygons(
+                        var fragments = LowLevelPhysics2DCompat.CreatePolygons(
                             vertices: span.AsReadOnlySpan(),
                             transform: new PhysicsTransform(offset),
                             allocator: Allocator.Temp
@@ -652,7 +656,7 @@ namespace Zori.Entities.Physics2D
             PolygonGeometry.CreateBox(
                 size: (Vector2)sh.size,
                 radius: sh.radius,
-                transform: new PhysicsTransform((Vector2)sh.offset, PhysicsRotate.FromRadians(sh.boxAngleRadians)),
+                transform: new PhysicsTransform((Vector2)sh.offset, new PhysicsRotate(sh.boxAngleRadians)),
                 inscribe: false
             );
 
@@ -1093,13 +1097,13 @@ namespace Zori.Entities.Physics2D
                     break;
                 case PhysicsBody2DCommandKind.MoveRotation:
                     body.SetTransformTarget(
-                        new PhysicsTransform(body.position, PhysicsRotate.FromRadians(cmd.angular)),
+                        new PhysicsTransform(body.position, new PhysicsRotate(cmd.angular)),
                         dt
                     );
                     break;
                 case PhysicsBody2DCommandKind.MovePositionAndRotation:
                     body.SetTransformTarget(
-                        new PhysicsTransform((Vector2)cmd.linear, PhysicsRotate.FromRadians(cmd.angular)),
+                        new PhysicsTransform((Vector2)cmd.linear, new PhysicsRotate(cmd.angular)),
                         dt
                     );
                     break;
@@ -1113,7 +1117,7 @@ namespace Zori.Entities.Physics2D
                     var setPos = ((int)cmd.worldPoint.x & 1) != 0;
                     var setRot = ((int)cmd.worldPoint.x & 2) != 0;
                     var newPos = setPos ? (Vector2)cmd.linear : body.position;
-                    var newRot = setRot ? PhysicsRotate.FromRadians(cmd.angular) : body.rotation;
+                    var newRot = setRot ? new PhysicsRotate(cmd.angular) : body.rotation;
                     body.transform = new PhysicsTransform(newPos, newRot);
                     break;
                 case PhysicsBody2DCommandKind.SkipInterpolation:
