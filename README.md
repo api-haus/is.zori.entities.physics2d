@@ -57,13 +57,17 @@ Targets parity with GameObject 2D physics, checked by GameObject-vs-ECS parity t
 
 ## Requirements
 
-- Unity 6000.x with the embedded `Unity.U2D.Physics` (Box2D v3) engine — that engine ships in the editor from `6000.3` onward; the package was developed and validated against `6000.6.0a6`.
-- Entities 6.5, Collections 6.5, Burst 1.8.29, Mathematics 1.3.2
+- Unity 6000.3 or newer with the embedded Box2D v3 engine — `UnityEngine.LowLevelPhysics2D` on `6000.3`/`6000.4`, `Unity.U2D.Physics` on `6000.6` — validated against `6000.3`, `6000.4`, and `6000.6`.
+- Entities 1.4.7, Collections 2.6.7, Burst 1.8.0, Mathematics 1.3.0 — declared minimums; Unity 6.4+ auto-upgrades Entities/Collections to its built-in packages.
 
 ## Documentation
 
 - [Overview and concepts](Documentation~/index.md) — what the package is and how a body flows from authoring to `LocalToWorld`.
 - [Feature-parity matrix](Documentation~/parity-matrix.md) — the per-feature support state vs GameObject 2D physics, with every known gap and its measured evidence.
+
+## See also
+
+- [`is.zori.entities.charactercontroller2d`](https://github.com/api-haus/is.zori.entities.charactercontroller2d) — a DOTS 2D kinematic character controller built on this package.
 
 ## License
 
