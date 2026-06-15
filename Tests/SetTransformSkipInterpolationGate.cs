@@ -2,7 +2,11 @@ using System.Collections;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using UnityEngine.TestTools;
 using static Unity.Mathematics.math;
@@ -176,9 +180,9 @@ namespace Zori.Entities.Physics2D.Tests
             group.Update();
             Assert.Less(length(PosOf(body) - farPos), 1e-3f, "SetPosition did not land at the far position.");
             Assert.Less(
-                abs(body.rotation.radians),
+                abs(body.rotation.angle),
                 1e-3f,
-                $"SetPosition snapped the rotation to {body.rotation.radians} rad — it must keep the current 0."
+                $"SetPosition snapped the rotation to {body.rotation.angle} rad — it must keep the current 0."
             );
 
             // Rotation-only set: spin to π/2, position must stay at farPos.
@@ -186,9 +190,9 @@ namespace Zori.Entities.Physics2D.Tests
             PhysicsBody2DCommands.SetRotation(CommandsOf(em, entity), targetAngle);
             group.Update();
             Assert.Less(
-                abs(body.rotation.radians - targetAngle),
+                abs(body.rotation.angle - targetAngle),
                 1e-3f,
-                $"SetRotation did not land the exact angle. got={body.rotation.radians}, target={targetAngle}."
+                $"SetRotation did not land the exact angle. got={body.rotation.angle}, target={targetAngle}."
             );
             Assert.Less(
                 length(PosOf(body) - farPos),

@@ -1,5 +1,9 @@
 using Unity.Entities;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 
 namespace Zori.Entities.Physics2D
 {

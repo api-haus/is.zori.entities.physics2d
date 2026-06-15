@@ -1,7 +1,11 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+#if UNITY_6000_6_OR_NEWER
 using Unity.U2D.Physics;
+#else
+using UnityEngine.LowLevelPhysics2D;
+#endif
 using UnityEngine;
 using static Unity.Mathematics.math;
 
@@ -227,7 +231,7 @@ namespace Zori.Entities.Physics2D
             hits.Clear();
             if (!world.isValid)
                 return 0;
-            var transform = new PhysicsTransform((Vector2)center, PhysicsRotate.FromRadians(angleRadians));
+            var transform = new PhysicsTransform((Vector2)center, new PhysicsRotate(angleRadians));
             var geometry = PolygonGeometry.CreateBox((Vector2)size, 0f, transform, inscribe: false);
             var results = world.OverlapGeometry(geometry, Filter(hitLayerMask), Allocator.Temp);
             for (var i = 0; i < results.Length; i++)
@@ -297,7 +301,7 @@ namespace Zori.Entities.Physics2D
             if (!world.isValid)
                 return 0;
             var dir = normalizesafe(direction);
-            var transform = new PhysicsTransform((Vector2)origin, PhysicsRotate.FromRadians(angleRadians));
+            var transform = new PhysicsTransform((Vector2)origin, new PhysicsRotate(angleRadians));
             var geometry = PolygonGeometry.CreateBox((Vector2)size, 0f, transform, inscribe: false);
             var translation = (Vector2)(dir * distance);
             var results = world.CastGeometry(
@@ -435,7 +439,7 @@ namespace Zori.Entities.Physics2D
                     {
                         shapeProxyA = queryProxy,
                         transformA = queryTransform,
-                        shapeProxyB = shape, // implicit PhysicsShape -> ShapeProxy (the shape's own geometry)
+                        shapeProxyB = shape.CreateShapeProxy(false), // PhysicsShape -> ShapeProxy (6000.6's implicit conversion is exactly CreateShapeProxy(false))
                         transformB = shape.body.transform,
                         useRadii = true,
                     }
