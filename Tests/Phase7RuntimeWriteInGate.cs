@@ -978,11 +978,11 @@ namespace Zori.Entities.Physics2D.Tests
 
                 if (s == 0)
                 {
-                    ecsAfterOneStep = body.rotation.angle;
+                    ecsAfterOneStep = body.rotation.radians;
                     refAfterOneStep = math.radians(rb.rotation);
                 }
             }
-            landedEcsRad = body.rotation.angle;
+            landedEcsRad = body.rotation.radians;
             landedRefRad = math.radians(rb.rotation);
 
             // PARITY (the source-of-truth assert): under sustained re-issue both backends converge to the SAME
